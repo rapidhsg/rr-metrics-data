@@ -1,0 +1,33 @@
+name: check-rules
+
+# Runs whenever the rules change. Green check = rules still work. Red X = the last change broke
+# something (usually a typo in a name), and GitHub emails the person who made the change.
+
+on:
+  push:
+    branches: [main]
+    paths: ["rules/**", "scripts/check_rules.py", ".github/workflows/check-rules.yml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          path: databranch
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet pandas
+
+      - name: Check the rules against the latest data
+        run: python scripts/check_rules.py databranch/data/job_export_raw_latest.csv
