@@ -1,5 +1,8 @@
 name: pull-acculynx-reports
 
+# Every hour, grab the newest AccuLynx job export and Revenue In Progress report
+# and save them to the "data" branch. The rules on "main" are never touched by this job.
+
 on:
   schedule:
     - cron: "7 * * * *"   # every hour at :07
@@ -21,6 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get the current data branch (empty on the very first run)
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: databranch
+        continue-on-error: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -29,15 +39,18 @@ jobs:
         id: pull
         env:
           ACCULYNX_API_KEY: ${{ secrets.ACCULYNX_API_KEY }}
+          DATA_DIR: databranch/data
         run: node scripts/pull.mjs
 
-      # Keep only the latest copy: replace history with a single fresh commit so the repo never grows.
-      - name: Save (latest copy only)
+      # Keep only the latest copy on the data branch: one fresh commit each time, so it never grows.
+      - name: Save to data branch (latest copy only)
         if: always() && steps.pull.outputs.changed == 'true'
+        working-directory: databranch
         run: |
+          [ -d .git ] || git init -q
           git config user.name "rr-metrics-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan fresh
-          git add -A
+          git checkout -q --orphan fresh
+          git add -A data
           git commit -q -m "data as of $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push -f origin fresh:main
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fresh:data

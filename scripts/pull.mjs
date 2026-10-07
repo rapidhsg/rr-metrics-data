@@ -2,6 +2,10 @@
 // Checks all 5 daily schedules and keeps the most recent run of each report.
 // Zero dependencies (Node 18+). Needs env ACCULYNX_API_KEY.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+// Where to write the files (the workflow points this at a checkout of the data branch).
+const DIR = process.env.DATA_DIR || "data";
 
 const BASE = "https://api.acculynx.com/api/v2";
 const SCHEDULES = {
@@ -13,8 +17,8 @@ const SCHEDULES = {
 };
 // Report file name prefix (as AccuLynx names it) -> saved file + a column that must be present.
 const REPORTS = {
-  job_export_raw: { out: "data/job_export_raw_latest.csv", mustHave: "Current Milestone" },
-  revenue_in_progress: { out: "data/Revenue_In_Progress_latest.csv", mustHave: "Crew End Date" },
+  job_export_raw: { out: "job_export_raw_latest.csv", mustHave: "Current Milestone" },
+  revenue_in_progress: { out: "Revenue_In_Progress_latest.csv", mustHave: "Crew End Date" },
 };
 
 const key = process.env.ACCULYNX_API_KEY;
@@ -34,7 +38,7 @@ async function get(url, { auth = true, json = true, allow404 = false } = {}) {
   throw new Error(last);
 }
 
-const statusPath = "data/status.json";
+const statusPath = join(DIR, "status.json");
 const status = existsSync(statusPath) ? JSON.parse(readFileSync(statusPath, "utf8")) : {};
 
 // 1. Find the newest file for each report across all schedules.
@@ -55,7 +59,7 @@ for (const [id, label] of Object.entries(SCHEDULES)) {
 }
 
 // 2. Download and save each report, but only if it is a newer run. Never overwrite with a bad file.
-mkdirSync("data", { recursive: true });
+mkdirSync(DIR, { recursive: true });
 let changed = false;
 const problems = [];
 for (const [prefix, cfg] of Object.entries(REPORTS)) {
@@ -65,8 +69,8 @@ for (const [prefix, cfg] of Object.entries(REPORTS)) {
   const csv = await get(pick.url, { auth: false, json: false });
   const lines = csv.split("\n").length;
   if (lines < 3 || !csv.slice(0, 2000).includes(cfg.mustHave)) { problems.push(`${prefix}: downloaded file looks wrong (${lines} lines)`); continue; }
-  writeFileSync(cfg.out, csv);
-  status[prefix] = { runDate: pick.runDate, schedule: pick.schedule, pulledAt: new Date().toISOString(), rows: lines - 2, file: cfg.out };
+  writeFileSync(join(DIR, cfg.out), csv);
+  status[prefix] = { runDate: pick.runDate, schedule: pick.schedule, pulledAt: new Date().toISOString(), rows: lines - 2, file: "data/" + cfg.out };
   changed = true;
   console.log(`${prefix}: saved run ${pick.runDate} (${pick.schedule}), ${lines - 2} rows`);
 }
