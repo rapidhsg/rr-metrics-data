@@ -40,7 +40,12 @@ The data is refreshed every hour from AccuLynx's 5 daily runs (6 AM, 9 AM, 12 PM
 
 ## 3. Time periods
 
-- **Rolling 30, 60, 90:** start = today minus 30, 60, or 90 days, end = today, both days included (`rr_metrics.rolling`). Rolling 90 on Oct 7 = Jul 9 through Oct 7.
+- **Rolling 30, 60, 90:** each window ends on an end date and goes back 30, 60, or 90 days. Start = end date minus 30, 60, or 90 days. Both the start and end days count. Use `rr_metrics.rolling(end_date, days)`.
+  - The end date is today, unless the user names a date. "30/60/90 as of Sept 30", "from Sept 30", and "ending Sept 30" all mean the end date is Sept 30.
+  - Example, ending Sept 30: 30 days = Aug 31 to Sept 30. 60 days = Aug 1 to Sept 30. 90 days = Jul 2 to Sept 30.
+  - Example, ending today (Oct 7): 90 days = Jul 9 to Oct 7.
+  - When asked for "30/60/90", show all three windows side by side, each with its exact dates.
+- **Not the same thing:** if the user clearly asks how one group of appointments closed over time (for example "of the appointments from Sept 1, how many closed within 30, 60, and 90 days"), that is a different question. Confirm what they mean before answering.
 - **Weeks:** Monday to Sunday, for everything. "Weekly report" or "last week" always means the previous Monday through Sunday (`rr_metrics.last_week`).
 - **Quarters:** calendar quarters. Q1 Jan to Mar, Q2 Apr to Jun, Q3 Jul to Sep, Q4 Oct to Dec.
 - Planning is done by quarter and by year.
