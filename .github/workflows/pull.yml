@@ -5,7 +5,7 @@ name: pull-acculynx-reports
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 min. GitHub often skips scheduled runs, so check often. Nothing is saved unless AccuLynx has a new run.
+    - cron: "7,22,37,52 * * * *"   # every 15 min on odd minutes (GitHub drops many runs at :00/:15/:30/:45). Nothing is saved unless AccuLynx has a new run.
   workflow_dispatch: {}   # manual "Run workflow" button
   push:
     branches: [main]
