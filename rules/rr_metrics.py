@@ -162,8 +162,12 @@ def load_expenses(path):
     e.loc[e["Payment Type"].eq("Additional"), "Bucket"] = "Commission"
     crew = (t.str.replace(r"(?i)^(labor|other job expenses)\s+", "", regex=True)
              .str.replace(r"(?i)\bcash\b\s*", "", regex=True)
-             .str.replace(r"(?i)\s+(pay|dump)$", "", regex=True).str.strip())
-    e["Crew"] = crew.where(e["Bucket"].isin(["Labor", "Dump"]))
+             .str.replace(r"(?i)\s+(pay adj|pay|dump)$", "", regex=True)
+             .str.replace(r"(?i),?\s+(inc|llc|corp)\.?$", "", regex=True)
+             .str.replace(r"(?i)^ian\s+", "", regex=True).str.strip())
+    crew = crew.where(~crew.str.lower().eq("renewusa solar"), "RenewUSA Solar")
+    odd = t.str.lower().str.contains("|".join(EX["odd_line_words"]))
+    e["Crew"] = crew.where(e["Bucket"].isin(["Labor", "Dump"]) & ~odd)  # food and test lines are not a crew
     return e
 
 
