@@ -121,3 +121,86 @@ def flags(df, start, end):
         t.loc[t["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""  # former reps never shown
         res[k] = t
     return res
+
+
+# ---------------------------------------------------------------------------
+# Job Expenses report (data/job_expenses_latest.csv): every cost line on Closed jobs.
+# ---------------------------------------------------------------------------
+EX = S["expenses"]
+
+
+def load_expenses(path):
+    """One row per cost line, with a Bucket (Material, Labor, Dump, Commission...) and a Crew for labor/dump lines."""
+    e = pd.read_csv(path, low_memory=False)
+    for c in ["Payment Amount", "Job Value", "Additional Expenses", "Total Expenses", "Balance Due"]:
+        e[c] = pd.to_numeric(e[c], errors="coerce")
+    e = e[e["Total Expenses"].notna() & e["Job Number"].astype(str).str.startswith("RR-")].copy()  # drops the odd broken row
+    t = e["To/Method"].fillna("").str.strip()
+    e["Bucket"] = "Other"
+    done = pd.Series(False, index=e.index)
+    for bucket, pattern in EX["buckets"]:
+        hit = ~done & t.str.contains(pattern, case=False, regex=True)
+        e.loc[hit, "Bucket"] = bucket
+        done |= hit
+    e.loc[e["Payment Type"].eq("Additional"), "Bucket"] = "Commission"
+    crew = (t.str.replace(r"(?i)^(labor|other job expenses)\s+", "", regex=True)
+             .str.replace(r"(?i)\bcash\b\s*", "", regex=True)
+             .str.replace(r"(?i)\s+(pay|dump)$", "", regex=True).str.strip())
+    e["Crew"] = crew.where(e["Bucket"].isin(["Labor", "Dump"]))
+    return e
+
+
+def job_costs(exp, df, start=None, end=None):
+    """One row per Closed job: cost by bucket, Profit and GP % (from the job export), rep, crews.
+    Window = Completed (install) date, same as Revenue and GP %. "In GP" marks the jobs the GP % rule counts."""
+    piv = exp.pivot_table(index="Job Number", columns="Bucket", values="Payment Amount", aggfunc="sum", fill_value=0)
+    first = exp.groupby("Job Number").agg(**{"Job Value": ("Job Value", "first"), "Total Expenses": ("Total Expenses", "first"),
+                                            "Balance Due": ("Balance Due", "first"), "Job Number Url": ("Job Number Url", "first")})
+    crews = exp.dropna(subset=["Crew"]).groupby("Job Number")["Crew"].agg(lambda s: ", ".join(dict.fromkeys(s)))
+    j = df.set_index("Job Number")[["Primary Salesperson", "Work Type", "Job Trade Type", "Job Category", "Completed Milestone Date", "Closed Milestone Date", "Profit", "Profit %"]]
+    out = first.join(piv).join(crews.rename("Crews")).join(j, how="left")
+    out["GP %"] = (out["Profit"] / out["Job Value"] * 100).round(2)
+    cb = out["Job Trade Type"].fillna("").str.contains(S["call_back_text"])
+    out["In GP"] = (out["Work Type"] != UPG) & ~cb & (out["Profit"] != 0) & (out["Profit %"] != 1)
+    if start is not None:
+        out = out[window(out, "Completed Milestone Date", start, end)]
+    out.loc[out["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""
+    return out
+
+
+def cost_summary(jc, by=None):
+    """Totals and % of job value per bucket, plus GP % vs the goal. Uses only the jobs the GP % rule counts
+    (no upgrades, no Call Backs, no $0 or 100% profit), so GP % here always equals the GP % metric. Optional group by a column."""
+    jc = jc[jc["In GP"]]
+    buckets = [b for b, _ in EX["buckets"]] + ["Other"]
+    cols = [b for b in buckets if b in jc.columns]
+
+    def one(g):
+        v = g["Job Value"].sum()
+        row = {"Jobs": len(g), "Job Value": round(v, 2), "Profit": round(g["Profit"].sum(), 2),
+               "GP %": round(g["Profit"].sum() / v * 100, 2) if v else None}
+        for b in cols:
+            row[b] = round(g[b].sum(), 2)
+            row[b + " %"] = round(g[b].sum() / v * 100, 2) if v else None
+        return pd.Series(row)
+
+    res = jc.groupby(by).apply(one) if by else one(jc).to_frame("All").T
+    res["GP goal %"] = EX["gp_goal_pct"]
+    return res
+
+
+def expense_flags(exp, df, start, end):
+    """Cost data that looks wrong on Closed jobs in the window."""
+    jc = job_costs(exp, df, start, end)
+    wt_ok = jc["Work Type"].isin(EX["flag_no_material_or_labor_work_types"]) & (jc["Job Value"] > 0)
+    get = lambda b: jc[b] if b in jc.columns else 0
+    odd = exp[exp["To/Method"].fillna("").str.lower().str.contains("|".join(EX["odd_line_words"]))
+              & exp["Job Number"].isin(jc.index)]
+    cols = ["Primary Salesperson", "Work Type", "Job Value", "Completed Milestone Date", "Job Number Url"]
+    return {
+        "closed_with_no_material": jc.loc[wt_ok & (get("Material") <= 0), cols],
+        "closed_with_no_labor": jc.loc[wt_ok & (get("Labor") <= 0), cols],
+        "sales_rep_job_with_no_commission": jc.loc[jc["Primary Salesperson"].isin(SALES_TEAM) & (jc["Work Type"] != UPG)
+                                                   & (jc["Job Value"] > 0) & (get("Commission") <= 0), cols],
+        "odd_expense_lines": odd[["Job Number", "To/Method", "Payment Amount", "Memo/Notes", "Job Number Url"]],
+    }

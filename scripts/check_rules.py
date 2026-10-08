@@ -43,6 +43,17 @@ m = rr.metrics(df, start, end)
 rr.flags(df, start, end)
 print(f"Rolling 90 ending {end.date()}: {m}")
 
+# Job Expenses report, if present next to the job export.
+exp_path = Path(sys.argv[1]).with_name("job_expenses_latest.csv")
+if exp_path.exists():
+    ex = rr.load_expenses(exp_path)
+    jc = rr.job_costs(ex, df, start, end)
+    print(rr.cost_summary(jc)[["Jobs", "Job Value", "GP %", "Material %", "Labor %"]].to_string())
+    rr.expense_flags(ex, df, start, end)
+    unknown = sorted(set(ex["Job Number"]) - set(df["Job Number"].dropna()))
+    if unknown:
+        problems.append(f"{len(unknown)} jobs in the expenses report are missing from the job export, e.g. {unknown[:3]}")
+
 if problems:
     print("\nPROBLEMS FOUND:\n" + "\n".join(problems))
     sys.exit(1)

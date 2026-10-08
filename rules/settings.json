@@ -1,15 +1,27 @@
 {
   "_read_me": "The lists the rr-metrics calculations use. Edit carefully: names must match AccuLynx EXACTLY (spelling, spaces, capital letters). After saving, check the Actions tab: a green check means the rules still work, a red X means something is broken and the last change should be fixed or undone. Only Joe edits this file.",
-
   "sales_team": {
     "_note": "Default roster for close rate and rep performance. Left side = exact AccuLynx name. Right side = what people call them in chat.",
-    "Querlim Franco": ["Querlim", "Franco"],
-    "Francesco Ambrosio": ["Francesco", "Frankie"],
-    "Michael Dietrich": ["Dietrich", "Mike D"],
-    "Joseph Young": ["Young", "Joe Young"],
-    "Steve Burns": ["Steve"]
+    "Querlim Franco": [
+      "Querlim",
+      "Franco"
+    ],
+    "Francesco Ambrosio": [
+      "Francesco",
+      "Frankie"
+    ],
+    "Michael Dietrich": [
+      "Dietrich",
+      "Mike D"
+    ],
+    "Joseph Young": [
+      "Young",
+      "Joe Young"
+    ],
+    "Steve Burns": [
+      "Steve"
+    ]
   },
-
   "not_sales_team": {
     "_note": "People who sell sometimes but are not on the sales team. Left out of close rate and rep views unless someone asks for them by name.",
     "Ryan Romero": "Production. His jobs are mostly upgrades or sales picked up on callback visits.",
@@ -17,45 +29,147 @@
     "Richie Troy": "COO.",
     "Joseph Elshazly": "Owner."
   },
-
   "hidden_former_reps": {
     "_note": "Former reps. Never shown by name in any rep view or team number. Their past deals still count in company totals.",
-    "names": ["Joseph Cassara"]
+    "names": [
+      "Joseph Cassara"
+    ]
   },
-
   "dead_reasons": {
     "_note": "Matched by EXACT name. 'Trade Not Serviced' does not include 'Trade Not Serviced (CSR)'.",
-    "contacts_exclude": ["Duplicate", "Test Lead"],
-    "leads_and_appointments_exclude": ["Area Not Serviced", "Area Not Serviced (CSR)", "Bad Lead from Lead Service", "Duplicate", "Test Lead", "Trade Not Serviced", "Trade Not Serviced (CSR)"],
-    "sits_exclude": ["Test Lead", "Trade Not Serviced", "Trade Not Serviced (Sales)"],
-    "close_rate_exclude": ["Area Not Serviced", "Bad Lead from Lead Service", "Duplicate", "No Chance To Meet", "No Damage", "Trade Not Serviced"]
+    "contacts_exclude": [
+      "Duplicate",
+      "Test Lead"
+    ],
+    "leads_and_appointments_exclude": [
+      "Area Not Serviced",
+      "Area Not Serviced (CSR)",
+      "Bad Lead from Lead Service",
+      "Duplicate",
+      "Test Lead",
+      "Trade Not Serviced",
+      "Trade Not Serviced (CSR)"
+    ],
+    "sits_exclude": [
+      "Test Lead",
+      "Trade Not Serviced",
+      "Trade Not Serviced (Sales)"
+    ],
+    "close_rate_exclude": [
+      "Area Not Serviced",
+      "Bad Lead from Lead Service",
+      "Duplicate",
+      "No Chance To Meet",
+      "No Damage",
+      "Trade Not Serviced"
+    ]
   },
-
   "work_types": {
     "upgrade": "Upsell / Change Order",
-    "contacts_leads_appointments_exclude": ["Service", "Upsell / Change Order"],
-    "close_rate_exclude": ["Insurance", "Inspection", "Retail", "Service", "Warranty"]
+    "contacts_leads_appointments_exclude": [
+      "Service",
+      "Upsell / Change Order"
+    ],
+    "close_rate_exclude": [
+      "Insurance",
+      "Inspection",
+      "Retail",
+      "Service",
+      "Warranty"
+    ]
   },
-
   "job_categories": {
-    "close_rate_exclude": ["Property Management"]
+    "close_rate_exclude": [
+      "Property Management"
+    ]
   },
-
   "milestones": {
-    "sales_count_if_currently": ["Approved", "Completed", "Invoiced", "Closed"],
-    "revenue_count_if_currently": ["Completed", "Invoiced", "Closed"]
+    "sales_count_if_currently": [
+      "Approved",
+      "Completed",
+      "Invoiced",
+      "Closed"
+    ],
+    "revenue_count_if_currently": [
+      "Completed",
+      "Invoiced",
+      "Closed"
+    ]
   },
-
   "call_back_text": "Call Back",
-
   "flags": {
-    "quoted_but_marked_not_serviced": ["Area Not Serviced", "Area Not Serviced (CSR)", "Trade Not Serviced (CSR)", "Bad Lead from Lead Service"],
-    "booked_but_should_not_be": ["Area Not Serviced", "Area Not Serviced (CSR)", "Bad Lead from Lead Service", "Trade Not Serviced", "Trade Not Serviced (CSR)"],
+    "quoted_but_marked_not_serviced": [
+      "Area Not Serviced",
+      "Area Not Serviced (CSR)",
+      "Trade Not Serviced (CSR)",
+      "Bad Lead from Lead Service"
+    ],
+    "booked_but_should_not_be": [
+      "Area Not Serviced",
+      "Area Not Serviced (CSR)",
+      "Bad Lead from Lead Service",
+      "Trade Not Serviced",
+      "Trade Not Serviced (CSR)"
+    ],
     "main_trade": "Roofing"
   },
-
   "goals": {
     "sheet_id": "1rUr_peG0nO7ZyVTeRCLo6k0zDjoT1h_4Xm6DKnNSmtk",
     "original_yearly_sales_goal": 6850000
+  },
+  "expenses": {
+    "_read_me": "Job Expenses report. One row per cost line on Closed jobs. Payment Type 'Additional' = commission. Buckets are matched in this order against the To/Method text (case does not matter); first match wins; no match = Other.",
+    "gp_goal_pct": 37,
+    "gp_goal_source": "Company goal from the P&L. Applies to job GP on Closed jobs.",
+    "buckets": [
+      [
+        "Commission",
+        "commission"
+      ],
+      [
+        "Dump",
+        "\\bdump\\b"
+      ],
+      [
+        "Material",
+        "^materials?\\b"
+      ],
+      [
+        "Labor",
+        "^labor\\b"
+      ],
+      [
+        "CC Fee",
+        "cc fee"
+      ],
+      [
+        "Warranty",
+        "warranty"
+      ],
+      [
+        "Sales Tax",
+        "sales tax"
+      ],
+      [
+        "Permits",
+        "permit"
+      ],
+      [
+        "Marketing",
+        "marketing|roofr"
+      ]
+    ],
+    "flag_no_material_or_labor_work_types": [
+      "New",
+      "Repair"
+    ],
+    "odd_line_words": [
+      "test",
+      "snack",
+      "lunch",
+      "burger",
+      "mcdonald",
+      "check to customer"
+    ]
   }
 }

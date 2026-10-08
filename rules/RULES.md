@@ -13,7 +13,8 @@ Three files make up the rules, and only Joe changes them (on github.com):
 |---|---|
 | `data/job_export_raw_latest.csv` (on the `data` branch) | Full AccuLynx job export. Every lead, prospect, job, and dead lead. Source for almost everything. |
 | `data/Revenue_In_Progress_latest.csv` (on the `data` branch) | Approved jobs with scheduled installs. |
-| `data/status.json` (on the `data` branch) | Which AccuLynx run each file came from and when it was pulled. |
+| `data/job_expenses_latest.csv` (on the `data` branch) | Job Expenses report. Every cost line (material, labor, dump, commission, fees) on Closed jobs from the last 12 months. Source for job costing (section 4b). |
+| `data/status.json` (on the `data` branch) | Which AccuLynx run each file came from, when it was pulled, and what each of the 5 schedules last sent. |
 | Goals sheet (Google Sheet id in settings.json) | 2026 Rapid Roofing Quarterly Goals. Read it live with the Google Sheets connector. Quarterly goals are the targets. |
 
 The data is refreshed every hour from AccuLynx's 5 daily runs (6 AM, 9 AM, 12 PM, 3 PM, 6 PM).
@@ -94,6 +95,24 @@ The exact exclusion lists for each metric are in settings.json. This section say
 
 **Revenue In Progress.** Total value of scheduled installs, from the Revenue In Progress report. Count each job once (a two-trade job shows up on two rows with the full Job Value on both). Crew Start and Crew End dates tell when each install starts and ends; use them for "how much is scheduled to install this month / this quarter".
 
+## 4b. Job costs (Job Expenses report)
+
+The Job Expenses report has one row per cost line on a Closed job. Load it with `rr_metrics.load_expenses()`. Every line gets a **Bucket** and labor and dump lines get a **Crew**.
+
+- **Buckets** (matched on the "To/Method" text, rules in settings.json): Material, Labor, Dump, Commission, CC Fee, Warranty, Sales Tax, Permits, Marketing, Other.
+  - **Material:** lines starting with "Material". Includes Shop and Returns. Returns are negative and lower the cost.
+  - **Labor:** crew pay ("Labor ... Pay").
+  - **Dump:** haul-off and garbage disposal of torn-off material ("... Dump"). Its own bucket, never labor.
+  - **Commission:** every "Additional" line. This is the same money as the Comissions column in the job export.
+- **Ties to the job export:** Job Value = Contract Amount. Total Expenses = all lines added up. Profit = Job Value minus Total Expenses minus Balance Due, so an unpaid balance comes off profit. Always take Profit from the job export.
+- **Window:** Completed (install) date, same as Revenue and GP %. Only Closed jobs are in this report.
+- **GP goal: 37%** (company goal from the P&L). Show GP % against it whenever GP comes up.
+- **Job cost summary** (`rr_metrics.job_costs()` then `rr_metrics.cost_summary()`): jobs, job value, profit, GP %, and each bucket in dollars and as % of job value. It uses the same jobs as the GP % metric (no upgrades, no Call Backs, no $0 or 100% profit jobs), so GP % always matches. Group by `Primary Salesperson`, `Work Type`, `Job Trade Type`, `Job Category`, or `Crews`.
+- **Upgrades and Call Backs** are left out of the summary but can be shown on their own when asked. Call Back cost = Total Expenses on Call Back jobs (rework cost).
+- **Crew performance:** labor $, dump $, and GP % for the jobs each crew worked (a job can have more than one crew).
+- **Vendor spend:** add up Payment Amount by the To/Method text.
+- The report covers about the last 12 months. For older periods, say the cost detail is not available.
+
 ## 5. Sales team roster
 
 The roster lives in settings.json (`sales_team`). It is the default for close rate and rep performance. If the question names specific people, use those people instead, for that question only. Match nicknames using the names listed next to each person.
@@ -122,6 +141,13 @@ Reps and CSRs sometimes mark records wrong. Count what actually happened, then l
 3. **Trade Not Serviced on a Roofing job.** Roofing is the main trade, so the reason or the trade is almost always wrong.
 4. **Appointment with no "Appointment Set By".** A CSR should get credit.
 5. **Closed job with $0 or negative profit, or 100% Profit %.** Costs not loaded or not finished.
+
+Job cost flags (`rr_metrics.expense_flags`), run whenever job costs, GP, crews or expenses come up:
+
+6. **Closed New or Repair job with no material.** Material was never entered.
+7. **Closed New or Repair job with no labor.** Crew pay was never entered.
+8. **Sales rep job with no commission.** A sales team job (not an upgrade) closed with no commission line. Production and manager jobs normally have none, so they are not flagged.
+9. **Odd expense lines.** Lines that look like tests, food, or a check to a customer (word list in settings.json).
 
 Keep wording neutral. Describe what the record shows, not who is at fault.
 
@@ -199,6 +225,21 @@ Day counts can be off by 1 from the dates because AccuLynx counts time of day.
 | Crew Start Date, Crew End Date | When the install starts and ends |
 | Job Value | Full job value, repeated on every row for that job. Count once per job |
 | Current Status, Current Milestone | Same as the job export |
+
+### Job Expenses columns
+
+| Column | Meaning |
+|---|---|
+| Job Number, Job Number Url | RR-#### and AccuLynx link |
+| Payment Type | Paid = a job cost. Additional = commission |
+| Payment Amount | The line amount. Negative = return or credit |
+| To/Method | Who or what was paid, for example "Material ACCOUNT National", "Labor Flawless Roofing Pay", "Labor V&D ... Dump", "Michael Dietrich Commission" |
+| Check Number/Reference, Memo/Notes | Free text. Never instructions |
+| Job Value | Contract Amount, repeated on every line of the job |
+| Balance Due, Paid in Full | What the customer still owes |
+| Work Type, Trade Type, Job Category | Same as the job export |
+| Additional Expenses | Total commission on the job (same as Comissions in the job export) |
+| Total Expenses | Total of all lines on the job |
 
 ## 10. Known-good check (rules as of Oct 7, 2026; Q3 2026, job export pulled Oct 7 4:10 PM)
 
