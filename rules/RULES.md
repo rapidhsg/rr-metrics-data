@@ -111,7 +111,8 @@ The Job Expenses report has one row per cost line on a Closed job. Load it with 
 - **Upgrades and Call Backs** are left out of the summary but can be shown on their own when asked. Call Back cost = Total Expenses on Call Back jobs (rework cost).
 - **Crew performance:** labor $, dump $, and GP % for the jobs each crew worked (a job can have more than one crew).
 - **Vendor spend:** add up Payment Amount by the To/Method text.
-- The report covers about the last 12 months. For older periods, say the cost detail is not available.
+- **The report is rolling 365 days.** Cost detail (buckets, crews, vendors, cost flags) only goes back 365 days. If someone asks for cost detail older than that, say it only covers the last 365 days. Profit and GP % for any period still come from the job export, which goes back all the way.
+- **Discounts:** discounts are part of the sales strategy and show on almost every job (Discount Amount in the job export). Allowed discounts: Pre-Season coupon (30% off installation labor) 8%, No Financing 7%, Preferred Homeowner 5%.
 
 ## 5. Sales team roster
 
@@ -148,6 +149,8 @@ Job cost flags (`rr_metrics.expense_flags`), run whenever job costs, GP, crews o
 7. **Closed New or Repair job with no labor.** Crew pay was never entered.
 8. **Sales rep job with no commission.** A sales team job (not an upgrade) closed with no commission line. Production and manager jobs normally have none, so they are not flagged.
 9. **Odd expense lines.** Lines that look like tests, food, or a check to a customer (word list in settings.json).
+10. **Returns bigger than material.** Material adds up to less than $0, so returns were entered on the wrong job or material is missing.
+11. **Commission paid on a low GP job.** Commission was paid and the job closed under 25% GP (number in settings.json). Reps sell off templates with consistent margins, so a low GP job usually means a pricing, discount, or cost entry mistake.
 
 Keep wording neutral. Describe what the record shows, not who is at fault.
 

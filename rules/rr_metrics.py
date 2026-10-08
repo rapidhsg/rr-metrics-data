@@ -202,5 +202,8 @@ def expense_flags(exp, df, start, end):
         "closed_with_no_labor": jc.loc[wt_ok & (get("Labor") <= 0), cols],
         "sales_rep_job_with_no_commission": jc.loc[jc["Primary Salesperson"].isin(SALES_TEAM) & (jc["Work Type"] != UPG)
                                                    & (jc["Job Value"] > 0) & (get("Commission") <= 0), cols],
+        "returns_bigger_than_material": jc.loc[(get("Material") < 0), cols],
+        "commission_paid_on_low_gp": jc.loc[jc["In GP"] & (get("Commission") > 0)
+                                            & (jc["GP %"] < EX["flag_commission_when_gp_below_pct"]), cols + ["GP %"]],
         "odd_expense_lines": odd[["Job Number", "To/Method", "Payment Amount", "Memo/Notes", "Job Number Url"]],
     }

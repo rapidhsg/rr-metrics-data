@@ -170,6 +170,12 @@
       "burger",
       "mcdonald",
       "check to customer"
-    ]
+    ],
+    "flag_commission_when_gp_below_pct": 25,
+    "allowed_discounts_pct": {
+      "Monthly Coupon: PRE-Season Discount / 30% Off Installation Labor": 8,
+      "NO FINANCING": 7,
+      "Preferred Homeowner Discount": 5
+    }
   }
 }
