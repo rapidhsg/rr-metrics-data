@@ -92,7 +92,7 @@ def by_rep(df, mask, value=None):
 
 def revenue_in_progress(rip_path, start=None, end=None):
     r = pd.read_csv(rip_path)
-    r["RR"] = r["Job Name"].str.extract(r"(RR-\d+)")
+    r["RR"] = r["Job Number"] if "Job Number" in r else r["Job Name"].str.extract(r"(RR-\d+)")[0]
     r["Crew End Date"] = pd.to_datetime(r["Crew End Date"].str.split(" ").str[0], format="%m/%d/%y")
     if start is not None:
         r = r[(r["Crew End Date"] >= pd.Timestamp(start)) & (r["Crew End Date"] <= pd.Timestamp(end))]
@@ -103,7 +103,11 @@ def revenue_in_progress(rip_path, start=None, end=None):
 def flags(df, start, end):
     F = S["flags"]
     d = df["_dead"]
-    cols = ["Job Number", "Job Name", "Dead Lead Reason", "Primary Salesperson", "Appointment Set By", "Job Name Url"]
+    # No customer names: flags show the RR number (if any) and the AccuLynx link.
+    want = ["Job Number", "Dead Lead Reason", "Primary Salesperson", "Appointment Set By", "Job Number Url", "Job Name Url"]
+    cols = [c for c in want if c in df.columns]
+    if "Job Number Url" in cols and "Job Name Url" in cols:
+        cols.remove("Job Name Url")
     out = {
         "quoted_but_marked_not_serviced": window(df, "Initial Appointment Date", start, end) & (df["Primary Estimate Total"] > 0) & d.isin(F["quoted_but_marked_not_serviced"]),
         "booked_but_should_not_be": window(df, "Prospect Milestone Date", start, end) & d.isin(F["booked_but_should_not_be"]),
@@ -111,4 +115,9 @@ def flags(df, start, end):
         "appointment_with_no_setter": window(df, "Prospect Milestone Date", start, end) & df["Appointment Set By"].isna() & ~df["_cb"] & ~df["_wt"].isin(WT["contacts_leads_appointments_exclude"]),
         "closed_with_bad_profit": window(df, "Closed Milestone Date", start, end) & (df["Current Milestone"] == "Closed") & ~df["_cb"] & ((df["Profit"] <= 0) | (df["Profit %"] == 1)),
     }
-    return {k: df.loc[v, cols] for k, v in out.items()}
+    res = {}
+    for k, v in out.items():
+        t = df.loc[v, cols].copy()
+        t.loc[t["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""  # former reps never shown
+        res[k] = t
+    return res
