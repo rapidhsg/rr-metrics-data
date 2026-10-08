@@ -43,13 +43,16 @@ const status = existsSync(statusPath) ? JSON.parse(readFileSync(statusPath, "utf
 
 // 1. Find the newest file for each report across all schedules.
 const best = {};
+const seen = {}; // what each schedule last delivered, saved to status.json so problems are easy to spot
 for (const [id, label] of Object.entries(SCHEDULES)) {
   const latest = await get(`${BASE}/reports/scheduled-reports/${id}/runs/latest`, { allow404: true });
-  if (!latest?.runInstanceId) { console.log(`${label}: no run yet`); continue; }
+  if (!latest?.runInstanceId) { console.log(`${label}: no run yet`); seen[label] = { runDate: null, files: [] }; continue; }
   const rec = await get(`${BASE}/reports/scheduled-reports/${id}/runs/${latest.runInstanceId}/recipients`);
+  seen[label] = { runDate: latest.date, files: [] };
   for (const item of rec?.items || []) {
     for (const f of item.files || []) {
       const name = decodeURIComponent((f.fileUrl || "").split("?")[0].split("/").pop()).toLowerCase();
+      if (!seen[label].files.includes(name)) seen[label].files.push(name);
       const prefix = Object.keys(REPORTS).find((p) => name.startsWith(p));
       if (prefix && (!best[prefix] || String(latest.date) > String(best[prefix].runDate))) {
         best[prefix] = { url: f.fileUrl, runDate: latest.date, schedule: label };
@@ -75,6 +78,8 @@ for (const [prefix, cfg] of Object.entries(REPORTS)) {
   console.log(`${prefix}: saved run ${pick.runDate} (${pick.schedule}), ${lines - 2} rows`);
 }
 
+if (JSON.stringify(status.schedules) !== JSON.stringify(seen)) { status.schedules = seen; changed = true; }
+for (const [label, v] of Object.entries(seen)) console.log(`${label}: latest run ${v.runDate}, files: ${v.files.join(", ") || "none"}`);
 if (changed) writeFileSync(statusPath, JSON.stringify(status, null, 2) + "\n");
 writeFileSync(process.env.GITHUB_OUTPUT || "/dev/null", `changed=${changed}\n`, { flag: "a" });
 if (problems.length) { console.error("Problems:\n" + problems.join("\n")); process.exit(1); }
