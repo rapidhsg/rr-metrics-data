@@ -95,6 +95,19 @@ The exact exclusion lists for each metric are in settings.json. This section say
 
 **Revenue In Progress.** Total value of scheduled installs, from the Revenue In Progress report. Count each job once (a two-trade job shows up on two rows with the full Job Value on both). Crew Start and Crew End dates tell when each install starts and ends; use them for "how much is scheduled to install this month / this quarter".
 
+**Discounts.** Discounts are a sales and promo strategy, so they show on most jobs. The allowed discounts all stack:
+
+| Discount | % |
+|---|---|
+| Pre-Season coupon (says "30% off installation labor" because it is customer facing, but it is 8% of the price) | 8% |
+| No Financing | 7% |
+| Preferred Homeowner | 5% |
+| **Max total** | **20%** |
+
+- Discount % = discount divided by the price before discount (Contract Amount plus the discount). Discount Amount is stored as a negative number.
+- Anything over 20%, the rep pays 50% of the overage. Use `rr_metrics.discounts()`: it shows each sold job's discount %, the $ over the max, and what the rep owes.
+- Window = Approved date. Upgrades and Call Backs are left out.
+
 ## 4b. Job costs (Job Expenses report)
 
 The Job Expenses report has one row per cost line on a Closed job. Load it with `rr_metrics.load_expenses()`. Every line gets a **Bucket** and labor and dump lines get a **Crew**.
@@ -112,7 +125,7 @@ The Job Expenses report has one row per cost line on a Closed job. Load it with 
 - **Crew performance:** labor $, dump $, and GP % for the jobs each crew worked (a job can have more than one crew).
 - **Vendor spend:** add up Payment Amount by the To/Method text.
 - **The report is rolling 365 days.** Cost detail (buckets, crews, vendors, cost flags) only goes back 365 days. If someone asks for cost detail older than that, say it only covers the last 365 days. Profit and GP % for any period still come from the job export, which goes back all the way.
-- **Discounts:** discounts are part of the sales strategy and show on almost every job (Discount Amount in the job export). Allowed discounts: Pre-Season coupon (30% off installation labor) 8%, No Financing 7%, Preferred Homeowner 5%.
+- **Discounts** are covered in section 4 (Discounts).
 
 ## 5. Sales team roster
 
@@ -142,6 +155,7 @@ Reps and CSRs sometimes mark records wrong. Count what actually happened, then l
 3. **Trade Not Serviced on a Roofing job.** Roofing is the main trade, so the reason or the trade is almost always wrong.
 4. **Appointment with no "Appointment Set By".** A CSR should get credit.
 5. **Closed job with $0 or negative profit, or 100% Profit %.** Costs not loaded or not finished.
+5b. **Discount over the 20% max.** Show the job, rep, discount %, $ over the max, and what the rep owes (50% of the overage). Total what each rep owes.
 
 Job cost flags (`rr_metrics.expense_flags`), run whenever job costs, GP, crews or expenses come up:
 

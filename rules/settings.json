@@ -171,11 +171,16 @@
       "mcdonald",
       "check to customer"
     ],
-    "flag_commission_when_gp_below_pct": 25,
-    "allowed_discounts_pct": {
+    "flag_commission_when_gp_below_pct": 25
+  },
+  "discounts": {
+    "_read_me": "All three allowed discounts stack. Max total = 20% of the price before discount. Anything over that, the rep pays 50% of the overage.",
+    "allowed_pct": {
       "Monthly Coupon: PRE-Season Discount / 30% Off Installation Labor": 8,
       "NO FINANCING": 7,
       "Preferred Homeowner Discount": 5
-    }
+    },
+    "max_total_pct": 20,
+    "rep_pays_share_of_overage": 0.5
   }
 }

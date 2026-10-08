@@ -100,6 +100,23 @@ def revenue_in_progress(rip_path, start=None, end=None):
     return round(jobs["Job Value"].sum(), 2), len(jobs)
 
 
+def discounts(df, start, end):
+    """Sold jobs in the window (Approved date) with their discount %. Discount % = discount / price before discount.
+    Over the max (20%, all three discounts stacked), the rep owes 50% of the overage."""
+    D = S["discounts"]
+    m = (window(df, "Approved Milestone Date", start, end) & (df["Contract Amount"] > 0)
+         & (df["_wt"] != UPG) & ~df["_cb"])
+    t = df.loc[m, ["Job Number", "Primary Salesperson", "Approved Milestone Date", "Contract Amount", "Discount Amount", "Job Number Url"]].copy()
+    disc = -t["Discount Amount"].fillna(0)
+    t["Price Before Discount"] = t["Contract Amount"] + disc
+    t["Discount %"] = (disc / t["Price Before Discount"] * 100).round(2)
+    over = (disc - t["Price Before Discount"] * D["max_total_pct"] / 100).clip(lower=0).round(2)
+    t["Over Max $"] = over
+    t["Rep Owes $"] = (over * D["rep_pays_share_of_overage"]).round(2)
+    t.loc[t["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""
+    return t
+
+
 def flags(df, start, end):
     F = S["flags"]
     d = df["_dead"]
@@ -115,7 +132,7 @@ def flags(df, start, end):
         "appointment_with_no_setter": window(df, "Prospect Milestone Date", start, end) & df["Appointment Set By"].isna() & ~df["_cb"] & ~df["_wt"].isin(WT["contacts_leads_appointments_exclude"]),
         "closed_with_bad_profit": window(df, "Closed Milestone Date", start, end) & (df["Current Milestone"] == "Closed") & ~df["_cb"] & ((df["Profit"] <= 0) | (df["Profit %"] == 1)),
     }
-    res = {}
+    res = {"discount_over_max": discounts(df, start, end).query("`Over Max $` > 0.5")}
     for k, v in out.items():
         t = df.loc[v, cols].copy()
         t.loc[t["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""  # former reps never shown
