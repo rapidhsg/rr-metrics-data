@@ -19,6 +19,7 @@ const SCHEDULES = {
 const REPORTS = {
   job_export_raw: { out: "job_export_raw_latest.csv", mustHave: "Current Milestone" },
   revenue_in_progress: { out: "Revenue_In_Progress_latest.csv", mustHave: "Crew End Date" },
+  job_expenses_raw: { out: "job_expenses_latest.csv", mustHave: "," },
 };
 
 const key = process.env.ACCULYNX_API_KEY;
