@@ -47,6 +47,12 @@ The data is refreshed every hour from AccuLynx's 5 daily runs (6 AM, 9 AM, 12 PM
   - When asked for "30/60/90", show all three windows side by side, each with its exact dates.
 - **Not the same thing:** if the user clearly asks how one group of appointments closed over time (for example "of the appointments from Sept 1, how many closed within 30, 60, and 90 days"), that is a different question. Confirm what they mean before answering.
 - **Weeks:** Monday to Sunday, for everything. "Weekly report" or "last week" always means the previous Monday through Sunday (`rr_metrics.last_week`).
+- **"This week"** means the current Monday through this coming Sunday, even the days that have not happened yet.
+- **"Jobs scheduled this week" / "installs this week"** always means two tables, then the total:
+  1. **Installed so far:** jobs with a Completed Milestone Date from Monday through today (same rules as Jobs Installed and Upgrades: Completed, Invoiced or Closed, no Call Backs). Columns: Record (link), Rep, Trade, Work Type, Installed date, Amount.
+  2. **Still to install:** jobs from Revenue In Progress with a Crew Start Date from today through Sunday, one row per job (combine trades). Columns: Record (link), Rep, Trades, Crew date, Status, Job Value. A job dated today or earlier that is still Approved means it is not marked complete yet. Say so.
+  3. Total for the week: installed amount + still-to-install value, with job counts.
+  - Call out anything at risk, like a job this week still "Pending Color Confirmation" or "Finish Scheduling".
 - **Quarters:** calendar quarters. Q1 Jan to Mar, Q2 Apr to Jun, Q3 Jul to Sep, Q4 Oct to Dec.
 - Planning is done by quarter and by year.
 - Any custom range works. Always state the range used.
