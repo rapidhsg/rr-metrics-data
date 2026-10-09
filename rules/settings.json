@@ -307,7 +307,7 @@
         ]
       },
       {
-        "name": "GP% Week",
+        "name": "GP% (R30)",
         "owner": "MM",
         "goal": [
           ">=",

@@ -318,7 +318,7 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 
 - **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
 - **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
-- **Rolling 30 metrics** (Close Rate, Avg Ticket) end on the Sunday that ends the reporting week.
+- **Rolling 30 metrics** (Close Rate, Avg Ticket, GP%) end on the Sunday that ends the reporting week.
 - **Snapshot metrics** (Backlog, A/R 30+) are as of the data pull. They cannot be rebuilt for past weeks, so say so if asked for an old week.
 
 | Metric | Owner | Goal | How it is counted |
@@ -336,7 +336,7 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | Completed Jobs $ | MM | >= $132,000 | Revenue metric (Completed date, upgrades included) |
 | Completed Jobs # | MM | >= 7 | Jobs Installed metric (no upgrades) |
 | Avg Ticket (R30) | MM | >= $16,500 | Completed Jobs $ divided by Completed Jobs #, rolling 30 days |
-| GP% Week | MM | >= 40% | Jobs installed in the week that are now Closed (no Call Backs, no $0 profit): total Profit divided by total Contract Amount. If none are Closed yet, say "not closed yet" |
+| GP% (R30) | MM | >= 40% | Every job that went into Closed (Closed Milestone Date) in the rolling 30 days ending the Sunday of the reporting week, upgrades included: total Profit divided by total Contract Amount. Call Back jobs and their expenses are left out, and so are jobs with $0 profit or 100% Profit % (costs not loaded) |
 | New 5-Star Google Reviews | BN | >= 3 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv` (pulled from Windsor.ai; holds only review id, date, stars and location, never review text or names). Pass `reviews_path` to `scorecard()` |
 
 

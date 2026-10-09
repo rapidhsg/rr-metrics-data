@@ -294,7 +294,10 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
     rip["_start"] = pd.to_datetime(rip["Crew Start Date"].astype(str).str.split(" ").str[0], format="%m/%d/%y", errors="coerce")
     togo = rip[(rip["_start"] >= sched_s) & (rip["_start"] <= sched_e) & ~rip["Job Number"].isin(done["Job Number"])].drop_duplicates("Job Number")
 
-    gp = comp & (df["Current Milestone"] == "Closed") & ~df["_cb"] & (df["Profit"] != 0)
+    # GP% (R30): every job that went Closed in the rolling 30 (upgrades included). Call Backs left out, and jobs
+    # with $0 profit or 100% profit % (costs not loaded).
+    gp = (window(df, "Closed Milestone Date", r30s, r30e) & (df["Current Milestone"] == "Closed") & ~df["_cb"]
+          & (df["Profit"] != 0) & (df["Profit %"] != 1))
     five = None
     if reviews_path is not None and Path(reviews_path).exists():
         rv = pd.read_csv(reviews_path)
@@ -316,7 +319,7 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Completed Jobs $": met["revenue"],
         "Completed Jobs #": met["jobs_installed"],
         "Avg Ticket (R30)": round(ca[m30["revenue"]].sum() / m30["jobs_installed"].sum(), 2) if m30["jobs_installed"].sum() else None,
-        "GP% Week": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
+        "GP% (R30)": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
         "New 5-Star Google Reviews": five,
     }
     ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b}
