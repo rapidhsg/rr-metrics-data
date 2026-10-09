@@ -19,8 +19,36 @@ DR, WT, MS = S["dead_reasons"], S["work_types"], S["milestones"]
 UPG = WT["upgrade"]
 
 
+def _repaired_csv(path):
+    """AccuLynx does not quote notes that contain line breaks or commas, so one record can spill over
+    several lines. Glue those pieces back into one record (extra pieces go back into the notes field)."""
+    import csv, io
+    rows = list(csv.reader(open(path, newline="", encoding="utf-8-sig")))
+    hdr, n = rows[0], len(rows[0])
+    k = next((i for i, c in enumerate(hdr) if "note" in c.lower()), n - 1)  # the free-text column
+    tail = n - 1 - k  # columns after the notes column
+    out, cur = [], None
+    for row in rows[1:]:
+        if cur is None:
+            cur = row
+        else:
+            cur[-1] = cur[-1] + "\n" + (row[0] if row else "")
+            cur.extend(row[1:])
+        if len(cur) >= n:
+            if len(cur) > n:  # commas inside the notes split it into extra fields
+                cur = cur[:k] + [",".join(cur[k:len(cur) - tail])] + cur[len(cur) - tail:]
+            out.append(cur)
+            cur = None
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(hdr)
+    w.writerows(out)
+    buf.seek(0)
+    return buf
+
+
 def load(path):
-    df = pd.read_csv(path, low_memory=False)
+    df = pd.read_csv(_repaired_csv(path), low_memory=False)
     for c in [c for c in df.columns if c.endswith("Date") and "Days" not in c]:
         df[c] = pd.to_datetime(df[c].astype(str).str.split(" ").str[0], format="%m/%d/%y", errors="coerce")
     df["_dead"] = df["Dead Lead Reason"].fillna("")  # exact-name matching only
