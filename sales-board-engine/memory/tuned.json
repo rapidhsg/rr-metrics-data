@@ -1,0 +1,123 @@
+{
+ "updated": "2026-10-09",
+ "current": {
+  "half_life_days": 9999,
+  "shrink_C": 0.1,
+  "same_day_weight": 0.17,
+  "correction": {}
+ },
+ "test": {
+  "close": {
+   "n": 641,
+   "months": [
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07",
+    "2026-08"
+   ],
+   "logloss": 0.575,
+   "auc": 0.635,
+   "top_fifth_pred": 0.463,
+   "top_fifth_actual": 0.469,
+   "bottom_fifth_pred": 0.176,
+   "bottom_fifth_actual": 0.186,
+   "avg_pred": 0.303,
+   "avg_actual": 0.285
+  },
+  "same": {
+   "n": 641,
+   "months": [
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07",
+    "2026-08"
+   ],
+   "logloss": 0.3426,
+   "auc": 0.708,
+   "top_fifth_pred": 0.265,
+   "top_fifth_actual": 0.273,
+   "bottom_fifth_pred": 0.068,
+   "bottom_fifth_actual": 0.047,
+   "avg_pred": 0.141,
+   "avg_actual": 0.123
+  }
+ },
+ "same_day_value": {
+  "same_day_value": 6470,
+  "later_value": 5531,
+  "weight": 0.17,
+  "n_same": 193,
+  "n_later": 253
+ },
+ "own_predictions": {
+  "n": 0,
+  "note": "not enough finished sits yet to judge"
+ },
+ "grid": [
+  {
+   "half_life_days": 120,
+   "shrink_C": 0.05,
+   "score": 0.9334,
+   "close_auc": 0.626,
+   "same_auc": 0.702
+  },
+  {
+   "half_life_days": 120,
+   "shrink_C": 0.1,
+   "score": 0.9249,
+   "close_auc": 0.629,
+   "same_auc": 0.707
+  },
+  {
+   "half_life_days": 120,
+   "shrink_C": 0.3,
+   "score": 0.9265,
+   "close_auc": 0.623,
+   "same_auc": 0.697
+  },
+  {
+   "half_life_days": 240,
+   "shrink_C": 0.05,
+   "score": 0.9275,
+   "close_auc": 0.631,
+   "same_auc": 0.71
+  },
+  {
+   "half_life_days": 240,
+   "shrink_C": 0.1,
+   "score": 0.9207,
+   "close_auc": 0.634,
+   "same_auc": 0.709
+  },
+  {
+   "half_life_days": 240,
+   "shrink_C": 0.3,
+   "score": 0.9254,
+   "close_auc": 0.626,
+   "same_auc": 0.698
+  },
+  {
+   "half_life_days": 9999,
+   "shrink_C": 0.05,
+   "score": 0.9217,
+   "close_auc": 0.636,
+   "same_auc": 0.709
+  },
+  {
+   "half_life_days": 9999,
+   "shrink_C": 0.1,
+   "score": 0.9176,
+   "close_auc": 0.635,
+   "same_auc": 0.708
+  },
+  {
+   "half_life_days": 9999,
+   "shrink_C": 0.3,
+   "score": 0.9272,
+   "close_auc": 0.628,
+   "same_auc": 0.696
+  }
+ ]
+}

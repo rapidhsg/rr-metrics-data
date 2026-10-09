@@ -1,0 +1,39 @@
+{
+  "_read_me": "Settings for the sales board engine. Plain rules a person can change. Settings the engine tunes for itself live in memory/tuned.json, not here.",
+  "data_window_days": 395,
+  "close_label_wait_days": 14,
+  "same_day_label_wait_days": 1,
+  "new_rep_bands": [25, 80],
+  "board_reps": {
+    "Querlim Franco": "Querlim",
+    "Francesco Ambrosio": "Francesco",
+    "Michael Dietrich": "Dietrich",
+    "Joseph Young": "Young",
+    "Steve Burns": "Steve",
+    "Michael Meinardus": "Meinardus"
+  },
+  "same_day_weight": {
+    "_read_me": "How much a same-day close counts on top of a close. 'data' = the engine works it out every week from what same-day sales are worth vs later sales (contract size, profit %, cancels). Put a number instead to lock it.",
+    "mode": "data"
+  },
+  "starting_tuning": {"half_life_days": 240, "shrink_C": 0.1},
+  "tuning_grid": {"half_life_days": [120, 240, 9999], "shrink_C": [0.05, 0.1, 0.3]},
+  "retune_min_gain": 0.002,
+  "note_signals": {
+    "specialty": "slate|cedar|shake|tile roof|clay|spanish tile|metal roof|standing seam|copper|designer|signature|synthetic|davinci|brava",
+    "referral": "referr|return customer|previous customer|repeat customer|neighbor|friend",
+    "selling": "selling|sale of (?:the )?home|bought the house|just bought|new home|moving",
+    "skylight": "skylight|chimney",
+    "flat": "flat",
+    "leak": "leak(?!s? ?free)",
+    "solar": "(?<!no )solar",
+    "firstcall": "first (?:call|appt|appointment|one)|hasn'?t met|has not met|haven'?t met|not met with|no other",
+    "storm": "storm|blew off|wind|missing shingle",
+    "noleak": "no leak|no issues|no damage|not leaking",
+    "budget": "budget|financ|afford|cheap",
+    "shopper": "price shop|met with (?:\\d|one|two|three|a few|other|others|multiple|several)|other quotes|quotes from|getting (?:quotes|estimates)",
+    "urgent": "asap|as soon as|urgent|right away|emergency|this week|before winter|quick|fast",
+    "insurance": "insurance|claim|adjuster",
+    "both": "both (?:home|there|present)|husband and wife|wife and husband|spouse|both decision|decision makers? (?:will be|are) (?:home|present|there)"
+  }
+}
