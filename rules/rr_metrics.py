@@ -330,3 +330,83 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
     out.attrs.update(week=f"{s.date()} to {e.date()}", scheduled_week=f"{sched_s.date()} to {sched_e.date()}",
                      r30=f"{r30s.date()} to {r30e.date()}", snapshot=str(now.date()))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Marketing performance: ad spend (Windsor.ai) matched to AccuLynx lead sources. RULES.md section 14.
+# ---------------------------------------------------------------------------
+MK = S["marketing"]
+
+
+def load_ads(path):
+    """Daily spend per campaign, with the AccuLynx Parent and Sub Lead Source each campaign feeds."""
+    a = pd.read_csv(path)
+    a["date"] = pd.to_datetime(a["date"])
+    for c in ["spend", "impressions", "clicks", "platform_leads"]:
+        a[c] = pd.to_numeric(a[c], errors="coerce").fillna(0)
+    a["Parent Lead Source"] = a["platform"].map(MK["platform_parent_source"])
+    a["Sub Lead Source"] = None
+    camp = a["campaign"].fillna("").str.lower()
+    for platform, pattern, sub in MK["campaign_map"]:
+        hit = a["Sub Lead Source"].isna() & (a["platform"] == platform) & camp.str.contains(pattern, regex=True)
+        a.loc[hit, "Sub Lead Source"] = sub
+    return a
+
+
+def _gppc(df, end, key, value):
+    """Gross Profit Per Customer: average Profit on Closed jobs from this source, closed in the lookback window.
+    Same jobs as the GP % rule (no upgrades, no Call Backs, no $0 or 100% profit)."""
+    e = pd.Timestamp(end)
+    s = e - pd.Timedelta(days=MK["gppc_lookback_days"])
+    ok = (window(df, "Closed Milestone Date", s, e) & (df["Current Milestone"] == "Closed") & (df["_wt"] != UPG)
+          & ~df["_cb"] & (df["Profit"] != 0) & (df["Profit %"] != 1) & (df[key] == value))
+    return (round(df.loc[ok, "Profit"].mean(), 2) if ok.any() else None), int(ok.sum())
+
+
+def _channel(df):
+    """Paid campaign sources roll up to their ad platform ("Meta", "Google Ads"); everything else uses the Parent Lead Source.
+    This keeps organic Google (search, GBP) and organic Facebook out of the paid numbers."""
+    paid = {sub: platform for platform, _, sub in MK["campaign_map"]}
+    sub = df["Sub Lead Source"]
+    return sub.map(paid).fillna(df["Parent Lead Source"])
+
+
+def marketing_report(df, ads, start, end, by="Channel"):
+    """One row per Channel (default: paid campaigns roll up to Meta / Google Ads, everything else by Parent Lead Source),
+    or per Sub Lead Source / Parent Lead Source: spend, AccuLynx funnel,
+    cost per lead / appointment / sit, CAC, revenue, ROAS, GPPC and GPPC:CAC. AccuLynx is the source of truth for
+    everything after spend. Channels with no spend data still show their funnel."""
+    df = df.assign(Channel=_channel(df))
+    ads = ads.assign(Channel=ads["platform"])
+    m = masks(df, start, end)
+    ca = df["Contract Amount"].fillna(0)
+    a = ads[(ads["date"] >= pd.Timestamp(start)) & (ads["date"] <= pd.Timestamp(end))]
+    spend = a.groupby(by)["spend"].sum()
+    plat = a.groupby(by)["platform_leads"].sum()
+    keys = df.loc[m["contacts"] | m["sits"] | m["sales"], by].dropna().unique().tolist()
+    keys = sorted(set(keys) | set(spend.index), key=str)
+    mins = MK["channel_judgment_minimums"]
+    weeks = (pd.Timestamp(end) - pd.Timestamp(start)).days / 7
+    rows = []
+    for k in keys:
+        src = df[by] == k
+        n = {x: int((m[x] & src).sum()) for x in ["leads", "appointments", "sits", "jobs_sold"]}
+        sales = round(ca[m["sales"] & src].sum(), 2)
+        sp = round(spend.get(k, 0), 2) if k in spend.index else None
+        gppc, closed_n = _gppc(df, end, by, k)
+        cac = round(sp / n["jobs_sold"], 2) if sp and n["jobs_sold"] else None
+        rows.append({
+            by: k, "Ad Spend": sp, "Platform Leads": int(plat.get(k, 0)) if k in plat.index else None,
+            "Leads": n["leads"], "Appointments": n["appointments"], "Sits": n["sits"], "Jobs Sold": n["jobs_sold"], "Sales $": sales,
+            "Lead to Appt %": round(n["appointments"] / n["leads"] * 100, 1) if n["leads"] else None,
+            "Cost per Lead": round(sp / n["leads"], 2) if sp and n["leads"] else None,
+            "Cost per Appt": round(sp / n["appointments"], 2) if sp and n["appointments"] else None,
+            "Cost per Sit": round(sp / n["sits"], 2) if sp and n["sits"] else None,
+            "CAC": cac, "ROAS": round(sales / sp, 2) if sp else None,
+            "GPPC": gppc, "GPPC:CAC": round(gppc / cac, 2) if gppc and cac else None,
+            "Closed Jobs (GPPC)": closed_n,
+            "Enough Data": weeks >= mins["weeks"] and n["sits"] >= mins["sits"] and closed_n >= mins["closed_jobs"],
+        })
+    out = pd.DataFrame(rows).sort_values("Ad Spend", ascending=False, na_position="last")
+    out.attrs["unmapped_spend"] = round(a.loc[a[by].isna(), "spend"].sum(), 2)
+    return out

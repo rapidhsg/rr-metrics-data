@@ -15,6 +15,7 @@ Three files make up the rules, and only Joe changes them (on github.com):
 | `data/Revenue_In_Progress_latest.csv` (on the `data` branch) | Approved jobs with scheduled installs. |
 | `data/job_expenses_latest.csv` (on the `data` branch) | Job Expenses report. Every cost line (material, labor, dump, commission, fees) on Closed jobs from the last 12 months. Source for job costing (section 4b). |
 | `data/google_reviews_latest.csv` (on the `data` branch) | Google reviews for all 5 Google Business Profiles from Windsor.ai, last ~400 days: review id, date (UTC), stars, location. Used for the 5-Star Reviews scorecard metric. |
+| `data/ads_daily_latest.csv` (on the `data` branch) | Daily ad spend, impressions, clicks and platform leads per campaign for Meta and Google Ads, from Windsor.ai, last ~13 months. Used for section 14. |
 | `data/status.json` (on the `data` branch) | Which AccuLynx run each file came from, when it was pulled, and what each of the 5 schedules last sent. |
 | Goals sheet (Google Sheet id in settings.json) | 2026 Rapid Roofing Quarterly Goals. Read it live with the Google Sheets connector. Quarterly goals are the targets. |
 
@@ -341,3 +342,33 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 
 - Checked against 12 weeks of the Ninety scorecard (Jul 13 to Oct 4, 2026): Contacts, Sits, Approved, Upgrades, Completed $ and A/R 30+ matched exactly or within 1 to 3. The rest were close; small gaps come from records edited after the scorecard was filled in.
 - After the table, add Worth knowing (section 12) and flags as usual.
+
+## 14. Marketing performance (ad spend and channels)
+
+Follows the RHSG Marketing Philosophy. **Read `rules/MARKETING_PHILOSOPHY.md` in full before any marketing conversation** (channels, ad spend, campaigns, lead sources, CAC, or whether something is working) and answer in line with it: data beats opinion, we judge by gross profit not revenue, and every channel is its own mini-business. Use this for any question about ad spend, Facebook/Meta or Google ads, cost per lead, CAC, ROAS, channel or campaign performance, or "is this channel working."
+
+**Data**
+- Ad spend comes from `data/ads_daily_latest.csv` (Windsor.ai): daily spend, impressions, clicks and platform-reported leads per campaign, for Meta and Google Ads. Load with `rr_metrics.load_ads()`.
+- **Everything after spend comes from AccuLynx.** Leads, appointments, sits, jobs sold, sales and profit always come from the job export, attributed by the job's Lead Source. Platform-reported leads (Meta leads, Google conversions) are shown for reference only and never used for cost per lead.
+- Each campaign maps to the AccuLynx Sub Lead Source its leads come in under (`marketing.campaign_map` in settings.json). Paid campaign sources roll up to their platform ("Meta", "Google Ads"). Organic sources (Google search, Google Business Profiles, organic Facebook) stay separate and are never counted against ad spend. If spend shows for a campaign with no map line, say so and ask Joe to add it.
+- Spend is only tracked for Meta and Google Ads. Print, direct mail, directories, events and the rest show their funnel and GPPC but no cost metrics until their spend is added.
+
+**Metrics** (`rr_metrics.marketing_report(df, ads, start, end, by="Channel")`, or `by="Sub Lead Source"` for campaign level)
+
+| Metric | How it is counted |
+|---|---|
+| Ad Spend | Total spend in the window (by day) |
+| Leads, Appointments, Sits, Jobs Sold, Sales $ | Section 4 definitions, filtered to the channel's lead sources |
+| Lead to Appt % | Appointments ÷ Leads |
+| Cost per Lead / Appointment / Sit | Ad Spend ÷ that count |
+| CAC (Customer Acquisition Cost) | Ad Spend ÷ Jobs Sold |
+| ROAS | Sales $ ÷ Ad Spend |
+| GPPC (Gross Profit Per Customer) | Average Profit on Closed jobs from that channel, closed in the last 365 days (same jobs as GP %: no upgrades, no Call Backs, no $0 or 100% profit) |
+| **GPPC:CAC** | GPPC ÷ CAC. **The single most important metric for judging a channel.** Lead with it |
+
+**How to answer**
+- Lead with GPPC:CAC and CAC, then cost per appointment and cost per lead. Revenue and ROAS come after. Revenue is vanity, gross profit is what matters.
+- **Do not judge a channel or campaign on thin data.** Only call it working or not working after a 6 to 8 week window with 20 to 30 sits and 10+ closed jobs (the `Enough Data` column). Otherwise say "too early to judge" and show what it would take.
+- Show each channel like a small P&L: inputs (spend), outputs (leads, appointments, sits, sold, profit), and what changed.
+- Sales and marketing are one system. Never blame sales for lead quality or marketing for close rate. Point to where in the funnel the drop happens (lead to appointment, appointment to sit, sit to sale).
+- Flag: spend with zero AccuLynx leads, leads tagged to a paid source with no matching campaign, and unmapped campaign spend.

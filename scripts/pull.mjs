@@ -79,6 +79,43 @@ for (const [prefix, cfg] of Object.entries(REPORTS)) {
   console.log(`${prefix}: saved run ${pick.runDate} (${pick.schedule}), ${lines - 2} rows`);
 }
 
+// 3b. Ad platform data from Windsor.ai: daily spend and results per campaign (Meta and Google Ads).
+const windsorKeyAds = process.env.WINDSOR_API_KEY;
+if (windsorKeyAds) {
+  try {
+    const from = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+    const to = new Date().toISOString().slice(0, 10);
+    const sources = [
+      { platform: "Meta", connector: "facebook", leads: "actions_lead" },
+      { platform: "Google Ads", connector: "google_ads", leads: "conversions" },
+    ];
+    const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [];
+    for (const src of sources) {
+      const url = `https://connectors.windsor.ai/${src.connector}?api_key=${windsorKeyAds}&date_from=${from}&date_to=${to}` +
+        `&fields=date,campaign,spend,impressions,clicks,${src.leads}`;
+      const body = await get(url, { auth: false });
+      const rows = Array.isArray(body) ? body : body.data || body.result || [];
+      for (const r of rows) {
+        if (!r.date) continue;
+        lines.push([r.date, src.platform, r.campaign, r.spend ?? 0, r.impressions ?? 0, r.clicks ?? 0, r[src.leads] ?? 0].map(q).join(","));
+      }
+    }
+    lines.sort();
+    const csv = "date,platform,campaign,spend,impressions,clicks,platform_leads\n" + lines.join("\n") + "\n";
+    const out = join(DIR, "ads_daily_latest.csv");
+    const old = existsSync(out) ? readFileSync(out, "utf8") : "";
+    if (lines.length && csv !== old) {
+      writeFileSync(out, csv);
+      status.ads = { pulledAt: new Date().toISOString(), rows: lines.length, from, to, file: "data/ads_daily_latest.csv" };
+      changed = true;
+      console.log(`ads: saved ${lines.length} daily campaign rows`);
+    } else console.log(`ads: no change (${lines.length} rows)`);
+  } catch (err) {
+    problems.push(`ads: ${err.message.replace(windsorKeyAds, "***")}`);
+  }
+}
+
 // 3. Google reviews from Windsor.ai (all Google Business Profile locations). Only the review id, date,
 //    star rating and location are saved. Never the review text or the reviewer's name.
 const windsorKey = process.env.WINDSOR_API_KEY;

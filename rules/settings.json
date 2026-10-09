@@ -328,5 +328,75 @@
       "In Progress"
     ],
     "ar_days": 30
+  },
+  "marketing": {
+    "_read_me": "Ad spend from Windsor.ai matched to AccuLynx lead sources. Each campaign maps to the AccuLynx Sub Lead Source its leads come in under (first match wins, case does not matter). Add a line when a new campaign launches. Campaigns with no match still count toward platform spend.",
+    "platform_parent_source": {
+      "Meta": "META",
+      "Google Ads": "GOOGLE"
+    },
+    "campaign_map": [
+      [
+        "Meta",
+        "spring lmp",
+        "PAID-SPRINGLMP"
+      ],
+      [
+        "Meta",
+        "winterlmp|winter pricing lmp",
+        "PAID-WINTERLMP"
+      ],
+      [
+        "Meta",
+        "40/60/80",
+        "PAID-40/60/80"
+      ],
+      [
+        "Meta",
+        "naturalcedar",
+        "PAID-NATURALCEDAR"
+      ],
+      [
+        "Meta",
+        "syntheticcedar",
+        "PAID-SYNTHETICCEDAR"
+      ],
+      [
+        "Meta",
+        "patriot250",
+        "Patriot-250"
+      ],
+      [
+        "Meta",
+        "fall_lmp|fall lmp",
+        "PAID-FALL-LMP"
+      ],
+      [
+        "Meta",
+        "gutter",
+        "PAID-GUTTERGUARD"
+      ],
+      [
+        "Meta",
+        "rrsp",
+        "PAID-RRSP"
+      ],
+      [
+        "Google Ads",
+        "localservices",
+        "PAID-LSA"
+      ],
+      [
+        "Google Ads",
+        ".",
+        "PAID-ADS"
+      ]
+    ],
+    "channel_judgment_minimums": {
+      "weeks": 6,
+      "sits": 20,
+      "closed_jobs": 10
+    },
+    "gppc_lookback_days": 365
   }
 }
