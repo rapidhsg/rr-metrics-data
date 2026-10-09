@@ -326,8 +326,8 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | Contacts (Lead Milestone) | BN | >= 70 | Contacts metric (section 4), by lead date in the week |
 | Sits | BN | >= 28 | Sits metric, by appointment date in the week |
 | Total Callback Cost | MM | <= $1,000 | Total expenses on Call Back jobs installed (Completed date) in the week. Only Closed jobs have expense detail |
-| Approved Experiences # | MM | >= 10 | Count of jobs in the Sales metric (approved in the week, upgrades included) |
-| Approved Experiences $ | MM | >= $182,280 | Sales $ (approved in the week, upgrades included) |
+| Approved Experiences # | MM | >= 10 | Count of jobs in the Sales metric (approved in the week). Upgrades NOT included (they go in Total Upgrade $) |
+| Approved Experiences $ | MM | >= $182,280 | Sales $ (approved in the week). Upgrades NOT included (they go in Total Upgrade $) |
 | Total Upgrade $ | | >= $13,720 | Contract Amount of upgrades (Upsell / Change Order) **sold** in the week, by Approved date. Not the same as the Upgrades metric in section 4, which is by install date |
 | Close Rate (R30) | RT | >= 35% | **Whole company** close rate (section 4), rolling 30 days. Show the counts |
 | Backlog $ / # | MM | > $132,000 / >= 7 | Jobs now in Approved with status Scheduled or In Progress |
