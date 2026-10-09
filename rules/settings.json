@@ -313,6 +313,14 @@
           ">=",
           40
         ]
+      },
+      {
+        "name": "New 5-Star Google Reviews",
+        "owner": "BN",
+        "goal": [
+          ">=",
+          3
+        ]
       }
     ],
     "backlog_statuses": [

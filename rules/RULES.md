@@ -14,6 +14,7 @@ Three files make up the rules, and only Joe changes them (on github.com):
 | `data/job_export_raw_latest.csv` (on the `data` branch) | Full AccuLynx job export. Every lead, prospect, job, and dead lead. Source for almost everything. |
 | `data/Revenue_In_Progress_latest.csv` (on the `data` branch) | Approved jobs with scheduled installs. |
 | `data/job_expenses_latest.csv` (on the `data` branch) | Job Expenses report. Every cost line (material, labor, dump, commission, fees) on Closed jobs from the last 12 months. Source for job costing (section 4b). |
+| `data/google_reviews_latest.csv` (on the `data` branch) | Google reviews for all 5 Google Business Profiles from Windsor.ai, last ~400 days: review id, date (UTC), stars, location. Used for the 5-Star Reviews scorecard metric. |
 | `data/status.json` (on the `data` branch) | Which AccuLynx run each file came from, when it was pulled, and what each of the 5 schedules last sent. |
 | Goals sheet (Google Sheet id in settings.json) | 2026 Rapid Roofing Quarterly Goals. Read it live with the Google Sheets connector. Quarterly goals are the targets. |
 
@@ -312,7 +313,7 @@ Rolling 30/60/90 ending Oct 7 (data pulled Oct 7, 7:59 PM)
 
 ## 13. Leadership scorecard (Ninety)
 
-Use this whenever someone asks for the leadership metrics, the leadership scorecard, the scorecard, the Ninety scorecard, or the L10 numbers. Run `rr_metrics.scorecard(df, ex, rip_path, week_start, data_date)` and show every metric in this order, with owner, goal, actual, and on track or not. Owners: BN = Bryan Natole, MM = Mike Meinardus, RT = Richie Troy.
+Use this whenever someone asks for the leadership metrics, the leadership scorecard, the scorecard, the Ninety scorecard, or the L10 numbers. Run `rr_metrics.scorecard(df, ex, rip_path, report_date=today, data_date=status.json runDate, reviews_path=rr-data/data/google_reviews_latest.csv)` and show every metric in this order, with owner, goal, actual, and on track or not. Owners: BN = Bryan Natole, MM = Mike Meinardus, RT = Richie Troy.
 
 - **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
 - **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
@@ -335,7 +336,8 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | Completed Jobs # | MM | >= 7 | Jobs Installed metric (no upgrades) |
 | Avg Ticket (R30) | MM | >= $16,500 | Completed Jobs $ divided by Completed Jobs #, rolling 30 days |
 | GP% Week | MM | >= 40% | Jobs installed in the week that are now Closed (no Call Backs, no $0 profit): total Profit divided by total Contract Amount. If none are Closed yet, say "not closed yet" |
+| New 5-Star Google Reviews | BN | >= 3 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv` (pulled from Windsor.ai; holds only review id, date, stars and location, never review text or names). Pass `reviews_path` to `scorecard()` |
 
-- 5-Star Google Reviews are on the Ninety scorecard but not in AccuLynx. Leave them off.
+
 - Checked against 12 weeks of the Ninety scorecard (Jul 13 to Oct 4, 2026): Contacts, Sits, Approved, Upgrades, Completed $ and A/R 30+ matched exactly or within 1 to 3. The rest were close; small gaps come from records edited after the scorecard was filled in.
 - After the table, add Worth knowing (section 12) and flags as usual.

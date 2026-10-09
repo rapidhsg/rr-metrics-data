@@ -79,6 +79,36 @@ for (const [prefix, cfg] of Object.entries(REPORTS)) {
   console.log(`${prefix}: saved run ${pick.runDate} (${pick.schedule}), ${lines - 2} rows`);
 }
 
+// 3. Google reviews from Windsor.ai (all Google Business Profile locations). Only the review id, date,
+//    star rating and location are saved. Never the review text or the reviewer's name.
+const windsorKey = process.env.WINDSOR_API_KEY;
+if (windsorKey) {
+  try {
+    const from = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+    const to = new Date().toISOString().slice(0, 10);
+    const url = `https://connectors.windsor.ai/google_my_business?api_key=${windsorKey}&date_from=${from}&date_to=${to}` +
+      `&fields=review_id,review_create_time,review_star_rating,location_address_locality`;
+    const body = await get(url, { auth: false });
+    const rows = (Array.isArray(body) ? body : body.data || body.result || []).filter((r) => r.review_id);
+    const stars = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+    const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = "review_id,created_utc,stars,location\n" + rows
+      .sort((x, y) => String(x.review_create_time).localeCompare(String(y.review_create_time)))
+      .map((r) => [r.review_id, r.review_create_time, stars[r.review_star_rating] ?? r.review_star_rating, r.location_address_locality].map(q).join(","))
+      .join("\n") + "\n";
+    const out = join(DIR, "google_reviews_latest.csv");
+    const old = existsSync(out) ? readFileSync(out, "utf8") : "";
+    if (rows.length && csv !== old) {
+      writeFileSync(out, csv);
+      status.google_reviews = { pulledAt: new Date().toISOString(), rows: rows.length, from, to, file: "data/google_reviews_latest.csv" };
+      changed = true;
+      console.log(`google_reviews: saved ${rows.length} reviews`);
+    } else console.log(`google_reviews: no change (${rows.length} reviews)`);
+  } catch (err) {
+    problems.push(`google_reviews: ${err.message.replace(windsorKey, "***")}`);
+  }
+}
+
 if (JSON.stringify(status.schedules) !== JSON.stringify(seen)) { status.schedules = seen; changed = true; }
 for (const [label, v] of Object.entries(seen)) console.log(`${label}: latest run ${v.runDate}, files: ${v.files.join(", ") || "none"}`);
 if (changed) writeFileSync(statusPath, JSON.stringify(status, null, 2) + "\n");

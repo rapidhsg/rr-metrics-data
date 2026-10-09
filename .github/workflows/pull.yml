@@ -39,6 +39,7 @@ jobs:
         id: pull
         env:
           ACCULYNX_API_KEY: ${{ secrets.ACCULYNX_API_KEY }}
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
           DATA_DIR: databranch/data
         run: node scripts/pull.mjs
 

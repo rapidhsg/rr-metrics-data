@@ -264,7 +264,7 @@ def expense_flags(exp, df, start, end):
 LS = S["leadership_scorecard"]
 
 
-def scorecard(df, ex, rip_path, report_date, data_date, week_start=None):
+def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews_path=None):
     """Every leadership scorecard metric. The reporting week is the previous Monday to Sunday before
     report_date (or the week starting `week_start` if given). Scheduled This Week is the week that
     contains report_date. data_date = when the data was pulled (status.json); Backlog and A/R 30+ are as of then."""
@@ -295,6 +295,11 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None):
     togo = rip[(rip["_start"] >= sched_s) & (rip["_start"] <= sched_e) & ~rip["Job Number"].isin(done["Job Number"])].drop_duplicates("Job Number")
 
     gp = comp & (df["Current Milestone"] == "Closed") & ~df["_cb"] & (df["Profit"] != 0)
+    five = None
+    if reviews_path is not None and Path(reviews_path).exists():
+        rv = pd.read_csv(reviews_path)
+        t = pd.to_datetime(rv["created_utc"], utc=True).dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
+        five = int(((rv["stars"].astype(str) == "5") & (t >= s) & (t <= e)).sum())
     vals = {
         "Contacts (Lead Milestone)": met["contacts"],
         "Sits": met["sits"],
@@ -312,6 +317,7 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None):
         "Completed Jobs #": met["jobs_installed"],
         "Avg Ticket (R30)": round(ca[m30["revenue"]].sum() / m30["jobs_installed"].sum(), 2) if m30["jobs_installed"].sum() else None,
         "GP% Week": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
+        "New 5-Star Google Reviews": five,
     }
     ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b}
     rows = []
