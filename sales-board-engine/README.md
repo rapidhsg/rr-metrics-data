@@ -34,6 +34,24 @@ Everything is pulled toward the team average until the data proves it. A rep wit
 record; a rep with 15 sits barely moves off average and moves more with every sit. Reps in their first 25 sits start
 from what new reps have actually done, not from the team average.
 
+## How it hands out appointments (`assign.py`)
+
+After rating, it builds the plan for every upcoming day at once: the combination of rep assignments with the most
+expected closes (close chance + same-day weight x same-day chance) that fits the rules in `settings.json` under
+`assignment`:
+
+- 3 sits a day, appointments at least 2 hours apart, each rep's working days, start time, last appointment time, and
+  home-by time (appointment length plus the drive home).
+- Specialty roofs go to Francesco, with Meinardus as backup. Commercial and flat go to Meinardus first, Dietrich as backup.
+  Meinardus takes other work only as a last resort.
+- Tenured reps: 10 a week is a minimum we want to give them. Reps under 90 days: 7 a week, unless they are strong
+  closers.
+- Rule bends (4th or 5th sit, a newer rep past 7, Meinardus overflow) only happen when the appointment would otherwise
+  have nobody, so homeowners are not rescheduled. Anything still stuck is marked "Nobody free" with the reason.
+
+Better closers end up with more sits and the leads where they add the most, within those rules. Every plan is saved to
+`memory/plans.csv` so it can be checked against what actually closed.
+
 ## How it learns and corrects itself
 
 - **After every AccuLynx pull** (`run.py`): retrains on the newest data, scores every upcoming appointment, and saves
@@ -50,14 +68,17 @@ from what new reps have actually done, not from the team average.
 
 | File | What it is | Who changes it |
 |---|---|---|
-| `settings.json` | Plain rules: data window, board reps, note signal words, what to test | Joe |
+| `settings.json` | Plain rules: data window, board reps, note signal words, assignment rules, rep hours | Joe |
 | `engine.py` | The model | Code |
-| `run.py` | Scores upcoming appointments | Runs after each pull |
+| `run.py` | Scores upcoming appointments, then builds the plan | Runs after each pull |
+| `assign.py` | Hands out appointments by the rules | Called by run.py |
+| `zip_centers.json` | Center point of each Long Island zip, for drive times | Code |
 | `selftest.py` | Weekly test, retune, self-correction | Runs weekly |
 | `AI_NOTES.md` | Instructions for Claude's note reading and weekly miss review | Joe |
 | `memory/tuned.json` | Settings the engine picked for itself and its latest test results | The engine |
 | `memory/learning_log.md` | What it learned and changed, in plain words | The engine |
 | `memory/predictions.csv` | Every prediction it made, to check against results | The engine |
+| `memory/plans.csv` | Every recommended assignment, to check against results | The engine |
 | `memory/note_tags.json` | AI tags for each lead's notes | Claude |
 
 The engine reads the certified rules and the data. It never changes them.

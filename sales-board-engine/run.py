@@ -1,5 +1,5 @@
 """Score every upcoming appointment for every board rep. Run after each AccuLynx pull.
-Writes <out>/scores.json for the board and appends to memory/predictions.csv (the engine's record of what it predicted,
+Writes <out>/scores.json and <out>/plan.json (the recommended assignment) for the board and appends to memory/predictions.csv (the engine's record of what it predicted,
 used later to check itself against results).
 Usage: python run.py <path to job_export_raw_latest.csv> <out dir> [today]"""
 import json, sys
@@ -51,6 +51,8 @@ def main(path, out, today=None):
         log = pd.concat([old[old.run_date != today.strftime("%Y-%m-%d")], log.astype(str)])
     log.to_csv(p, index=False)
     print(f"scored {len(leads)} appointments x {len(reps)} reps; sits used {len(x)}; same-day weight {w}")
+    import assign
+    assign.main(out, path, today=None)
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
