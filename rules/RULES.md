@@ -309,3 +309,33 @@ Rolling 30/60/90 ending Oct 7 (data pulled Oct 7, 7:59 PM)
 | Close rate (sales team) | 34.1% (45 of 132) | 33.0% (99 of 300) | 32.2% (148 of 460) |
 
 (Example layout only. Real numbers always come from rr_metrics.py.)
+
+## 13. Leadership scorecard (Ninety)
+
+Use this whenever someone asks for the leadership metrics, the leadership scorecard, the scorecard, the Ninety scorecard, or the L10 numbers. Run `rr_metrics.scorecard(df, ex, rip_path, week_start, data_date)` and show every metric in this order, with owner, goal, actual, and on track or not. Owners: BN = Bryan Natole, MM = Mike Meinardus, RT = Richie Troy.
+
+- **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
+- **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
+- **Rolling 30 metrics** (Close Rate, Avg Ticket) end on the Sunday that ends the reporting week.
+- **Snapshot metrics** (Backlog, A/R 30+) are as of the data pull. They cannot be rebuilt for past weeks, so say so if asked for an old week.
+
+| Metric | Owner | Goal | How it is counted |
+|---|---|---|---|
+| Contacts (Lead Milestone) | BN | >= 70 | Contacts metric (section 4), by lead date in the week |
+| Sits | BN | >= 28 | Sits metric, by appointment date in the week |
+| Total Callback Cost | MM | <= $1,000 | Total expenses on Call Back jobs installed (Completed date) in the week. Only Closed jobs have expense detail |
+| Approved Experiences # | MM | >= 10 | Count of jobs in the Sales metric (approved in the week, upgrades included) |
+| Approved Experiences $ | MM | >= $182,280 | Sales $ (approved in the week, upgrades included) |
+| Total Upgrade $ | | >= $13,720 | Contract Amount of upgrades (Upsell / Change Order) **sold** in the week, by Approved date. Not the same as the Upgrades metric in section 4, which is by install date |
+| Close Rate (R30) | RT | >= 35% | **Whole company** close rate (section 4), rolling 30 days. Show the counts |
+| Backlog $ / # | MM | > $132,000 / >= 7 | Jobs now in Approved with status Scheduled or In Progress |
+| A/R 30+ | MM | <= $2,500 | Contract Amount of jobs now in Invoiced whose Invoiced date is more than 30 days ago |
+| Scheduled This Week $ / # | MM | >= $189,000 / >= 7 | Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades included. A job whose crew started earlier in the week but is not marked complete yet can be missed; say so |
+| Completed Jobs $ | MM | >= $132,000 | Revenue metric (Completed date, upgrades included) |
+| Completed Jobs # | MM | >= 7 | Jobs Installed metric (no upgrades) |
+| Avg Ticket (R30) | MM | >= $16,500 | Completed Jobs $ divided by Completed Jobs #, rolling 30 days |
+| GP% Week | MM | >= 40% | Jobs installed in the week that are now Closed (no Call Backs, no $0 profit): total Profit divided by total Contract Amount. If none are Closed yet, say "not closed yet" |
+
+- 5-Star Google Reviews are on the Ninety scorecard but not in AccuLynx. Leave them off.
+- Checked against 12 weeks of the Ninety scorecard (Jul 13 to Oct 4, 2026): Contacts, Sits, Approved, Upgrades, Completed $ and A/R 30+ matched exactly or within 1 to 3. The rest were close; small gaps come from records edited after the scorecard was filled in.
+- After the table, add Worth knowing (section 12) and flags as usual.

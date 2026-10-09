@@ -182,5 +182,143 @@
     },
     "max_total_pct": 20,
     "rep_pays_share_of_overage": 0.5
+  },
+  "leadership_scorecard": {
+    "_read_me": "The Leadership Team scorecard in Ninety. Weekly, Monday to Sunday. Order, owner and goal for each metric. Owners: BN Bryan Natole, MM Mike Meinardus, RT Richie Troy.",
+    "metrics": [
+      {
+        "name": "Contacts (Lead Milestone)",
+        "owner": "BN",
+        "goal": [
+          ">=",
+          70
+        ]
+      },
+      {
+        "name": "Sits",
+        "owner": "BN",
+        "goal": [
+          ">=",
+          28
+        ]
+      },
+      {
+        "name": "Total Callback Cost",
+        "owner": "MM",
+        "goal": [
+          "<=",
+          1000
+        ]
+      },
+      {
+        "name": "Approved Experiences #",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          10
+        ]
+      },
+      {
+        "name": "Approved Experiences $",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          182280
+        ]
+      },
+      {
+        "name": "Total Upgrade $",
+        "owner": "",
+        "goal": [
+          ">=",
+          13720
+        ]
+      },
+      {
+        "name": "Close Rate (R30)",
+        "owner": "RT",
+        "goal": [
+          ">=",
+          35
+        ]
+      },
+      {
+        "name": "Backlog $",
+        "owner": "MM",
+        "goal": [
+          ">",
+          132000
+        ]
+      },
+      {
+        "name": "Backlog #",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          7
+        ]
+      },
+      {
+        "name": "A/R 30+",
+        "owner": "MM",
+        "goal": [
+          "<=",
+          2500
+        ]
+      },
+      {
+        "name": "Scheduled This Week $",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          189000
+        ]
+      },
+      {
+        "name": "Scheduled This Week #",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          7
+        ]
+      },
+      {
+        "name": "Completed Jobs $",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          132000
+        ]
+      },
+      {
+        "name": "Completed Jobs #",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          7
+        ]
+      },
+      {
+        "name": "Avg Ticket (R30)",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          16500
+        ]
+      },
+      {
+        "name": "GP% Week",
+        "owner": "MM",
+        "goal": [
+          ">=",
+          40
+        ]
+      }
+    ],
+    "backlog_statuses": [
+      "Scheduled",
+      "In Progress"
+    ],
+    "ar_days": 30
   }
 }

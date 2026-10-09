@@ -256,3 +256,71 @@ def expense_flags(exp, df, start, end):
                                             & (jc["GP %"] < EX["flag_commission_when_gp_below_pct"]), cols + ["GP %"]],
         "odd_expense_lines": odd[["Job Number", "To/Method", "Payment Amount", "Memo/Notes", "Job Number Url"]],
     }
+
+
+# ---------------------------------------------------------------------------
+# Leadership scorecard (Ninety). One Monday to Sunday week. Definitions in RULES.md section 13.
+# ---------------------------------------------------------------------------
+LS = S["leadership_scorecard"]
+
+
+def scorecard(df, ex, rip_path, report_date, data_date, week_start=None):
+    """Every leadership scorecard metric. The reporting week is the previous Monday to Sunday before
+    report_date (or the week starting `week_start` if given). Scheduled This Week is the week that
+    contains report_date. data_date = when the data was pulled (status.json); Backlog and A/R 30+ are as of then."""
+    rd = pd.Timestamp(report_date).normalize()
+    this_mon = rd - pd.Timedelta(days=rd.weekday())
+    s = pd.Timestamp(week_start).normalize() if week_start is not None else this_mon - pd.Timedelta(days=7)
+    e = s + pd.Timedelta(days=6)
+    sched_s = this_mon if week_start is None else s + pd.Timedelta(days=7)
+    sched_e = sched_s + pd.Timedelta(days=6)
+    asof = min(e, pd.Timestamp(data_date).tz_localize(None).normalize())
+    m, met = masks(df, s, e), metrics(df, s, e)
+    ca = df["Contract Amount"].fillna(0)
+    upg = df["_wt"] == UPG
+    r30s, r30e = rolling(asof, 30)
+    m30, t30 = masks(df, r30s, r30e), metrics(df, r30s, r30e)
+
+    comp = window(df, "Completed Milestone Date", s, e)
+    cb_jobs = df.loc[comp & df["_cb"], "Job Number"]
+    cb_cost = ex.loc[ex["Job Number"].isin(cb_jobs), "Payment Amount"].sum()
+
+    now = pd.Timestamp(data_date).tz_localize(None).normalize()
+    bl = (df["Current Milestone"] == "Approved") & df["Current Status"].isin(LS["backlog_statuses"])
+    ar = (df["Current Milestone"] == "Invoiced") & (df["Invoiced Milestone Date"] <= now - pd.Timedelta(days=LS["ar_days"]))
+
+    done = df.loc[masks(df, sched_s, sched_e)["revenue"], ["Job Number", "Contract Amount"]]
+    rip = pd.read_csv(rip_path)
+    rip["_start"] = pd.to_datetime(rip["Crew Start Date"].astype(str).str.split(" ").str[0], format="%m/%d/%y", errors="coerce")
+    togo = rip[(rip["_start"] >= sched_s) & (rip["_start"] <= sched_e) & ~rip["Job Number"].isin(done["Job Number"])].drop_duplicates("Job Number")
+
+    gp = comp & (df["Current Milestone"] == "Closed") & ~df["_cb"] & (df["Profit"] != 0)
+    vals = {
+        "Contacts (Lead Milestone)": met["contacts"],
+        "Sits": met["sits"],
+        "Total Callback Cost": round(cb_cost, 2),
+        "Approved Experiences #": int(m["sales"].sum()),
+        "Approved Experiences $": met["sales"],
+        "Total Upgrade $": round(ca[m["sales"] & upg].sum(), 2),
+        "Close Rate (R30)": round(t30["close_sold_company"] / t30["close_sits_company"] * 100, 2) if t30["close_sits_company"] else None,
+        "Backlog $": round(ca[bl].sum(), 2),
+        "Backlog #": int(bl.sum()),
+        "A/R 30+": round(ca[ar].sum(), 2),
+        "Scheduled This Week $": round(done["Contract Amount"].sum() + togo["Job Value"].sum(), 2),
+        "Scheduled This Week #": len(done) + len(togo),
+        "Completed Jobs $": met["revenue"],
+        "Completed Jobs #": met["jobs_installed"],
+        "Avg Ticket (R30)": round(ca[m30["revenue"]].sum() / m30["jobs_installed"].sum(), 2) if m30["jobs_installed"].sum() else None,
+        "GP% Week": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
+    }
+    ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b}
+    rows = []
+    for x in LS["metrics"]:
+        v = vals[x["name"]]
+        op, goal = x["goal"]
+        rows.append({"Metric": x["name"], "Owner": x["owner"], "Goal": f"{op} {goal:,}", "Actual": v,
+                     "On Track": None if v is None else ops[op](v, goal)})
+    out = pd.DataFrame(rows)
+    out.attrs.update(week=f"{s.date()} to {e.date()}", scheduled_week=f"{sched_s.date()} to {sched_e.date()}",
+                     r30=f"{r30s.date()} to {r30e.date()}", snapshot=str(now.date()))
+    return out
