@@ -116,22 +116,26 @@ if (windsorKeyAds) {
   }
 }
 
-// 3. Google reviews from Windsor.ai (all Google Business Profile locations). Only the review id, date,
-//    star rating and location are saved. Never the review text or the reviewer's name.
+// 3. Google reviews from Windsor.ai (all Google Business Profile locations), all time: id, date, stars, location,
+//    reviewer name (as shown on Google), review text and our reply. Phone numbers and emails are blanked out of the text.
 const windsorKey = process.env.WINDSOR_API_KEY;
 if (windsorKey) {
   try {
-    const from = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+    const from = "2010-01-01"; // all time (Google shows 855 reviews across the 5 profiles)
     const to = new Date().toISOString().slice(0, 10);
     const url = `https://connectors.windsor.ai/google_my_business?api_key=${windsorKey}&date_from=${from}&date_to=${to}` +
-      `&fields=review_id,review_create_time,review_star_rating,location_address_locality`;
+      `&fields=review_id,review_create_time,review_star_rating,location_address_locality,review_reviewer,review_comment,review_reply_comment`;
     const body = await get(url, { auth: false });
     const rows = (Array.isArray(body) ? body : body.data || body.result || []).filter((r) => r.review_id);
     const stars = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
     const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const csv = "review_id,created_utc,stars,location\n" + rows
+    const scrub = (t) => String(t ?? "")
+      .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email removed]")
+      .replace(/\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g, "[phone removed]");
+    const csv = "review_id,created_utc,stars,location,reviewer,text,reply\n" + rows
       .sort((x, y) => String(x.review_create_time).localeCompare(String(y.review_create_time)))
-      .map((r) => [r.review_id, r.review_create_time, stars[r.review_star_rating] ?? r.review_star_rating, r.location_address_locality].map(q).join(","))
+      .map((r) => [r.review_id, r.review_create_time, stars[r.review_star_rating] ?? r.review_star_rating, r.location_address_locality,
+        r.review_reviewer, scrub(r.review_comment), scrub(r.review_reply_comment)].map(q).join(","))
       .join("\n") + "\n";
     const out = join(DIR, "google_reviews_latest.csv");
     const old = existsSync(out) ? readFileSync(out, "utf8") : "";
