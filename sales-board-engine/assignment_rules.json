@@ -1,0 +1,352 @@
+{
+  "_read_me": "THE ONE PLACE for how appointments get handed out: rep roster and hours, ratings, daily and weekly limits, lanes, and when rules can bend. Nothing else in the repo repeats these numbers. When the dashboard's Reps & Availability tab is live, it will own the 'roster' section and this file's roster becomes its saved copy.",
+  "roster": {
+    "_read_me": "One entry per rep, name exactly as in AccuLynx. week: day -> [earliest appt, last appt, home by or null]; a missing day = off. start_date = first day at Rapid (Hero's Journey Day 1). lane: regular, specialty (also runs regular), commercial (commercial/flat only, plus specialty backup).",
+    "Querlim Franco": {
+      "active": true,
+      "start_date": "2026-09-08",
+      "home_zip": "11772",
+      "lane": "regular",
+      "week": {
+        "Mon": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          null
+        ]
+      },
+      "days_off": []
+    },
+    "Francesco Ambrosio": {
+      "active": true,
+      "start_date": "2023-10-02",
+      "home_zip": "11762",
+      "lane": "specialty",
+      "week": {
+        "Mon": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ]
+      },
+      "days_off": []
+    },
+    "Michael Dietrich": {
+      "active": true,
+      "start_date": "2026-02-02",
+      "home_zip": "11729",
+      "lane": "regular",
+      "week": {
+        "Sun": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Mon": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          null
+        ]
+      },
+      "days_off": []
+    },
+    "Joseph Young": {
+      "active": true,
+      "start_date": "2026-04-10",
+      "home_zip": "11758",
+      "lane": "regular",
+      "week": {
+        "Mon": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          "16:30"
+        ]
+      },
+      "days_off": []
+    },
+    "Steve Burns": {
+      "active": true,
+      "start_date": null,
+      "home_zip": null,
+      "lane": "regular",
+      "week": {
+        "Mon": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          null
+        ]
+      },
+      "days_off": []
+    },
+    "Michael Meinardus": {
+      "active": true,
+      "start_date": "2025-01-07",
+      "home_zip": "11967",
+      "lane": "commercial",
+      "week": {
+        "Mon": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Tue": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Wed": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Thu": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Fri": [
+          "10:00",
+          "19:00",
+          null
+        ],
+        "Sat": [
+          "10:00",
+          "19:00",
+          null
+        ]
+      },
+      "days_off": []
+    }
+  },
+  "office": {
+    "zip": "11716",
+    "days": [
+      "Mon",
+      "Tue",
+      "Thu"
+    ],
+    "_note": "Bohemia. On these days reps leave from the office, other days from home."
+  },
+  "appointment": {
+    "minutes": 90,
+    "min_gap_minutes": 120,
+    "drive_mph": 30
+  },
+  "ratings": {
+    "_read_me": "Ratings update every run from the certified close rate on the rolling 30 (rolling 90 if the rep has fewer than 10 sits in the last 30). Reps in their first 90 days are New no matter what.",
+    "window_days": 30,
+    "fallback_window_days": 90,
+    "min_sits_in_window": 10,
+    "onboarding_days": 90,
+    "beast_at_or_above": 0.35,
+    "tenured_at_or_above": 0.25,
+    "limits": {
+      "New": {
+        "per_day": 2,
+        "week_min": "journey",
+        "week_cap": 7
+      },
+      "Coaching": {
+        "per_day": 2,
+        "week_min": 0,
+        "week_cap": 7
+      },
+      "Tenured": {
+        "per_day": 3,
+        "week_min": 10,
+        "week_cap": 12
+      },
+      "Beast": {
+        "per_day": 3,
+        "week_min": 10,
+        "week_cap": 15
+      },
+      "Lane": {
+        "per_day": 3,
+        "week_min": 0,
+        "week_cap": 99,
+        "_note": "Meinardus: commercial and specialty backup only."
+      }
+    }
+  },
+  "hero_journey": {
+    "_read_me": "New reps, from start_date (Day 1). Matches the Hero's Journey onboarding tracker.",
+    "leads_start_day": 16,
+    "ramp_until_day": 29,
+    "ramp_per_week": 4,
+    "day29_checkpoint_close": 0.2,
+    "full_volume_per_week": 7,
+    "below_checkpoint": "Capped at 7 with no minimum; flagged for management review."
+  },
+  "yearly_promise": {
+    "per_week_average": 7,
+    "_note": "Promised to every Advisor on average over the year. Reps behind on it get priority for their minimum."
+  },
+  "weekly_order": {
+    "_read_me": "1) Fill minimums: Tenured and Beast to 10, New toward their Hero's Journey number, reps behind on the yearly promise first. If there are not enough appointments, Tenured and Beast reach 10 first. 2) Feed the beasts: extra appointments go to the best close chance, up to each cap. Weeks run Monday to Sunday and count appointments assigned.",
+    "minimum_credit": {
+      "Tenured": 0.6,
+      "Beast": 0.6,
+      "New": 0.4,
+      "Coaching": 0.4
+    },
+    "behind_promise_extra": 0.1,
+    "specialty_counts_toward_week": false
+  },
+  "lanes": {
+    "commercial": "Meinardus only. If he cannot take it: Nobody free, for Richie.",
+    "specialty": "Francesco. Meinardus only when Francesco cannot.",
+    "specialty_backup_penalty": 0.15,
+    "regular": "Sales reps only. Never Meinardus."
+  },
+  "bends": {
+    "_read_me": "Bends only happen when an appointment would otherwise have nobody (no reschedule) or to keep a same-day appointment. Never a 5th sit. New and Coaching reps never bend. Every bend is tagged on the card and needs Richie's OK. Penalties are set higher than any close-chance difference, so the engine never bends just to put a better closer on a lead, only to avoid leaving an appointment with nobody.",
+    "who_can_bend": [
+      "Beast",
+      "Tenured",
+      "Lane"
+    ],
+    "max_bends_per_rep_per_week": 2,
+    "extra_sit_per_day": 1,
+    "extra_over_weekly_cap": 1,
+    "penalty": {
+      "Beast": 0.9,
+      "Tenured": 1.0,
+      "Lane": 1.0
+    },
+    "same_day_priority": 1.0,
+    "last_resort": {
+      "_read_me": "If an appointment would still have nobody, New and Coaching reps can go one over their daily max or weekly cap rather than reschedule the homeowner. Flagged for Richie's OK. Set enabled to false to never do this.",
+      "enabled": true,
+      "who": [
+        "New",
+        "Coaching"
+      ],
+      "penalty": 1.5
+    }
+  }
+}

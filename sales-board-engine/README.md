@@ -36,21 +36,25 @@ from what new reps have actually done, not from the team average.
 
 ## How it hands out appointments (`assign.py`)
 
-After rating, it builds the plan for every upcoming day at once: the combination of rep assignments with the most
-expected closes (close chance + same-day weight x same-day chance) that fits the rules in `settings.json` under
-`assignment`:
+All assignment rules live in ONE file: **`assignment_rules.json`**. Rep roster and hours, ratings, daily and weekly
+limits, the Hero's Journey ramp, lanes, and when rules can bend. Nothing else in the repo repeats those numbers, so a
+change there is the only change needed. (When the dashboard's Reps & Availability tab is live, it will own the roster.)
 
-- 3 sits a day, appointments at least 2 hours apart, each rep's working days, start time, last appointment time, and
-  home-by time (appointment length plus the drive home).
-- Specialty roofs go to Francesco, with Meinardus as backup. Commercial and flat go to Meinardus first, Dietrich as backup.
-  Meinardus takes other work only as a last resort.
-- Tenured reps: 10 a week is a minimum we want to give them. Reps under 90 days: 7 a week, unless they are strong
-  closers.
-- Rule bends (4th or 5th sit, a newer rep past 7, Meinardus overflow) only happen when the appointment would otherwise
-  have nobody, so homeowners are not rescheduled. Anything still stuck is marked "Nobody free" with the reason.
+How it works, in words:
 
-Better closers end up with more sits and the leads where they add the most, within those rules. Every plan is saved to
-`memory/plans.csv` so it can be checked against what actually closed.
+1. **Ratings** update every run from each rep's certified close rate (rolling 30): New (first 90 days), Coaching,
+   Tenured, Beast, and Lane (Meinardus). Each rating has its own daily max, weekly minimum and weekly cap.
+2. **New reps follow the Hero's Journey**: no leads in training, a light ramp, then full volume after the Day 29
+   checkpoint, or capped with no minimum and flagged for management review if they are under the checkpoint.
+3. **Weekly order**: fill minimums first (reps behind on the yearly promise get priority), then feed the beasts:
+   extra appointments go to the best close chance up to each cap. Specialty sits do not count toward the week.
+4. **Lanes**: commercial to Meinardus only, specialty to Francesco with Meinardus as backup, no Meinardus on regular work.
+5. **Bends** only to avoid leaving an appointment with nobody or to keep a same-day appointment. Never a 5th sit. Every
+   bend is tagged and needs Richie's OK. Anything still stuck is "Nobody free" with the reasons.
+6. **Speed**: when a lead that came in today is booked for a later day and a fitting rep is free today, the plan says so.
+
+Inside those rules it picks the plan with the most expected closes (close chance + same-day weight x same-day chance).
+Every plan is saved to `memory/plans.csv` so it can be checked against what actually closed.
 
 ## How it learns and corrects itself
 
@@ -68,7 +72,8 @@ Better closers end up with more sits and the leads where they add the most, with
 
 | File | What it is | Who changes it |
 |---|---|---|
-| `settings.json` | Plain rules: data window, board reps, note signal words, assignment rules, rep hours | Joe |
+| `assignment_rules.json` | THE rules file: roster, hours, ratings, limits, lanes, bends | Joe (later the dashboard) |
+| `settings.json` | Model settings: data window, note signal words, tuning | Joe |
 | `engine.py` | The model | Code |
 | `run.py` | Scores upcoming appointments, then builds the plan | Runs after each pull |
 | `assign.py` | Hands out appointments by the rules | Called by run.py |

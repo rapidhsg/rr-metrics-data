@@ -9,6 +9,7 @@ import numpy as np, pandas as pd
 import engine as E
 
 def main(path, out, today=None):
+    today_arg = today
     now = pd.Timestamp(today or datetime.now())
     today = now.normalize()
     df = E.load(path)
@@ -22,7 +23,8 @@ def main(path, out, today=None):
     xf = E.features(F)
     hist, n = E.rep_experience(df)
     sits_so_far = hist.groupby("Primary Salesperson").size()
-    reps = E.CFG["board_reps"]
+    import assign
+    reps = list(assign.roster())
     rows, leads = [], []
     shift = lambda p, c: 1 / (1 + np.exp(-(np.log(p / (1 - p)) + c))) if c else p
     for rep in reps:
@@ -51,8 +53,7 @@ def main(path, out, today=None):
         log = pd.concat([old[old.run_date != today.strftime("%Y-%m-%d")], log.astype(str)])
     log.to_csv(p, index=False)
     print(f"scored {len(leads)} appointments x {len(reps)} reps; sits used {len(x)}; same-day weight {w}")
-    import assign
-    assign.main(out, path, today=None)
+    assign.main(out, path, today=today_arg)
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
