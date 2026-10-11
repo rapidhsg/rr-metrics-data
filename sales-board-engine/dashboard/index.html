@@ -529,10 +529,15 @@ function renderTop() {
   const D = sumUp(today), T = sumUp(B.cards.filter(c => parse(c.appt) < end));
   const attn = today.filter(c => !repOf(c) || problems(c).length || c.needs_ok).length;
   const set = today.filter(c => moves[c.id]?.set).length;
-  const cost = T.plan - T.rev, dcost = D.plan - D.rev;
+  // everything is measured against "every rep works his normal schedule and the engine's picks are kept"
+  const full = B.full_by_day || {}; const in30 = k => parse(k) < end;
+  const fullT = Object.entries(full).filter(([k]) => in30(k)).reduce((a, [, v]) => a + v, 0) || T.plan, fullD = full[day] ?? D.plan;
+  // days off can only cost money (a quick re-plan landing a hair above the full plan is noise, not a gain)
+  const offT = Math.max(0, fullT - (T.rev + T.moveCost)), offD = Math.max(0, fullD - (D.rev + D.moveCost));
+  const cost = offT + T.moveCost, dcost = offD + D.moveCost;
   const sgn = v => Math.abs(v) < 50 ? "$0" : (v > 0 ? "−" : "+") + money(Math.abs(v));
   const dayName = `${DAYN[parse(day).getDay()]} ${md(day)}`;
-  $("#sumline").innerHTML = `${dayName}: <em>${D.n}</em> appts · <em>${money(D.rev)}</em> expected · <em>${money(D.sdRev)}</em> same day${attn ? ` · <em class="r">${attn}</em> need a look` : ""} · next 30 days <em>${money(T.rev)}</em> · changes <em class="${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</em>`;
+  $("#sumline").innerHTML = `${dayName}: <em>${D.n}</em> appts · <em>${money(D.rev)}</em> expected · <em>${money(D.sdRev)}</em> same day${attn ? ` · <em class="r">${attn}</em> need a look` : ""} · next 30 days <em>${money(T.rev)}</em> · days off and changes <em class="${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</em>`;
   $("#sumfold").setAttribute("aria-expanded", String(OPEN.sum)); $("#sum").hidden = !OPEN.sum;
   $("#sum").innerHTML = `
     <div class="sg"><h4>${dayName}</h4><div class="row">
@@ -545,10 +550,10 @@ function renderTop() {
       <div><small>Expected sales</small><b class="n y">${money(T.rev)}</b><em><b>${T.sales.toFixed(1)}</b> sales</em></div>
       <div><small>Same-day signs</small><b class="n">${money(T.sdRev)}</b><em><b>${T.sd.toFixed(1)}</b> at the sit</em></div>
       <div><small>If plan followed</small><b class="n">${money(T.plan)}</b><em>engine's picks</em></div></div></div>
-    <div class="sg cost${Math.abs(cost) < 50 ? " ok" : ""}"><h4>Cost of changes</h4><div class="row">
+    <div class="sg cost${Math.abs(cost) < 50 ? " ok" : ""}"><h4 title="Compared with every rep working his normal schedule and the engine's picks kept">Cost of days off and changes</h4><div class="row">
       <div><small>Next 30 days</small><b class="n ${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</b>
-        <em>${Math.abs(cost) < 50 ? "Following the plan" : `Who's working <b>${sgn(T.offCost)}</b> · Moves <b>${sgn(T.moveCost)}</b>`}</em></div>
-      <div><small>${dayName}</small><b class="n ${dcost >= 50 ? "r" : dcost <= -50 ? "g" : ""}">${Math.abs(dcost) < 50 ? "$0" : sgn(dcost)}</b><em>vs the plan</em></div></div></div>`;
+        <em>${Math.abs(cost) < 50 ? "Full team, plan followed" : `Days off <b>${sgn(offT)}</b> · Moves <b>${sgn(T.moveCost)}</b>`}</em></div>
+      <div><small>${dayName}</small><b class="n ${dcost >= 50 ? "r" : dcost <= -50 ? "g" : ""}">${Math.abs(dcost) < 50 ? "$0" : sgn(dcost)}</b><em>${Math.abs(dcost) < 50 ? "full team" : `days off ${sgn(offD)} · moves ${sgn(D.moveCost)}`}</em></div></div></div>`;
 }
 function render() {
   if (!B) return;

@@ -144,6 +144,17 @@ def main(out, path, status=None):
             total = [int((ia == h).sum()) for h in days]
             f[str(w)] = dict(more=round(sum(more) / len(more), 1) if more else 0, typical=round(sum(total) / len(total), 1) if total else 0)
         forecast[D.strftime("%Y-%m-%d")] = f
+    # what the plan would make if every rep worked his normal schedule (no one-off days off), to price days off
+    import copy, assign
+    saved = copy.deepcopy(assign.RULES["roster"])
+    for k, v in assign.RULES["roster"].items():
+        if not k.startswith("_"): v["days_off"] = []
+    try: FP = assign.plan(S, df.reset_index(), today)
+    finally: assign.RULES["roster"] = saved
+    tk = lambda g: tickets.get(lead.get(g, {}).get("ltype"), tickets["all"])["any"]
+    full_by_day = {}
+    for p in FP["plan"]:
+        if p.get("rep"): full_by_day[p["appt"][:10]] = round(full_by_day.get(p["appt"][:10], 0) + p["close"] * tk(p["guid"]), 2)
     roster_out = {k: v for k, v in rules["roster"].items() if not k.startswith("_")}
     meta = dict(P["meta"]); meta.pop("solver", None)
     meta.update(data_as_of=S["meta"]["run"], sits_used=S["meta"]["sits_used"])
@@ -152,7 +163,7 @@ def main(out, path, status=None):
         j = json.loads(st.read_text()).get("job_export_raw", {})
         meta.update(acculynx_run=j.get("runDate"), acculynx_slot=j.get("schedule"), pulled_at=j.get("pulledAt"))
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
-                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, forecast=forecast, forecast_show=str(FC.get('show', 60))),
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60))),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 
