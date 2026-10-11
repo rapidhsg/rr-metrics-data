@@ -127,6 +127,9 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .load{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
 .load b{color:var(--ink);font-family:var(--display);font-weight:700;font-size:15px}
 .load .over b{color:var(--bad)}
+.wk{margin-top:4px;font-size:12.5px;color:var(--muted)}
+.wk b{color:var(--ink);font-weight:700}
+.wk .bad{color:var(--bad);font-weight:600}
 .meter{display:flex;gap:3px;margin-top:6px}
 .meter i{height:3px;flex:1;background:var(--steel);border-radius:1px}
 .meter i.on{background:var(--black)}
@@ -562,12 +565,13 @@ function renderBoard() {
     const room = weekRoom(r, wk);                 // what his hours, home-by and days off can actually hold this week
     const prom = r.promise != null && r.rating !== "Lane" ? Math.round(r.promise) : null;
     const capShow = room;
-    const segs = room ? Array.from({ length: Math.max(room, wc) }, (_, i) => `<i class="${i < wc ? (i >= room ? "over" : "on") : ""}${prom && i === prom - 1 ? " min" : ""}"></i>`).join("") : "";
+
     cols.push(`<section class="col" aria-label="${esc(r.name)}" style="--rc:${color(r.name)}"><div class="ch">
       <div class="ch-row"><h2 title="${esc(r.name)}">${esc(r.display || r.short)}</h2><span class="pct n" title="Close rate, rolling ${r.window} days">${pct(r.close)}</span></div>
-      <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today <b>${mine.length}/${r.limits.per_day}</b></span>
-        <span class="${capShow && wc > capShow ? "over" : ""}" title="Appointments this week, out of what his schedule can hold">Week <b>${wc}</b>${capShow ? ` of ${capShow}` : ""}</span>${prom ? `<span title="His promise, scaled to the schedule he makes available">promise ${prom}</span>` : ""}</div>
-      ${segs ? `<div class="meter" title="Each bar is a spot his schedule can hold this week (hours, home-by, days off, daily and weekly limits). Black = booked. Red underline = his promise.">${segs}</div>` : ""}
+      <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today: <b>${mine.length}</b> of ${r.limits.per_day}</span>
+</div>
+      <div class="wk">This week: <b>${wc}</b> booked · ${room - wc > 0 ? `room for <b>${room - wc}</b> more` : wc > room ? `<span class="bad">${wc - room} over what his schedule holds</span>` : "full"}</div>
+      ${prom ? `<div class="wk" title="7 a week for a full schedule, scaled to the days and hours he works. Measured on the last quarter.">Promise ${prom} a week · ${r.promise_avg == null ? "new" : r.promise_avg >= r.promise ? `on pace (${r.promise_avg})` : `<span class="bad">behind (${r.promise_avg})</span>`}</div>` : ""}
       ${r.note ? `<div class="rnote${/review/i.test(r.note) ? " bad" : ""}">${esc(r.note)}</div>` : ""}
     </div><div class="list" data-rep="${esc(r.name)}">${mine.length ? mine.map(card).join("") : '<div class="empty">No appointments. Drag one here.</div>'}</div></section>`);
   }
