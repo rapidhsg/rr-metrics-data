@@ -177,7 +177,7 @@ def plan(scores, df, today, now=None):
             if bweek.get((p.rep, p.week)) and counted[p.name]: bends.append("over weekly cap" + (" (keeps a same-day appointment)" if l.same_day else " (nobody else free)"))
             if bends and st[p.rep]["rating"] in RULES["bends"]["last_resort"]["who"]: bends.append("last resort for a " + st[p.rep]["rating"] + " rep")
             best = opts.iloc[0]
-            note = None if best.rep == p.rep else f"{best.rep.split()[0]} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
+            note = None if best.rep == p.rep else f"{best.rep} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
             out.append(dict(guid=l.guid, appt=l.appt, rep=p.rep, rating=st[p.rep]["rating"], close=round(p.close, 3), same_day=round(p.sd, 3),
                             bends=bends, needs_ok=bool(bends), note=note, options=alts, blocked=blocked))
         else:
