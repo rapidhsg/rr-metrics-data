@@ -63,6 +63,9 @@ def rep_status(df, today):
                 m = rr.metrics(df, leads_start, today, reps=[r]); c = m["close_sold_team"] / m["close_sits_team"] if m["close_sits_team"] else 0
                 if c >= HJ["day29_checkpoint_close"]: lim.update(week_min=HJ["full_volume_per_week"]); note = f"Day {day_n}: full volume ({c:.0%} since Day 1)"
                 else: lim.update(week_min=0); note = f"Day {day_n}: under {HJ['day29_checkpoint_close']:.0%} since Day 1 ({c:.0%}), management review"
+        cap = {k: v for k, v in (info.get("capacity") or {}).items() if k in ("per_day", "week_min", "week_cap") and v is not None}
+        if cap:   # manager override from the dashboard's Reps tab
+            lim.update(cap); note = (note + "; " if note else "") + "capacity set on the Reps tab"
         # yearly promise: appointments issued per week since leads started
         ls = start + pd.Timedelta(days=HJ["leads_start_day"] - 1)
         n_iss = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= ls) & (df["Initial Appointment Date"] < today)).sum())

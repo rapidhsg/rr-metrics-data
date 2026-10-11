@@ -87,14 +87,43 @@ def main(out, path):
         reps.append(dict(name=name, display=disp, short=short, rating=st["rating"], close=st["close"], sits=st["sits"], window=st["window"],
                          day=st["day"], limits={k: v for k, v in st["limits"].items() if not k.startswith("_")},
                          note=st.get("note"), this_week=st["this_week_so_far"], lane=ro.get("lane", "regular"),
-                         week=ro.get("week", {})))
+                         week=ro.get("week", {}), home_zip=ro.get("home_zip"), days_off=ro.get("days_off", [])))
     full2short = {r["name"]: r["short"] for r in reps}
     for c in cards:
         if c["note"]:
             for full, sh in full2short.items(): c["note"] = c["note"].replace(full, sh)
+    today = pd.Timestamp(P["meta"]["run"][:10])
+    rr = E.rr
+    # zip heat: certified close rate per zip, last 12 months
+    s0, e0 = rr.rolling(today, 365); m = rr.masks(df.reset_index(), s0, e0)
+    d0 = df.reset_index(); z5 = d0["Job: Location Zip Code"].astype(str).str[:5]
+    sits = m["close_sits_company"]; sold = m["close_sold_company"]
+    zips = {}
+    for z, g in d0[sits].groupby(z5[sits]):
+        if len(z) == 5 and z.isdigit():
+            zips[z] = dict(n=int(len(g)), sold=int(sold[g.index].sum()), city=(g["Job: Location City"].dropna().astype(str).str.title().mode().iloc[0] if g["Job: Location City"].notna().any() else None))
+    # results: weekly team close rate and same-day rate (certified team close sits), last 20 weeks
+    wk = today - pd.Timedelta(days=today.dayofweek)
+    weeks = []
+    for i in range(20, 0, -1):
+        ws = wk - pd.Timedelta(days=7 * i); we = ws + pd.Timedelta(days=6)
+        mm = rr.masks(d0, ws, we); t = mm["close_sits_team"]; sd = t & (d0["Approved Milestone Date"].dt.normalize() == d0["Initial Appointment Date"].dt.normalize())
+        weeks.append(dict(week=ws.strftime("%Y-%m-%d"), sits=int(t.sum()), sold=int(mm["close_sold_team"].sum()), same_day=int(sd.sum())))
+    r30 = rr.metrics(d0, *rr.rolling(today, 30)); r90 = rr.metrics(d0, *rr.rolling(today, 90))
+    s9, e9 = rr.rolling(today, 90); m9 = rr.masks(d0, s9, e9)
+    board = []
+    for r in reps:
+        k = d0["Primary Salesperson"] == r["name"]; t = m9["close_sits_team"] & k
+        board.append(dict(name=r["name"], sits=int(t.sum()), sold=int((m9["close_sold_team"] & k).sum()),
+                          sales=round(float(d0.loc[m9["sales"] & k, "Contract Amount"].sum()), 0)))
+    results = dict(weeks=weeks, engine_start=rules.get("engine_start", "2026-10-12"),
+                   r30=dict(sits=r30["close_sits_team"], sold=r30["close_sold_team"]),
+                   r90=dict(sits=r90["close_sits_team"], sold=r90["close_sold_team"], sales=r90["sales"]), reps90=board)
+    roster_out = {k: v for k, v in rules["roster"].items() if not k.startswith("_")}
     meta = dict(P["meta"]); meta.pop("solver", None)
     meta.update(data_as_of=S["meta"]["run"], sits_used=S["meta"]["sits_used"])
-    json.dump(dict(meta=meta, reps=reps, cards=sorted(cards, key=lambda c: c["appt"])),
+    json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 
