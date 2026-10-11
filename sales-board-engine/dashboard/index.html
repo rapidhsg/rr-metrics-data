@@ -108,6 +108,9 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .board{display:flex;gap:12px;overflow-x:auto;padding-bottom:24px;align-items:flex-start;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
 .col{flex:0 0 min(var(--col),84vw);background:var(--colbg);border-radius:var(--r);display:flex;flex-direction:column;min-width:0;scroll-snap-align:start}
 .col.na{background:#F6E3E1}
+.col.na.slim{background:transparent;border:1.5px dashed #C9CBCF}
+.col.na.slim .ch{background:transparent;border-top:0;padding-top:12px}
+.col.na.slim h2{font-size:15px;color:var(--faint)}
 .col.slim{flex-basis:170px}
 .ch{background:var(--card);border-radius:var(--r) var(--r) 0 0;padding:10px 12px;border-top:4px solid var(--rc,var(--black))}
 .col.na .ch{border-top-color:var(--red)}
@@ -125,16 +128,24 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .load b{color:var(--ink);font-family:var(--display);font-weight:700;font-size:15px}
 .load .over b{color:var(--bad)}
 .meter{display:flex;gap:3px;margin-top:6px}
-.meter i{height:5px;flex:1;background:var(--steel);border-radius:1px}
+.meter i{height:3px;flex:1;background:var(--steel);border-radius:1px}
 .meter i.on{background:var(--black)}
 .meter i.min{box-shadow:inset 0 -2px 0 var(--red)}
 .meter i.over{background:var(--red)}
-.rnote{margin-top:6px;font-size:12px;color:var(--warn);background:var(--warn-bg);padding:3px 6px;border-radius:3px}
+.rnote{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.35}
+.rnote.bad{color:var(--bad)}
 .list{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:84px}
 .col.slim .list{min-height:40px}
 .empty{color:var(--faint);font-size:13px;text-align:center;padding:18px 6px;border:1.5px dashed #C9CBCF;border-radius:var(--r)}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px 8px;cursor:grab;position:relative}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px 6px;cursor:grab;position:relative}
+.cnote{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.35}
+.card .warn{margin-top:6px}
+.cfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 8px;margin-top:8px;border-top:1px solid var(--line);padding-top:4px}
+.cfoot .setbox{margin:0;font-size:12px;color:var(--muted);font-weight:600}
+.cfoot details.why-box{margin:0;border:0;padding:0}
+.cfoot details[open]{flex-basis:100%;order:2}
+.cfoot summary{justify-content:flex-end;gap:6px;padding:4px 0}
 .card:hover{border-color:#B9BBC0}
 .card.moved{box-shadow:inset 3px 0 0 var(--black)}
 .card.flag{box-shadow:inset 3px 0 0 var(--red)}
@@ -148,14 +159,14 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .odds{display:flex;align-items:flex-end;gap:8px;margin-top:6px}
 .odds b{font-family:var(--display);font-weight:800;font-size:34px;line-height:.9}
 .odds b.hi{color:var(--good)}
-.odds small{font-size:12px;color:var(--muted);line-height:1.25;margin-left:auto;text-align:right}
+.odds small{font-family:var(--display);font-weight:700;font-size:16px;color:var(--muted);margin-left:auto;padding-bottom:2px}
 .lift{align-self:flex-start;margin-top:2px;background:var(--yellow);color:var(--black);font-family:var(--display);font-weight:800;font-size:14px;padding:1px 6px;border-radius:2px}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .chip{font-size:11.5px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--steel);color:var(--ink);white-space:nowrap}
 .chip.hot{background:#FFE0DC;color:var(--bad)}
 .chip.red{background:var(--red);color:var(--white)}
 .chip.blk{background:var(--black);color:var(--white)}
-.chip.y{background:var(--yellow);color:var(--black)}
+.chip.y{background:#FFF6C2;color:var(--warn)}
 .warns{margin-top:8px;display:flex;flex-direction:column;gap:3px}
 .warn{font-size:12px;color:var(--bad);background:var(--bad-bg);padding:3px 6px;border-radius:3px}
 .info{font-size:12px;color:var(--warn);background:var(--warn-bg);padding:3px 6px;border-radius:3px}
@@ -183,7 +194,7 @@ details[open]>summary::after{content:"–"}
 .btn.ghost{border-color:var(--line)}
 .btn:disabled{opacity:.45;cursor:default}
 .setbox{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px}
-.setbox input{width:16px;height:16px;accent-color:var(--good)}
+.setbox input{width:15px;height:15px;accent-color:var(--good)}
 .card.done{opacity:.72}
 .card.done .who::after{content:" ✓";color:var(--good)}
 
@@ -542,7 +553,7 @@ function renderBoard() {
       <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today <b>${mine.length}/${r.limits.per_day}</b></span>
         <span class="${capShow && wc > capShow ? "over" : ""}">Week <b>${wc}</b>${capShow ? ` of ${min && min !== capShow ? min + "–" : ""}${capShow}` : ""}</span></div>
       ${segs ? `<div class="meter" title="This week. Red underline marks the minimum.">${segs}</div>` : ""}
-      ${r.note ? `<div class="rnote">${esc(r.note)}</div>` : ""}
+      ${r.note ? `<div class="rnote${/review/i.test(r.note) ? " bad" : ""}">${esc(r.note)}</div>` : ""}
     </div><div class="list" data-rep="${esc(r.name)}">${mine.length ? mine.map(card).join("") : '<div class="empty">No appointments. Drag one here.</div>'}</div></section>`);
   }
   $("#board").innerHTML = cols.join("");
@@ -555,44 +566,48 @@ function card(c) {
   const o = rep && c.odds[rep] ? c.odds[rep] : null;
   const where = [c.town, c.zip].filter(Boolean).join(" · ") || "Location not set";
   const src = [c.parent, c.source].filter(Boolean).join(" · ");
-  const chips = [];
-  if (c.lane === "commercial") chips.push('<span class="chip blk">Commercial</span>');
-  if (c.lane === "specialty") chips.push('<span class="chip blk">Specialty</span>');
-  if (c.booked_today) chips.push('<span class="chip y">Booked same day</span>');
-  if (c.hot && /hot/i.test(c.hot)) chips.push('<span class="chip hot">Hot</span>');
-  if (src) chips.push(`<span class="chip">${esc(src)}</span>`);
-  if (c.needs_ok) chips.push(`<span class="chip red">Needs Richie's OK</span>`);
-  const warns = [];
+  // at most two tags on the card face, most important first; the rest live in Details
+  const tags = [];
+  if (c.needs_ok) tags.push(`<span class="chip red">Needs Richie's OK</span>`);
+  if (c.lane === "commercial") tags.push('<span class="chip blk">Commercial</span>');
+  if (c.lane === "specialty") tags.push('<span class="chip blk">Specialty</span>');
+  if (c.booked_today) tags.push('<span class="chip y">Booked same day</span>');
+  if (c.hot && /hot/i.test(c.hot)) tags.push('<span class="chip hot">Hot lead</span>');
   const dv = c.pick ? val(c, rep) - planVal(c) : 0;
-  const dtxt = Math.abs(dv) >= 50 ? `, ${dv < 0 ? "−" : "+"}${money(Math.abs(dv))} expected` : "";
-  if (isMoved && c.pick) warns.push(`<div class="info">Moved from ${esc(short(c.pick))} (${pct(c.close)})${m.byName ? " by " + esc(m.byName) : ""}${dtxt}</div>`);
+  const dtxt = Math.abs(dv) >= 50 ? ` (${dv < 0 ? "−" : "+"}${money(Math.abs(dv))})` : "";
+  const notes = [];   // quiet one-line context
+  if (isMoved && c.pick) notes.push(`Moved from ${esc(short(c.pick))}${m.byName ? " by " + esc(m.byName.split(" ")[0]) : ""}${dtxt}`);
   if (ef.kind === "replan") { const fr = ef.from && repBy(ef.from); const off = fr && isOffDay(fr, dkey(c.appt));
-    warns.push(`<div class="info">${off ? `${esc(short(ef.from))} is off this day. ` : `Re-planned for who's working${ef.from ? `, was ${esc(short(ef.from))}` : ""}. `}${rep ? `Now ${esc(short(rep))}${dtxt}` : "Nobody else is free"}</div>`); }
-  for (const p of pr) warns.push(`<div class="warn">${esc(p)}</div>`);
-  if (c.bends.length) warns.push(`<div class="info">Rule bend: ${esc(c.bends.join(", "))}</div>`);
-  if (c.in_acculynx && rep && c.in_acculynx !== rep) warns.push(`<div class="info">AccuLynx has ${esc(short(c.in_acculynx))}</div>`);
+    notes.push(rep ? `${off ? `${esc(short(ef.from))} off, ` : "Re-planned, "}now ${esc(short(rep))}${dtxt}` : `${esc(short(ef.from))} off, nobody else free`); }
+  if (c.bends.length) notes.push(`Rule bend: ${esc(c.bends.join(", "))}`);
+  if (c.in_acculynx && rep && c.in_acculynx !== rep) notes.push(`AccuLynx has ${esc(short(c.in_acculynx))}`);
   const others = Object.entries(c.odds).filter(([n]) => n !== rep).sort((a, b) => b[1].close - a[1].close).map(([n, v]) =>
     `<tr class="${c.blocked[n] ? "x" : ""}"><td>${esc(short(n))}${c.blocked[n] ? `<span class="why-x">${esc(c.blocked[n])}</span>` : ""}</td><td class="p">${pct(v.close)}</td></tr>`).join("");
   const opts = [`<option value="">Move to…</option>`].concat(rep ? [`<option value="__none__">Needs a call</option>`] : []).concat(B.reps.filter(r => r.name !== rep).map(r =>
     `<option value="${esc(r.name)}">${esc(r.short)} · ${pct(c.odds[r.name]?.close)}${c.blocked[r.name] ? " (breaks a rule)" : ""}</option>`)).join("");
-  return `<article class="card${isMoved ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
+  const showLift = !isMoved && ef.kind !== "replan" && c.lift != null && c.lift >= .01;
+  return `<article class="card${isMoved || ef.kind === "replan" ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
     <div class="eyebrow"><span>${esc(where)}</span><time datetime="${esc(c.appt)}">${hm(c.appt)}</time></div>
     <div class="who">${esc(c.name || "Customer")}</div>
-    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && ef.kind !== "replan" && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
-    ${chips.length ? `<div class="chips">${chips.join("")}</div>` : ""}
-    ${warns.length ? `<div class="warns">${warns.join("")}</div>` : ""}
-    <details class="why-box"><summary>Why this rep</summary>
-      ${!isMoved && c.note ? `<div class="sec"><p>${esc(c.note)}</p></div>` : ""}
-      ${!isMoved && (c.up.length || c.down.length) ? `<div class="why">${c.up.map(u => `<span class="u">${esc(u)}</span>`).join("")}${c.down.map(d => `<span class="d">${esc(d)}</span>`).join("")}</div>` : ""}
-      <div class="sec"><h3>Other reps</h3><table class="others">${others}</table></div>
-      ${c.notes ? `<div class="sec"><h3>Lead notes</h3><p>${esc(c.notes)}</p></div>` : ""}
-      ${c.more_notes ? `<div class="sec"><h3>More notes</h3><p>${esc(c.more_notes)}</p></div>` : ""}
-      <div class="sec"><h3>Lead</h3><p>${esc([c.set_by && "Set by " + c.set_by, c.days_out != null && (c.days_out === 0 ? "booked same day" : c.days_out + " days from lead to appointment"), c.lead_close != null && pct(c.lead_close) + " with an average rep"].filter(Boolean).join(" · "))}</p></div>
-      <div class="act"><select aria-label="Move this appointment" data-move="${c.id}">${opts}</select>
-        ${isMoved ? `<button class="btn" data-undo="${c.id}">Back to ${esc(short(c.pick))}</button>` : ""}
-        <a class="btn dark" href="${esc(c.url)}" target="_blank" rel="noopener">Open in AccuLynx</a></div>
-    </details>
-    <label class="setbox"><input type="checkbox" data-set="${c.id}"${m.set ? " checked" : ""}> Set in AccuLynx</label>
+    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${showLift ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small title="Expected sale value: close chance times the average ticket for this kind of job">${o ? money(val(c, rep)) : ""}</small></div>
+    ${tags.length ? `<div class="chips">${tags.slice(0, 2).join("")}</div>` : ""}
+    ${pr.length ? `<div class="warn" title="${esc(pr.join(" · "))}">${esc(pr[0])}${pr.length > 1 ? ` +${pr.length - 1} more` : ""}</div>` : ""}
+    ${notes.length ? `<div class="cnote">${notes.join(" · ")}</div>` : ""}
+    <div class="cfoot">
+      <label class="setbox"><input type="checkbox" data-set="${c.id}"${m.set ? " checked" : ""}> In AccuLynx</label>
+      <details class="why-box"><summary>Details</summary>
+        <div class="sec"><p><b>${pct(o?.close)}</b> to close · <b>${pct(o?.same_day)}</b> same day${c.lead_close != null ? ` · ${pct(c.lead_close)} with an average rep` : ""}</p></div>
+        ${!isMoved && c.note ? `<div class="sec"><p>${esc(c.note)}</p></div>` : ""}
+        ${!isMoved && (c.up.length || c.down.length) ? `<div class="sec"><h3>Why this rep</h3><div class="why">${c.up.map(u => `<span class="u">${esc(u)}</span>`).join("")}${c.down.map(d => `<span class="d">${esc(d)}</span>`).join("")}</div></div>` : ""}
+        <div class="sec"><h3>Other reps</h3><table class="others">${others}</table></div>
+        ${c.notes ? `<div class="sec"><h3>Lead notes</h3><p>${esc(c.notes)}</p></div>` : ""}
+        ${c.more_notes ? `<div class="sec"><h3>More notes</h3><p>${esc(c.more_notes)}</p></div>` : ""}
+        <div class="sec"><h3>Lead</h3><p>${esc([src, c.hot, c.set_by && "set by " + c.set_by, c.days_out != null && (c.days_out === 0 ? "booked same day" : c.days_out + " days from lead to appointment")].filter(Boolean).join(" · "))}</p></div>
+        <div class="act"><select aria-label="Move this appointment" data-move="${c.id}">${opts}</select>
+          ${isMoved ? `<button class="btn" data-undo="${c.id}">Back to ${esc(short(c.pick))}</button>` : ""}
+          <a class="btn dark" href="${esc(c.url)}" target="_blank" rel="noopener">Open in AccuLynx</a></div>
+      </details>
+    </div>
   </article>`;
 }
 

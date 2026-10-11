@@ -86,7 +86,7 @@ def rep_status(df, today):
             was = HOT.get(r, False)
             if mh["close_sits_team"] >= H["min_sits"] and (hr >= H["on_at_or_above"] or (was and hr >= H["off_below"])):
                 rating = H["rated_as"]; HOT[r] = True
-                note = f"Hot: {hr:.0%} on {mh['close_sits_team']} sits (rolling {H['window_days']}), rated {rating} regardless of start date"
+                note = f"Hot streak: {hr:.0%} on {mh['close_sits_team']} sits (rolling {H['window_days']}), rated {rating} regardless of start date"
             else: HOT[r] = False
         lim = dict(RT["limits"][rating])
         if rating == "New" and not HOT.get(r):

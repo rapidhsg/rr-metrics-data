@@ -38,7 +38,7 @@ def main(path, out):
             if b - a < gap: bad.append(f"{r} two appointments under {gap} min apart on {day}")
     hot = A.RULES.get("hot", {})
     for r, s in st.items():
-        if s.get("note", "") and s["note"].startswith("Hot") and s["rating"] != hot.get("rated_as"): bad.append(f"{r} hot but rated {s['rating']}")
+        if s.get("note", "") and s["note"].startswith("Hot streak") and s["rating"] != hot.get("rated_as"): bad.append(f"{r} hot but rated {s['rating']}")
         if s.get("promise") is not None and s["promise"] > A.RULES["yearly_promise"]["per_week_average"] + 1e-9: bad.append(f"{r} promise above 7")
     print("rules OK" if not bad else "RULES BROKEN:\n  " + "\n  ".join(bad))
     sys.exit(1 if bad else 0)
