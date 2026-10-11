@@ -451,6 +451,19 @@ function weekCount(rep, wk) {
   if (wk === monday(B.meta.run.slice(0, 10))) n += repBy(rep)?.this_week || 0;
   return n;
 }
+function weekRoom(r, wk) {   // spots his schedule can hold in the week starting wk
+  const s0 = parse(wk); let n = 0; const len = B.appointment?.minutes || 90;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(s0); d.setDate(d.getDate() + i); const k = iso(d);
+    if (isOffDay(r, k)) continue;
+    const sl = r.week[DAYN[d.getDay()]];
+    const lo = hm2m(sl[0]) ?? 600; let hi = hm2m(sl[1]) ?? 1140;
+    if (sl[2]) hi = Math.min(hi, hm2m(sl[2]) - len - 30);
+    const slots = hi >= lo ? Math.floor((hi - lo) / GAP()) + 1 : 0;
+    n += Math.min(r.limits.per_day, slots);
+  }
+  return Math.min(n, r.limits.week_cap >= 99 ? n : r.limits.week_cap);
+}
 const dayCards = (rep, k) => B.cards.filter(c => dkey(c.appt) === k && repOf(c) === rep).sort((a, b) => a.appt.localeCompare(b.appt));
 const onDay = (r, k) => !isOffDay(r, k);
 
@@ -545,14 +558,16 @@ function renderBoard() {
     <div class="list" data-rep="">${na.map(card).join("")}</div></section>`];
   for (const r of reps) {
     const mine = dayCards(r.name, day);
-    const wc = weekCount(r.name, wk); const cap = r.limits.week_cap, min = r.limits.week_min;
-    const capShow = cap >= 99 ? null : cap;
-    const segs = capShow ? Array.from({ length: Math.max(capShow, wc) }, (_, i) => `<i class="${i < wc ? (i >= capShow ? "over" : "on") : ""}${min && i === min - 1 ? " min" : ""}"></i>`).join("") : "";
+    const wc = weekCount(r.name, wk);
+    const room = weekRoom(r, wk);                 // what his hours, home-by and days off can actually hold this week
+    const prom = r.promise != null && r.rating !== "Lane" ? Math.round(r.promise) : null;
+    const capShow = room;
+    const segs = room ? Array.from({ length: Math.max(room, wc) }, (_, i) => `<i class="${i < wc ? (i >= room ? "over" : "on") : ""}${prom && i === prom - 1 ? " min" : ""}"></i>`).join("") : "";
     cols.push(`<section class="col" aria-label="${esc(r.name)}" style="--rc:${color(r.name)}"><div class="ch">
       <div class="ch-row"><h2 title="${esc(r.name)}">${esc(r.display || r.short)}</h2><span class="pct n" title="Close rate, rolling ${r.window} days">${pct(r.close)}</span></div>
       <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today <b>${mine.length}/${r.limits.per_day}</b></span>
-        <span class="${capShow && wc > capShow ? "over" : ""}">Week <b>${wc}</b>${capShow ? ` of ${min && min !== capShow ? min + "–" : ""}${capShow}` : ""}</span></div>
-      ${segs ? `<div class="meter" title="This week. Red underline marks the minimum.">${segs}</div>` : ""}
+        <span class="${capShow && wc > capShow ? "over" : ""}" title="Appointments this week, out of what his schedule can hold">Week <b>${wc}</b>${capShow ? ` of ${capShow}` : ""}</span>${prom ? `<span title="His promise, scaled to the schedule he makes available">promise ${prom}</span>` : ""}</div>
+      ${segs ? `<div class="meter" title="Each bar is a spot his schedule can hold this week (hours, home-by, days off, daily and weekly limits). Black = booked. Red underline = his promise.">${segs}</div>` : ""}
       ${r.note ? `<div class="rnote${/review/i.test(r.note) ? " bad" : ""}">${esc(r.note)}</div>` : ""}
     </div><div class="list" data-rep="${esc(r.name)}">${mine.length ? mine.map(card).join("") : '<div class="empty">No appointments. Drag one here.</div>'}</div></section>`);
   }
