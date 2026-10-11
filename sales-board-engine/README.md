@@ -71,6 +71,10 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
   results and shifts future predictions if they ran high or low.
 - **AI note reading** (`AI_NOTES.md`): Claude reads new lead notes and tags them. Any tag seen on 15+ sits becomes an
   input, and it only matters as much as results show it should.
+- **After every run** (`outcomes.py`): for every appointment that already happened, logs the engine's pick, the board's
+  pick after manager moves, who actually ran it in AccuLynx, the predicted odds for each, and whether it sat, sold and
+  sold the same day. Late sales update the row on later runs. The weekly self-test reports close rate when the engine's
+  pick ran the sit vs someone else vs a manager move, each against what was predicted.
 - Every change is written in plain words to `memory/learning_log.md`.
 
 ## Files
@@ -94,6 +98,9 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
 | `memory/learning_log.md` | What it learned and changed, in plain words | The engine |
 | `memory/predictions.csv` | Every prediction it made, to check against results | The engine |
 | `memory/plans.csv` | Every recommended assignment, to check against results | The engine |
+| `memory/board_moves.csv` | Daily snapshot of manager moves and days off made on the board | `outcomes.py --save-board`, every run |
+| `memory/outcomes.csv` | Every finished appointment: engine pick, board pick, who actually ran it, predicted odds for each, sat, sold, same day | `outcomes.py`, every run |
+| `memory/hot.json` | Which reps are currently hot | The engine |
 | `memory/note_tags.json` | AI tags for each lead's notes | Claude |
 
 The engine reads the certified rules and the data. It never changes them.

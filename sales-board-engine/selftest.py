@@ -46,6 +46,20 @@ def own_predictions_check(df, today):
     return dict(n=len(j), pred_close=round(j.close.mean(), 3), actual_close=round(j.y_close.mean(), 3),
                 pred_same=round(j.same_day.mean(), 3), actual_same=round(j.y_same.mean(), 3))
 
+def followed_summary():
+    """Close rate when the engine's pick ran the sit vs when someone else did, and when a manager moved the card,
+    each next to what the engine predicted for the rep who actually ran it."""
+    p = E.MEM / "outcomes.csv"
+    if not p.exists(): return "no outcomes logged yet"
+    o = pd.read_csv(p); o = o[o.sat == True]
+    if len(o) < 20: return f"{len(o)} finished sits so far, need 20+ to judge"
+    def part(x, label):
+        if not len(x): return f"{label}: none"
+        pr = pd.to_numeric(x.actual_close, errors="coerce").mean()
+        return f"{label}: {x.sold.mean():.0%} closed ({int(x.sold.sum())} of {len(x)}), engine predicted {pr:.0%}"
+    return "; ".join([part(o[o.followed_engine == True], "engine's pick ran it"), part(o[o.followed_engine == False], "someone else ran it"),
+                      part(o[o.manager_moved == True], "manager moved it")])
+
 def main(path, today=None):
     today = pd.Timestamp(today or datetime.now()).normalize()
     df = E.load(path)
@@ -80,7 +94,8 @@ def main(path, today=None):
              f"- Same-day close: top fifth predicted {s['top_fifth_pred']:.0%}, actually {s['top_fifth_actual']:.0%}. Bottom fifth {s['bottom_fifth_pred']:.0%}, actually {s['bottom_fifth_actual']:.0%}. AUC {s['auc']}.",
              f"- Settings: old sits fade by half every {pick[1]['half_life_days']} days, shrinkage strength {pick[1]['shrink_C']}." + (" CHANGED this week because it predicted better." if changed else " No change."),
              f"- Same-day sale worth ${sdv['same_day_value']:,} vs ${sdv['later_value']:,} for a later sale, so same-day close counts {sdw:.2f}x on top of close.",
-             f"- Own predictions vs results: {own if own else 'no logged predictions yet'}."]
+             f"- Own predictions vs results: {own if own else 'no logged predictions yet'}.",
+             f"- What actually happened (memory/outcomes.csv): {followed_summary()}"]
     with open(E.MEM / "learning_log.md", "a") as f: f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
 
