@@ -36,7 +36,7 @@
     "selling": "selling|sale of (?:the )?home|bought the house|just bought|new home|moving",
     "skylight": "skylight|chimney",
     "flat": "flat",
-    "leak": "leak(?!s? ?free)",
+    "leak": "(?<!no )(?<!not )(?<!isn't )leak(?!s? ?free)",
     "solar": "(?<!no )solar",
     "firstcall": "first (?:call|appt|appointment|one)|hasn'?t met|has not met|haven'?t met|not met with|no other",
     "storm": "storm|blew off|wind|missing shingle",

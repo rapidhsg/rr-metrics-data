@@ -646,7 +646,7 @@ function card(c) {
       <details class="why-box"><summary>Details</summary>
         <div class="sec"><p><b>${pct(o?.close)}</b> to close · <b>${pct(o?.same_day)}</b> same day${c.lead_close != null ? ` · ${pct(c.lead_close)} with an average rep` : ""}</p></div>
         ${!isMoved && c.note ? `<div class="sec"><p>${esc(c.note)}</p></div>` : ""}
-        ${!isMoved && (c.up.length || c.down.length) ? `<div class="sec"><h3>Why this rep</h3><div class="why">${c.up.map(u => `<span class="u">${esc(u)}</span>`).join("")}${c.down.map(d => `<span class="d">${esc(d)}</span>`).join("")}</div></div>` : ""}
+        ${!isMoved && (c.up.length || c.down.length) ? `<div class="sec"><h3 title="What pushes this appointment's close chance up or down compared with an average appointment, learned from past results">What moves these odds</h3><div class="why">${c.up.map(u => `<span class="u">${esc(u)}</span>`).join("")}${c.down.map(d => `<span class="d">${esc(d)}</span>`).join("")}</div></div>` : ""}
         <div class="sec"><h3>Other reps</h3><table class="others">${others}</table></div>
         ${c.notes ? `<div class="sec"><h3>Lead notes</h3><p>${esc(c.notes)}</p></div>` : ""}
         ${c.more_notes ? `<div class="sec"><h3>More notes</h3><p>${esc(c.more_notes)}</p></div>` : ""}

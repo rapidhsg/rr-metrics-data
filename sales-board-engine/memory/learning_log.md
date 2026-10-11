@@ -38,3 +38,6 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 ## 2026-10-11 routes count
 - Driving now counts a little in the plan: 0.5 points of close chance per 10 miles between back-to-back appointments (half for the drive from home or the office).
 - On the next two weeks: driving 715 -> 580 miles (19% less) for 0.02 fewer expected sales (about $350) and 0.09 fewer same-day signs. Doubling the weight saved only 16 more miles, so 0.5 stays.
+
+## 2026-10-11 note signal fix
+- "No leak" notes were also being counted as "leak" (259 of 274). The leak signal now skips "no leak", "not leaking" and "isn't leaking". Backtest, last 6 months: log loss 0.5756 -> 0.5745, ranking 0.634 -> 0.636 (better).
