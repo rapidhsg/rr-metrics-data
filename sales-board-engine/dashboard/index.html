@@ -804,7 +804,8 @@ function openFor(r, k) {   // open start times on day k inside his hours, home-b
   let n = 0, last = -1e9; for (const t of ok) if (t - last >= GAP()) { n++; last = t; }
   return { r, k, mine, spots: Math.min(Math.max(left, 0), n), wins, today };
 }
-const winTxt = w => w.a === w.b ? `at ${t2s(w.a)}` : `start ${t2s(w.a)} to ${t2s(w.b)}`;
+const winTxt = w => w.a === w.b ? `at ${t2s(w.a)}` : `between ${t2s(w.a)} and ${t2s(w.b)}`;
+const cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
 const winsTxt = ws => ws.map(winTxt).join(", or ");
 function whereTxt(o) {
   if (o.mine.length) return "He's in " + o.mine.map(c => c.town ? `${c.town} at ${hm(c.appt)}` : `an appointment at ${hm(c.appt)}`).join(", ");
@@ -833,29 +834,37 @@ function guideData(start) {   // start: the board's selected day (the fold), or 
   const rel = days[0].k === t0 ? "Today" : days[0].k === addDays(t0, 1) ? "Tomorrow" : "";
   return { t0, rolled, rel, days, calls, at: new Date() };
 }
-const spotLine = o => `${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close): ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}`;
+function propose(i, k, html) {   // a call idea, worded as a proposal for the sales manager
+  const c = i.c, cur = repOf(c), r = repBy(i.rep), when = `${dayLbl(dkey(c.appt))} ${hm(c.appt)}`, to = `${dayLbl(k)} ${t2s(i.t)}`;
+  const b = x => html ? `<b>${esc(x)}</b>` : x, sp = x => html ? `<span>${esc(x)}</span>` : x;
+  const odds = `${pct(c.odds[i.rep]?.close)} to close${cur ? ` vs ${pct(c.odds[cur]?.close)} with ${short(cur)}` : ""}`;
+  if (i.kind === "up") return `${b(c.name || "A customer")} (${c.town || ""}, booked ${when}${cur ? "" : ", no rep free then"}) could come in ${b(to)}. ${r ? r.short : "A stronger closer"} has room. ${sp(odds + ".")}`;
+  return `${b(c.name || "A customer")} (${c.town || ""}) could move from ${hm(c.appt)} to ${b(to)}${cur ? "" : " (no rep free at the booked time)"}. ${r ? r.short : "Another rep"} has room then. ${sp(odds + ".")}`;
+}
+const nobodyTxt = (c, html) => `No rep free for ${html ? `<b>${esc(c.name || "a customer")}</b>` : (c.name || "a customer")} (${html ? esc(c.town || "") : (c.town || "")}) at ${hm(c.appt)}. Ask the sales manager before calling to offer another time.`;
+const spotLine = o => `${cap1(winsTxt(o.wins))}: ${o.spots} open time${o.spots > 1 ? "s" : ""}. Suggest ${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close) to the sales manager`;
 function guideText(G) {
   const L = [], head = G.days[0];
   const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   L.push(`CSR BOOKING GUIDE · ${dayLbl(head.k)} · updated ${clock}`);
-  L.push(`Same-day bookings: at least 1 hour ahead, and confirm with the sales manager before you book.`);
+  L.push(`Rep names are suggestions only. Run every booking by the sales manager; he assigns the rep. Same day: at least 1 hour ahead, and get his OK before confirming with the customer.`);
   L.push("");
-  L.push(`${G.rel ? G.rel.toUpperCase() + ", " : ""}${dayLbl(head.k)}: FILL THESE FIRST${head.spots ? ` (${head.spots} open spot${head.spots > 1 ? "s" : ""}, about ${money(head.value)} in expected sales)` : ""}`);
-  if (!head.open.length) L.push("No open spots left. Book new leads into the next days below.");
+  L.push(`${G.rel ? G.rel.toUpperCase() + ", " : ""}${dayLbl(head.k)}: FILL THESE FIRST${head.spots ? ` (${head.spots} open time${head.spots > 1 ? "s" : ""}, about ${money(head.value)} in expected sales)` : ""}`);
+  if (!head.open.length) L.push("No open times left. Aim new leads at the next days below.");
   head.open.forEach((o, i) => { L.push(`${i + 1}. ${spotLine(o)}.`); L.push(`   ${whereTxt(o)}. Best for leads near there.`); });
-  head.comm.forEach(o => L.push(`Commercial leads only: ${o.r.short}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}.`));
+  head.comm.forEach(o => L.push(`Commercial leads only: ${winsTxt(o.wins)} (${o.r.short}).`));
   if (G.calls.length || head.nobody.length) {
-    L.push(""); L.push("CALL NOW");
-    G.calls.slice(0, 6).forEach(i => L.push(`- ${plain(i.html)}`));
-    head.nobody.forEach(c => L.push(`- No rep free for ${c.name || "a customer"} (${c.town || ""}) at ${hm(c.appt)}. Call to offer another time.`));
+    L.push(""); L.push("PROPOSE TO THE SALES MANAGER (call the customer only after he OKs it)");
+    G.calls.slice(0, 6).forEach(i => L.push(`- ${propose(i, head.k, false)}`));
+    head.nobody.forEach(c => L.push(`- ${nobodyTxt(c, false)}`));
   }
   for (const d of G.days.slice(1)) {
-    L.push(""); L.push(`${dayLbl(d.k).toUpperCase()}: ${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""}` : "full"}`);
-    d.open.forEach(o => L.push(`- ${o.r.short}: ${winsTxt(o.wins)} (${o.spots} spot${o.spots > 1 ? "s" : ""})`));
-    d.comm.forEach(o => L.push(`- Commercial only, ${o.r.short}: ${winsTxt(o.wins)}`));
-    d.nobody.forEach(c => L.push(`- No rep free for ${c.name || "a customer"} (${c.town || ""}) at ${hm(c.appt)}. Call to offer another time.`));
+    L.push(""); L.push(`${dayLbl(d.k).toUpperCase()}: ${d.spots ? `${d.spots} open time${d.spots > 1 ? "s" : ""}` : "full"}`);
+    d.open.forEach(o => L.push(`- ${cap1(winsTxt(o.wins))} (${o.spots}, suggest ${o.r.short})`));
+    d.comm.forEach(o => L.push(`- Commercial only: ${winsTxt(o.wins)} (suggest ${o.r.short})`));
+    d.nobody.forEach(c => L.push(`- ${nobodyTxt(c, false)}`));
   }
-  L.push(""); L.push("Offer the earliest open time first. Same day beats any other day. Steer leads toward the rep already working nearby.");
+  L.push(""); L.push("Offer the earliest open time first. Same day beats any other day. Aim for leads near where a rep is already working. The sales manager makes the final call on who runs it.");
   return L.join("\n");
 }
 async function copyText(t) {
@@ -866,17 +875,17 @@ async function copyText(t) {
 }
 function guideBody(G, detail) {
   const head = G.days[0];
-  const callList = (G.calls.length || head.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${
-    G.calls.slice(0, detail ? 99 : 6).map(i => `<li><span class="itag ${i.kind}">${esc(i.tag)}</span> ${i.html}${detail && i.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${
-    head.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : "";
+  const callList = (G.calls.length || head.nobody.length) ? `<div class="gday"><h4>Propose to the sales manager<small>call the customer only after he OKs it</small></h4><ul class="gcall">${
+    G.calls.slice(0, detail ? 99 : 6).map(i => `<li><span class="itag ${i.kind}">${esc(i.tag)}</span> ${propose(i, head.k, true)}${detail && i.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${
+    head.nobody.map(c => `<li><span class="itag need">Needs a call</span> ${nobodyTxt(c, true)}</li>`).join("")}</ul></div>` : "";
   const label = G.rel ? G.rel + ", " : "";
-  const first = `<div class="gday"><h4>${label}${dayLbl(head.k)}: fill these first<small>${head.spots ? `${head.spots} open spot${head.spots > 1 ? "s" : ""} · about ${money(head.value)} in expected sales` : "no open spots left"}</small></h4>
-    ${head.open.length ? `<ol>${head.open.map(o => `<li><b>${esc(o.r.short)}</b> <span>(${esc(o.r.rating)}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close)</span>: <b>${o.spots} spot${o.spots > 1 ? "s" : ""}</b>, ${esc(winsTxt(o.wins))}.<br><span>${esc(whereTxt(o))}. Best for leads near there.</span></li>`).join("")}</ol>` : `<p class="gnote">Book new leads into the next days below.</p>`}
-    ${head.comm.map(o => `<p class="gnote">Commercial leads only: ${esc(o.r.short)}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${esc(winsTxt(o.wins))}.</p>`).join("")}</div>`;
-  const rest = G.days.slice(1).map(d => `<div class="gday"><h4>${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""}` : "full"}</small></h4>${d.open.length || d.comm.length || d.nobody.length ? `<ul>${
-    d.open.map(o => `<li><b>${esc(o.r.short)}</b>: ${esc(winsTxt(o.wins))} <span>(${o.spots} spot${o.spots > 1 ? "s" : ""})</span></li>`).join("")}${
-    d.comm.map(o => `<li><span>Commercial only,</span> <b>${esc(o.r.short)}</b>: ${esc(winsTxt(o.wins))}</li>`).join("")}${
-    d.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}.</li>`).join("")}</ul>` : ""}</div>`).join("");
+  const first = `<div class="gday"><h4>${label}${dayLbl(head.k)}: fill these first<small>${head.spots ? `${head.spots} open time${head.spots > 1 ? "s" : ""} · about ${money(head.value)} in expected sales` : "no open times left"}</small></h4>
+    ${head.open.length ? `<ol>${head.open.map(o => `<li><b>${esc(cap1(winsTxt(o.wins)))}</b>: ${o.spots} open time${o.spots > 1 ? "s" : ""}. Suggest <b>${esc(o.r.short)}</b> <span>(${esc(o.r.rating)}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close)</span> to the sales manager.<br><span>${esc(whereTxt(o))}. Best for leads near there.</span></li>`).join("")}</ol>` : `<p class="gnote">No open times left. Aim new leads at the next days below.</p>`}
+    ${head.comm.map(o => `<p class="gnote">Commercial leads only: ${esc(winsTxt(o.wins))} (${esc(o.r.short)}).</p>`).join("")}</div>`;
+  const rest = G.days.slice(1).map(d => `<div class="gday"><h4>${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open time${d.spots > 1 ? "s" : ""}` : "full"}</small></h4>${d.open.length || d.comm.length || d.nobody.length ? `<ul>${
+    d.open.map(o => `<li>${esc(cap1(winsTxt(o.wins)))} <span>(${o.spots}, suggest ${esc(o.r.short)})</span></li>`).join("")}${
+    d.comm.map(o => `<li><span>Commercial only:</span> ${esc(winsTxt(o.wins))} <span>(suggest ${esc(o.r.short)})</span></li>`).join("")}${
+    d.nobody.map(c => `<li><span class="itag need">Needs a call</span> ${nobodyTxt(c, true)}</li>`).join("")}</ul>` : ""}</div>`).join("");
   return first + callList + rest;
 }
 function renderGuideFold() {
@@ -884,9 +893,9 @@ function renderGuideFold() {
   const el = $("#guide"), fold = $("#guidefold");
   fold.setAttribute("aria-expanded", String(OPEN.guide)); el.hidden = !OPEN.guide;
   const lbl = G.rel ? G.rel.toLowerCase() : "on " + dayLbl(head.k);
-  $("#guideline").innerHTML = `<em>${head.spots}</em> open spot${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${G.calls.length}</em> call${G.calls.length > 1 ? "s" : ""} to make` : ""} · next 3 days <em>${G.days.slice(1).reduce((a, d) => a + d.spots, 0)}</em> open`;
+  $("#guideline").innerHTML = `<em>${head.spots}</em> open time${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${G.calls.length}</em> to propose` : ""} · next 3 days <em>${G.days.slice(1).reduce((a, d) => a + d.spots, 0)}</em> open`;
   if (!OPEN.guide) return;
-  el.innerHTML = `<div class="ghead"><p>What the CSRs should book, built from the board as it stands. Same-day: book 1 hour or more ahead and confirm with the sales manager.</p>
+  el.innerHTML = `<div class="ghead"><p>Open times for the CSRs to fill, built from the board as it stands. Rep names are suggestions only. Run every booking by the sales manager; he assigns the rep. Same day: at least 1 hour ahead, and get his OK before confirming with the customer.</p>
     <button class="btn red" id="guide-copy">Copy for CSRs</button><button class="btn ghost" id="guide-open">Full guide</button></div>` + guideBody(G, false);
   $("#guide-copy").onclick = () => copyText(guideText(guideData(day)));
   $("#guide-open").onclick = () => { tab = "book"; setTab(); };
@@ -901,17 +910,17 @@ function renderBookPage() {
     return { r, o, comm, v: o.spots * spotVal(r) };
   }).sort((a, b) => (a.comm - b.comm) || (b.v - a.v)).map(({ r, o, comm, v }) => `<div class="brow${o.spots ? "" : " full"}" style="--rc:${color(r.name)}">
       <div class="who"><b>${esc(r.short)}</b><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><br><span style="color:var(--muted)">${pct(r.close)} close${isHot(r) ? " · hot streak" : ""}${comm ? " · commercial only" : ""}</span></div>
-      <div class="what">${o.spots ? `<b>${o.spots} open spot${o.spots > 1 ? "s" : ""}</b>: ${esc(winsTxt(o.wins))}` : `<b>Full</b>`}<br><span>${esc(whereTxt({ r, mine: o.mine }))}</span></div>
+      <div class="what">${o.spots ? `<b>${o.spots} open time${o.spots > 1 ? "s" : ""}</b>: ${esc(winsTxt(o.wins))}` : `<b>Full</b>`}<br><span>${esc(whereTxt({ r, mine: o.mine }))}</span></div>
       <div class="val">${o.spots ? money(v) : ""}</div></div>`).join("");
   const off = d => B.reps.filter(r => isOffDay(r, d.k)).map(r => r.short);
-  $("#bookpage").innerHTML = `<div class="bpanel"><div class="ghead"><p>Open spots for the CSRs to fill, best first. Built from the board as it stands, so when the sales manager moves appointments or marks a rep off, this changes with it. A new booking shows up here after the next AccuLynx pull. Same-day: book at least 1 hour ahead and confirm with the sales manager. Updated ${clock}.</p>
+  $("#bookpage").innerHTML = `<div class="bpanel"><div class="ghead"><p>Open times for the CSRs to fill, best first. Rep names are suggestions only. Run every booking by the sales manager; he assigns the rep. Same day: at least 1 hour ahead, and get his OK before confirming with the customer. This changes as soon as the sales manager moves appointments or marks a rep off. A new booking shows up after the next AccuLynx pull. Updated ${clock}.</p>
       <button class="btn red" id="book-copy">Copy for CSRs</button></div></div>
-    ${G.days.map((d, i) => `<div class="bpanel"><h2>${i === 0 && G.rel ? G.rel + ", " : ""}${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""} · about ${money(d.value)} expected` : "full"}${off(d).length ? ` · off: ${esc(off(d).join(", "))}` : ""}</small></h2>
+    ${G.days.map((d, i) => `<div class="bpanel"><h2>${i === 0 && G.rel ? G.rel + ", " : ""}${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open time${d.spots > 1 ? "s" : ""} · about ${money(d.value)} expected` : "full"}${off(d).length ? ` · off: ${esc(off(d).join(", "))}` : ""}</small></h2>
       ${rows(d)}
-      ${i === 0 && (G.calls.length || d.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${G.calls.map(x => `<li><span class="itag ${x.kind}">${esc(x.tag)}</span> ${x.html}${x.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(x.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${d.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time. <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(c.url)}" target="_blank" rel="noopener">AccuLynx</a></li>`).join("")}</ul></div>` : ""}
-      ${i > 0 && d.nobody.length ? `<div class="gday"><h4>Needs a call</h4><ul class="gcall">${d.nobody.map(c => `<li>No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : ""}
+      ${i === 0 && (G.calls.length || d.nobody.length) ? `<div class="gday"><h4>Propose to the sales manager<small>call the customer only after he OKs it</small></h4><ul class="gcall">${G.calls.map(x => `<li><span class="itag ${x.kind}">${esc(x.tag)}</span> ${propose(x, d.k, true)}${x.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(x.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${d.nobody.map(c => `<li><span class="itag need">Needs a call</span> ${nobodyTxt(c, true)} <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(c.url)}" target="_blank" rel="noopener">AccuLynx</a></li>`).join("")}</ul></div>` : ""}
+      ${i > 0 && d.nobody.length ? `<div class="gday"><h4>Needs a call</h4><ul class="gcall">${d.nobody.map(c => `<li>${nobodyTxt(c, true)}</li>`).join("")}</ul></div>` : ""}
     </div>`).join("")}
-    <p class="gnote" style="margin-bottom:24px">Spots count each rep's hours, home-by time, days off, daily limit and the 2-hour gap. A spot's value is his close rate times the average ticket. Offer the earliest open time first; same day beats any other day; steer leads toward the rep already working nearby.</p>`;
+    <p class="gnote" style="margin-bottom:24px">Spots count each rep's hours, home-by time, days off, daily limit and the 2-hour gap. A spot's value is his close rate times the average ticket. Offer the earliest open time first; same day beats any other day; aim for leads near where a rep is already working. Rep names are suggestions; the sales manager assigns every appointment.</p>`;
   $("#book-copy").onclick = () => copyText(guideText(guideData()));
 }
 
