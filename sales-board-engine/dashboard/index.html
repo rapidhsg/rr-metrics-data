@@ -829,7 +829,9 @@ function guideData(start) {   // start: the board's selected day (the fold), or 
   });
   const first = days[0];
   const lim = first.k === t0 ? nowMin() + LEAD_MIN : -1;
-  const calls = buildIdeas(first.k).filter(i => i.kind !== "slot" && (i.t == null || i.t >= lim));
+  const usedSlot = new Set();
+  const calls = buildIdeas(first.k).filter(i => i.kind !== "slot" && (i.t == null || i.t >= lim))
+    .filter(i => { const key = i.rep + "@" + i.t; if (usedSlot.has(key)) return false; usedSlot.add(key); return true; });   // one proposal per open time
   const called = new Set(calls.map(i => i.c && i.c.id));
   for (const d of days) d.nobody = d.nobody.filter(c => !called.has(c.id));
   const rel = days[0].k === t0 ? "Today" : days[0].k === addDays(t0, 1) ? "Tomorrow" : "";
@@ -839,12 +841,36 @@ function propose(i, k, html) {   // a call idea, worded as a proposal for the sa
   const c = i.c, cur = repOf(c), r = repBy(i.rep), when = `${dayLbl(dkey(c.appt))} ${hm(c.appt)}`, to = `${dayLbl(k)} ${t2s(i.t)}`;
   const b = x => html ? `<b>${esc(x)}</b>` : x, sp = x => html ? `<span>${esc(x)}</span>` : x;
   const odds = `${pct(c.odds[i.rep]?.close)} to close${cur ? ` vs ${pct(c.odds[cur]?.close)} with ${short(cur)}` : ""}`;
-  if (i.kind === "up") return `${b(c.name || "A customer")} (${c.town || ""}, booked ${when}${cur ? "" : ", no rep free then"}) could come in ${b(to)}. ${r ? r.short : "A stronger closer"} has room. ${sp(odds + ".")}`;
-  return `${b(c.name || "A customer")} (${c.town || ""}) could move from ${hm(c.appt)} to ${b(to)}${cur ? "" : " (no rep free at the booked time)"}. ${r ? r.short : "Another rep"} has room then. ${sp(odds + ".")}`;
+  if (i.kind === "up") return `${b(c.name || "A customer")} (${c.town ? c.town + ", " : ""}booked ${when}${cur ? "" : ", no rep free then"}) could come in ${b(to)}. ${r ? r.short : "A stronger closer"} has room. ${sp(odds + ".")}`;
+  return `${b(c.name || "A customer")}${c.town ? ` (${c.town})` : ""} could move from ${hm(c.appt)} to ${b(to)}${cur ? "" : " (no rep free at the booked time)"}. ${r ? r.short : "Another rep"} has room then. ${sp(odds + ".")}`;
 }
 const nobodyTxt = (c, html) => `No rep free for ${html ? `<b>${esc(c.name || "a customer")}</b>` : (c.name || "a customer")} (${html ? esc(c.town || "") : (c.town || "")}) at ${hm(c.appt)}. Ask the sales manager before calling to offer another time.`;
 const spotLine = o => `${cap1(winsTxt(o.wins))}: ${o.spots} open time${o.spots > 1 ? "s" : ""}. Suggest ${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close) to the sales manager`;
-function guideText(G) {
+const nearTxt = o => { const t = [...new Set(o.mine.map(c => c.town).filter(Boolean))]; if (t.length) return "near " + t.join(", "); const c = cityOf(o.r.home_zip); return c ? "starts from home, " + c : ""; };
+const shortLine = o => `${o.r.short}${isHot(o.r) ? " (hot streak)" : ""}: ${o.spots} open, ${winsTxt(o.wins)}${nearTxt(o) ? ". " + cap1(nearTxt(o)) : ""}`;
+function dayText(G) {
+  const head = G.days[0], L = [];
+  L.push(`CSR BOOKING GUIDE · ${G.rel ? G.rel + ", " : ""}${dayLbl(head.k)}`);
+  L.push("Rep names are suggestions. Run every booking by the sales manager. Same day: at least 1 hour ahead.");
+  L.push(""); L.push(head.spots ? `OPEN TIMES (${head.spots}, best first)` : "OPEN TIMES: none left this day");
+  head.open.forEach(o => L.push(`- ${shortLine(o)}`));
+  head.comm.forEach(o => L.push(`- Commercial leads only: ${winsTxt(o.wins)}`));
+  if (G.calls.length || head.nobody.length) {
+    L.push(""); L.push("ASK THE SALES MANAGER ABOUT");
+    G.calls.slice(0, 3).forEach(i => L.push(`- ${propose(i, head.k, false)}`));
+    head.nobody.forEach(c => L.push(`- ${nobodyTxt(c, false)}`));
+  }
+  return L.join("\n");
+}
+function dayHtml(G) {
+  const head = G.days[0];
+  return `<div class="gday"><h4>Open times<small>${head.spots ? `${head.spots} · best first` : "none left this day"}</small></h4>${head.open.length || head.comm.length ? `<ul>${
+    head.open.map(o => `<li><b>${esc(o.r.short)}</b>${isHot(o.r) ? " <span>(hot streak)</span>" : ""}: ${o.spots} open, ${esc(winsTxt(o.wins))}${nearTxt(o) ? ` <span>· ${esc(nearTxt(o))}</span>` : ""}</li>`).join("")}${
+    head.comm.map(o => `<li><span>Commercial leads only:</span> ${esc(winsTxt(o.wins))}</li>`).join("")}</ul>` : ""}</div>${
+    G.calls.length || head.nobody.length ? `<div class="gday"><h4>Ask the sales manager about</h4><ul class="gcall">${
+      G.calls.slice(0, 3).map(i => `<li>${propose(i, head.k, true)}</li>`).join("")}${head.nobody.map(c => `<li>${nobodyTxt(c, true)}</li>`).join("")}</ul></div>` : ""}`;
+}
+function guideText(G, dayOnly) {
   const L = [], head = G.days[0];
   const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   L.push(`CSR BOOKING GUIDE · ${dayLbl(head.k)} · updated ${clock}`);
@@ -859,7 +885,7 @@ function guideText(G) {
     G.calls.slice(0, 6).forEach(i => L.push(`- ${propose(i, head.k, false)}`));
     head.nobody.forEach(c => L.push(`- ${nobodyTxt(c, false)}`));
   }
-  for (const d of G.days.slice(1)) {
+  for (const d of dayOnly ? [] : G.days.slice(1)) {
     L.push(""); L.push(`${dayLbl(d.k).toUpperCase()}: ${d.spots ? `${d.spots} open time${d.spots > 1 ? "s" : ""}` : "full"}`);
     d.open.forEach(o => L.push(`- ${cap1(winsTxt(o.wins))} (${o.spots}, suggest ${o.r.short})`));
     d.comm.forEach(o => L.push(`- Commercial only: ${winsTxt(o.wins)} (suggest ${o.r.short})`));
@@ -887,18 +913,18 @@ function guideBody(G, detail) {
     d.open.map(o => `<li>${esc(cap1(winsTxt(o.wins)))} <span>(${o.spots}, suggest ${esc(o.r.short)})</span></li>`).join("")}${
     d.comm.map(o => `<li><span>Commercial only:</span> ${esc(winsTxt(o.wins))} <span>(suggest ${esc(o.r.short)})</span></li>`).join("")}${
     d.nobody.map(c => `<li><span class="itag need">Needs a call</span> ${nobodyTxt(c, true)}</li>`).join("")}</ul>` : ""}</div>`).join("");
-  return first + callList + rest;
+  return first + callList + (detail ? rest : "");
 }
 function renderGuideFold() {
   const G = guideData(day), head = G.days[0];
   const el = $("#guide"), fold = $("#guidefold");
   fold.setAttribute("aria-expanded", String(OPEN.guide)); el.hidden = !OPEN.guide;
   const lbl = G.rel ? G.rel.toLowerCase() : "on " + dayLbl(head.k);
-  $("#guideline").innerHTML = `<em>${head.spots}</em> open time${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${G.calls.length}</em> to propose` : ""} · next 3 days <em>${G.days.slice(1).reduce((a, d) => a + d.spots, 0)}</em> open`;
+  $("#guideline").innerHTML = `<em>${head.spots}</em> open time${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${Math.min(3, G.calls.length)}</em> to ask about` : ""}`;
   if (!OPEN.guide) return;
-  el.innerHTML = `<div class="ghead"><p>Open times for the CSRs to fill, built from the board as it stands. Rep names are suggestions only. Run every booking by the sales manager; he assigns the rep. Same day: at least 1 hour ahead, and get his OK before confirming with the customer.</p>
-    <button class="btn red" id="guide-copy">Copy for CSRs</button><button class="btn ghost" id="guide-open">Full guide</button></div>` + guideBody(G, false);
-  $("#guide-copy").onclick = () => copyText(guideText(guideData(day)));
+  el.innerHTML = `<div class="ghead"><p>What's open on ${dayLbl(head.k)}. Rep names are suggestions: run every booking by the sales manager. Same day: at least 1 hour ahead.</p>
+    <button class="btn red" id="guide-copy">Copy for CSRs</button><button class="btn ghost" id="guide-open">Next days</button></div>` + dayHtml(G);
+  $("#guide-copy").onclick = () => copyText(dayText(guideData(day)));
   $("#guide-open").onclick = () => { tab = "book"; setTab(); };
 }
 function renderBookPage() {
