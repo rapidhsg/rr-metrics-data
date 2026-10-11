@@ -82,6 +82,29 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .fold .chev{font-style:normal;font-size:14px;transition:transform .15s}
 .fold[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .fold.ideasf{border-left-color:var(--yellow)}
+.fold.guidef{border-left-color:var(--red)}
+.ideas.guide{border-left-color:var(--red)}
+.ghead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:2px 0 6px}
+.ghead p{margin:0;flex:1;min-width:220px;font-size:13px;color:var(--muted)}
+.gday{padding:8px 0;border-top:1px solid #EEEFF1}
+.gday h4{margin:0 0 4px;font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.05em;text-transform:uppercase}
+.gday h4 small{font-family:var(--body,inherit);font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted);font-size:12.5px;margin-left:6px}
+.gday ol,.gday ul{margin:0;padding-left:20px}
+.gday li{margin:3px 0;font-size:13.5px;line-height:1.4}
+.gday li span{color:var(--muted)}
+.gday .gcall{list-style:none;padding-left:0}
+.gday .gcall li{padding-left:0}
+.gnote{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.bpanel{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--red);border-radius:var(--r);padding:12px 16px;margin:14px 0}
+.bpanel h2{margin:0 0 4px;font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.04em;text-transform:uppercase}
+.bpanel h2 small{font-family:inherit;font-weight:600;font-size:13px;letter-spacing:0;text-transform:none;color:var(--muted);margin-left:8px}
+.brow{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) auto;gap:4px 14px;align-items:start;padding:9px 0;border-top:1px solid #EEEFF1;font-size:13.5px;line-height:1.4}
+.brow .who b{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.03em;text-transform:uppercase;margin-right:6px}
+.brow .who .badge{vertical-align:2px}
+.brow .what span{color:var(--muted)}
+.brow .val{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+.brow.full{opacity:.55}
+@media (max-width:640px){.brow{grid-template-columns:minmax(0,1fr) auto}.brow .what{grid-column:1/-1}}
 .ideas{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--yellow);border-radius:var(--r);padding:10px 14px;margin:0 0 12px}
 .ideas h3{margin:0 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--display);font-weight:800;font-size:18px;text-transform:uppercase}
 .ideas h3 small{font-family:var(--body);font-weight:500;font-size:12.5px;color:var(--muted);text-transform:none}
@@ -324,6 +347,7 @@ details[open]>summary::after{content:"–"}
 </div></header>
 <nav class="tabs" aria-label="Sections"><div class="tabs-in" role="tablist">
   <button class="tab" role="tab" data-tab="board" aria-selected="true">Board</button>
+  <button class="tab" role="tab" data-tab="book" aria-selected="false">CSR Guide</button>
   <button class="tab" role="tab" data-tab="map" aria-selected="false">Map</button>
   <button class="tab" role="tab" data-tab="reps" aria-selected="false">Reps</button>
   <button class="tab" role="tab" data-tab="results" aria-selected="false">Results</button>
@@ -338,11 +362,15 @@ details[open]>summary::after{content:"–"}
   <div class="banner" id="offline" hidden>Changes you make here won't save for the team in this view. Open the board from its link while signed in to save.</div>
 
   <section id="v-board">
+    <button class="fold guidef" id="guidefold" aria-expanded="false" aria-controls="guide"><b>CSR booking guide</b><span class="fline" id="guideline"></span><i class="chev" aria-hidden="true">▾</i></button>
+    <div class="ideas guide" id="guide" aria-live="polite" hidden></div>
     <button class="fold ideasf" id="ideasfold" aria-expanded="false" aria-controls="ideas" hidden><b>Ideas to add revenue</b><span class="fline" id="ideasline"></span><i class="chev" aria-hidden="true">▾</i></button>
     <div class="ideas" id="ideas" aria-live="polite" hidden></div>
     <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
   </section>
+
+  <section id="v-book" hidden><div id="bookpage"></div></section>
 
   <section id="v-map" hidden>
     <div class="mapgrid">
@@ -401,13 +429,13 @@ const monday = k => { const d = parse(k); d.setDate(d.getDate() - ((d.getDay() +
 const md = k => { const d = parse(k); return (d.getMonth() + 1) + "/" + d.getDate(); };
 const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-let OPEN = { sum: false, ideas: false };
+let OPEN = { sum: false, ideas: false, guide: false };
 try { OPEN = Object.assign(OPEN, JSON.parse(localStorage.getItem("rr-board-open") || "{}")); } catch (e) {}
 function setOpen(k, v) { OPEN[k] = v; try { localStorage.setItem("rr-board-open", JSON.stringify(OPEN)); } catch (e) {} render(); }
 let B = null, Z = null, day = null, tab = "board", moves = {}, roster = null, db = null, userApi = null, me = null, canWrite = true;
 const hidden = {}; let openPin = null, proj = null;
 try { day = localStorage.getItem("rr-board-day"); tab = localStorage.getItem("rr-board-tab") || "board"; } catch (e) {}
-if (/^#(board|map|reps|results)$/.test(location.hash)) tab = location.hash.slice(1);
+if (/^#(board|book|map|reps|results)$/.test(location.hash)) tab = location.hash.slice(1);
 
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
 function banner(t) { const o = $("#offline"); if (t) o.textContent = t; o.hidden = false; }
@@ -505,7 +533,7 @@ function problems(c) {
 /* ---------- shared: tabs, days, summary ---------- */
 function renderTop() {
   $$(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
-  ["board","map","reps","results"].forEach(t => $("#v-" + t).hidden = t !== tab);
+  ["board","book","map","reps","results"].forEach(t => $("#v-" + t).hidden = t !== tab);
   $("#dayrow").hidden = !(tab === "board" || tab === "map");
   const ks = [...new Set(B.cards.map(c => dkey(c.appt)))].sort();
   if (!ks.includes(day)) day = ks[0];
@@ -563,6 +591,7 @@ function render() {
   computeEff();
   renderTop();
   if (tab === "board") renderBoard();
+  else if (tab === "book") renderBookPage();
   else if (tab === "map") renderMap();
   else if (tab === "reps") renderReps();
   else renderResults();
@@ -570,7 +599,7 @@ function render() {
 
 /* ---------- board ---------- */
 function renderBoard() {
-  renderIdeas();
+  renderIdeas(); renderGuideFold();
   const today = B.cards.filter(c => dkey(c.appt) === day);
   const reps = B.reps.filter(r => onDay(r, day) || today.some(c => repOf(c) === r.name));
   const wd = DAYN[parse(day).getDay()];
@@ -681,8 +710,8 @@ function slotFor(c, r, k, nearMin) {   // a start time on day k this rep can tak
   }
   return best;
 }
-function buildIdeas() {
-  const k = day, out = [], seen = new Set();
+function buildIdeas(k = day) {
+  const out = [], seen = new Set();
   const minGain = 500;
   const today = B.cards.filter(c => dkey(c.appt) === k);
   // 1) call to reschedule today's customer into a better closer's open time, or rescue one nobody can take
@@ -694,7 +723,7 @@ function buildIdeas() {
       const t = slotFor(c, r, k, mins(c.appt)); if (t == null || t === mins(c.appt)) continue;
       if (!best || g > best.g) best = { g, r, t };
     }
-    if (best) out.push({ key: `rs-${c.id}-${best.r.name}-${best.t}`, kind: cur ? "move" : "need", tag: cur ? "Call to reschedule" : "Needs a call", c, g: best.g,
+    if (best) out.push({ key: `rs-${c.id}-${best.r.name}-${best.t}`, kind: cur ? "move" : "need", tag: cur ? "Call to reschedule" : "Needs a call", c, g: best.g, t: best.t, rep: best.r.name,
       html: `Call <b>${esc(c.name || "the customer")}</b> (${esc(c.town || "")}) to move <b>${hm(c.appt)} → ${hm(k + "T" + m2t(best.t))}</b>. That fits ${esc(best.r.short)}${cur ? ` instead of ${esc(short(cur))}` : ""}: <span>${pct(c.odds[best.r.name]?.close)} vs ${cur ? pct(c.odds[cur]?.close) : "no rep"} to close.</span>` });
   }
   // 2) move a later appointment up into today with a stronger closer who has room (each card and each open slot used once)
@@ -717,7 +746,7 @@ function buildIdeas() {
     if ((usedR[x.r.name] || 0) >= room) continue;
     usedC.add(x.c.id); usedR[x.r.name] = (usedR[x.r.name] || 0) + 1;
     const when = `${DAYN[parse(dkey(x.c.appt)).getDay()]} ${md(dkey(x.c.appt))} ${hm(x.c.appt)}`;
-    out.push({ key: `up-${x.c.id}-${x.r.name}-${k}`, kind: "up", tag: x.cur ? "Move up" : "Rescue", c: x.c, g: x.g,
+    out.push({ key: `up-${x.c.id}-${x.r.name}-${k}`, kind: "up", tag: x.cur ? "Move up" : "Rescue", c: x.c, g: x.g, t: x.t, rep: x.r.name,
       html: `Call <b>${esc(x.c.name || "the customer")}</b> (${esc(x.c.town || "")}, booked ${when}${x.cur ? "" : ", nobody free then"}) to come in <b>${DAYN[parse(k).getDay()]} ${hm(k + "T" + m2t(x.t))}</b> with ${esc(x.r.short)}. <span>${pct(x.c.odds[x.r.name]?.close)} to close${x.cur ? ` vs ${pct(x.c.odds[x.cur]?.close)} with ${esc(short(x.cur))}` : ""}, and sooner sits close better.</span>` });
   }
   // 3) open slots for the strongest closers: book a fresh same-day lead into them
@@ -748,6 +777,141 @@ async function renderIdeas() {
 async function dismissIdea(key) {
   dismissed[key] = true; renderIdeas();
   if (db) try { await db.doc("ideas/" + key.replace(/[^A-Za-z0-9_\-.~:@+]/g, "_").slice(0, 190)).set({ key, done: true, by: me?.id || null, at: new Date().toISOString() }); } catch (e) {}
+}
+
+
+/* ---------- CSR booking guide: open spots to fill, today first, built from the board as it stands ---------- */
+const LEAD_MIN = 60;   // same-day: book at least an hour ahead, and confirm with the sales manager
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const todayKey = () => iso(new Date());
+const addDays = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return iso(d); };
+const dayLbl = k => `${DAYN[parse(k).getDay()]} ${md(k)}`;
+const t2s = m => hm("2000-01-01T" + m2t(m));
+const cityOf = z => (z && B.zips && B.zips[z] && B.zips[z].city) || null;
+const plain = h => { const d = document.createElement("div"); d.innerHTML = h; return d.textContent.replace(/\s+/g, " ").trim(); };
+const isHot = r => /hot streak/i.test(r.note || "");
+const spotVal = r => (r.close || 0) * (B.tickets?.all?.any || 0);
+function openFor(r, k) {   // open start times on day k inside his hours, home-by, daily limit and the 2-hour gap
+  const s = r.week && r.week[DAYN[parse(k).getDay()]]; if (!s || isOffDay(r, k)) return null;
+  const mine = dayCards(r.name, k), left = r.limits.per_day - mine.length;
+  const len = B.appointment?.minutes || 90;
+  let lo = hm2m(s[0]) ?? 600; const hi0 = hm2m(s[1]) ?? 1140, hb = hm2m(s[2]);
+  const hi = hb != null ? Math.min(hi0, hb - len - 30) : hi0;
+  const today = k === todayKey(); if (today) lo = Math.max(lo, nowMin() + LEAD_MIN);
+  const ok = [];
+  if (left > 0) for (let t = Math.ceil(lo / 30) * 30; t <= hi; t += 30) if (!mine.some(o => Math.abs(mins(o.appt) - t) < GAP())) ok.push(t);
+  const wins = []; for (const t of ok) { const w = wins[wins.length - 1]; if (w && t - w.b === 30) w.b = t; else wins.push({ a: t, b: t }); }
+  let n = 0, last = -1e9; for (const t of ok) if (t - last >= GAP()) { n++; last = t; }
+  return { r, k, mine, spots: Math.min(Math.max(left, 0), n), wins, today };
+}
+const winTxt = w => w.a === w.b ? `at ${t2s(w.a)}` : `start ${t2s(w.a)} to ${t2s(w.b)}`;
+const winsTxt = ws => ws.map(winTxt).join(", or ");
+function whereTxt(o) {
+  if (o.mine.length) return "He's in " + o.mine.map(c => c.town ? `${c.town} at ${hm(c.appt)}` : `an appointment at ${hm(c.appt)}`).join(", ");
+  const city = cityOf(o.r.home_zip);
+  return `Nothing booked yet, starts from home${city ? ` (${city})` : o.r.home_zip ? ` (${o.r.home_zip})` : ""}`;
+}
+function guideData() {
+  const t0 = todayKey();
+  const reps = B.reps.filter(r => r.lane !== "commercial");
+  const lanes = B.reps.filter(r => r.lane === "commercial");
+  const dayOpen = (k, list) => list.map(r => openFor(r, k)).filter(o => o && o.spots > 0).sort((a, b) => spotVal(b.r) - spotVal(a.r));
+  let k0 = t0, rolled = false;
+  if (!dayOpen(t0, reps).length && nowMin() >= 15 * 60) { k0 = addDays(t0, 1); rolled = true; }   // today is done: lead with tomorrow
+  const days = [0, 1, 2, 3].map(i => addDays(k0, i)).map(k => {
+    const open = dayOpen(k, reps), comm = dayOpen(k, lanes);
+    const spots = open.reduce((a, o) => a + o.spots, 0);
+    const value = open.reduce((a, o) => a + o.spots * spotVal(o.r), 0);
+    const nobody = B.cards.filter(c => dkey(c.appt) === k && !repOf(c));
+    return { k, open, comm, spots, value, nobody, working: reps.filter(r => !isOffDay(r, k)).length };
+  });
+  const first = days[0];
+  const lim = first.k === t0 ? nowMin() + LEAD_MIN : -1;
+  const calls = buildIdeas(first.k).filter(i => i.kind !== "slot" && (i.t == null || i.t >= lim));
+  const called = new Set(calls.map(i => i.c && i.c.id));
+  for (const d of days) d.nobody = d.nobody.filter(c => !called.has(c.id));
+  return { t0, rolled, days, calls, at: new Date() };
+}
+const spotLine = o => `${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close): ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}`;
+function guideText(G) {
+  const L = [], head = G.days[0];
+  const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  L.push(`CSR BOOKING GUIDE · ${dayLbl(head.k)} · updated ${clock}`);
+  L.push(`Same-day bookings: at least 1 hour ahead, and confirm with the sales manager before you book.`);
+  L.push("");
+  L.push(`${G.rolled || head.k !== G.t0 ? "TOMORROW" : "TODAY"}, ${dayLbl(head.k)}: FILL THESE FIRST${head.spots ? ` (${head.spots} open spot${head.spots > 1 ? "s" : ""}, about ${money(head.value)} in expected sales)` : ""}`);
+  if (!head.open.length) L.push("No open spots left. Book new leads into the next days below.");
+  head.open.forEach((o, i) => { L.push(`${i + 1}. ${spotLine(o)}.`); L.push(`   ${whereTxt(o)}. Best for leads near there.`); });
+  head.comm.forEach(o => L.push(`Commercial leads only: ${o.r.short}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}.`));
+  if (G.calls.length || head.nobody.length) {
+    L.push(""); L.push("CALL NOW");
+    G.calls.slice(0, 6).forEach(i => L.push(`- ${plain(i.html)}`));
+    head.nobody.forEach(c => L.push(`- No rep free for ${c.name || "a customer"} (${c.town || ""}) at ${hm(c.appt)}. Call to offer another time.`));
+  }
+  for (const d of G.days.slice(1)) {
+    L.push(""); L.push(`${dayLbl(d.k).toUpperCase()}: ${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""}` : "full"}`);
+    d.open.forEach(o => L.push(`- ${o.r.short}: ${winsTxt(o.wins)} (${o.spots} spot${o.spots > 1 ? "s" : ""})`));
+    d.comm.forEach(o => L.push(`- Commercial only, ${o.r.short}: ${winsTxt(o.wins)}`));
+    d.nobody.forEach(c => L.push(`- No rep free for ${c.name || "a customer"} (${c.town || ""}) at ${hm(c.appt)}. Call to offer another time.`));
+  }
+  L.push(""); L.push("Offer the earliest open time first. Same day beats any other day. Steer leads toward the rep already working nearby.");
+  return L.join("\n");
+}
+async function copyText(t) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(t); ok = true; } catch (e) {}
+  if (!ok) { const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { ok = document.execCommand("copy"); } catch (e) {} ta.remove(); }
+  toast(ok ? "Copied. Paste it to the CSRs." : "Couldn't copy here. Open the CSR Guide tab and select the text.");
+}
+function guideBody(G, detail) {
+  const head = G.days[0];
+  const callList = (G.calls.length || head.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${
+    G.calls.slice(0, detail ? 99 : 6).map(i => `<li><span class="itag ${i.kind}">${esc(i.tag)}</span> ${i.html}${detail && i.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${
+    head.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : "";
+  const label = G.rolled || head.k !== G.t0 ? "Tomorrow" : "Today";
+  const first = `<div class="gday"><h4>${label}, ${dayLbl(head.k)}: fill these first<small>${head.spots ? `${head.spots} open spot${head.spots > 1 ? "s" : ""} · about ${money(head.value)} in expected sales` : "no open spots left"}</small></h4>
+    ${head.open.length ? `<ol>${head.open.map(o => `<li><b>${esc(o.r.short)}</b> <span>(${esc(o.r.rating)}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close)</span>: <b>${o.spots} spot${o.spots > 1 ? "s" : ""}</b>, ${esc(winsTxt(o.wins))}.<br><span>${esc(whereTxt(o))}. Best for leads near there.</span></li>`).join("")}</ol>` : `<p class="gnote">Book new leads into the next days below.</p>`}
+    ${head.comm.map(o => `<p class="gnote">Commercial leads only: ${esc(o.r.short)}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${esc(winsTxt(o.wins))}.</p>`).join("")}</div>`;
+  const rest = G.days.slice(1).map(d => `<div class="gday"><h4>${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""}` : "full"}</small></h4>${d.open.length || d.comm.length || d.nobody.length ? `<ul>${
+    d.open.map(o => `<li><b>${esc(o.r.short)}</b>: ${esc(winsTxt(o.wins))} <span>(${o.spots} spot${o.spots > 1 ? "s" : ""})</span></li>`).join("")}${
+    d.comm.map(o => `<li><span>Commercial only,</span> <b>${esc(o.r.short)}</b>: ${esc(winsTxt(o.wins))}</li>`).join("")}${
+    d.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}.</li>`).join("")}</ul>` : ""}</div>`).join("");
+  return first + callList + rest;
+}
+function renderGuideFold() {
+  const G = guideData(), head = G.days[0];
+  const el = $("#guide"), fold = $("#guidefold");
+  fold.setAttribute("aria-expanded", String(OPEN.guide)); el.hidden = !OPEN.guide;
+  const lbl = G.rolled || head.k !== G.t0 ? "tomorrow" : "today";
+  $("#guideline").innerHTML = `<em>${head.spots}</em> open spot${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${G.calls.length}</em> call${G.calls.length > 1 ? "s" : ""} to make` : ""} · next 3 days <em>${G.days.slice(1).reduce((a, d) => a + d.spots, 0)}</em> open`;
+  if (!OPEN.guide) return;
+  el.innerHTML = `<div class="ghead"><p>What the CSRs should book, built from the board as it stands. Same-day: book 1 hour or more ahead and confirm with the sales manager.</p>
+    <button class="btn red" id="guide-copy">Copy for CSRs</button><button class="btn ghost" id="guide-open">Full guide</button></div>` + guideBody(G, false);
+  $("#guide-copy").onclick = () => copyText(guideText(guideData()));
+  $("#guide-open").onclick = () => { tab = "book"; setTab(); };
+}
+function renderBookPage() {
+  if (!Z && !mapReady) loadZips().then(() => { if (tab === "book") renderBookPage(); });
+  const G = guideData(), head = G.days[0];
+  const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const rows = d => B.reps.filter(r => !isOffDay(r, d.k)).map(r => {
+    const o = openFor(r, d.k) || { mine: [], spots: 0, wins: [] };
+    const comm = r.lane === "commercial";
+    return { r, o, comm, v: o.spots * spotVal(r) };
+  }).sort((a, b) => (a.comm - b.comm) || (b.v - a.v)).map(({ r, o, comm, v }) => `<div class="brow${o.spots ? "" : " full"}" style="--rc:${color(r.name)}">
+      <div class="who"><b>${esc(r.short)}</b><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><br><span style="color:var(--muted)">${pct(r.close)} close${isHot(r) ? " · hot streak" : ""}${comm ? " · commercial only" : ""}</span></div>
+      <div class="what">${o.spots ? `<b>${o.spots} open spot${o.spots > 1 ? "s" : ""}</b>: ${esc(winsTxt(o.wins))}` : `<b>Full</b>`}<br><span>${esc(whereTxt({ r, mine: o.mine }))}</span></div>
+      <div class="val">${o.spots ? money(v) : ""}</div></div>`).join("");
+  const off = d => B.reps.filter(r => isOffDay(r, d.k)).map(r => r.short);
+  $("#bookpage").innerHTML = `<div class="bpanel"><div class="ghead"><p>Open spots for the CSRs to fill, best first. Built from the board as it stands, so when the sales manager moves appointments or marks a rep off, this changes with it. A new booking shows up here after the next AccuLynx pull. Same-day: book at least 1 hour ahead and confirm with the sales manager. Updated ${clock}.</p>
+      <button class="btn red" id="book-copy">Copy for CSRs</button></div></div>
+    ${G.days.map((d, i) => `<div class="bpanel"><h2>${i === 0 ? (G.rolled || d.k !== G.t0 ? "Tomorrow, " : "Today, ") : ""}${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""} · about ${money(d.value)} expected` : "full"}${off(d).length ? ` · off: ${esc(off(d).join(", "))}` : ""}</small></h2>
+      ${rows(d)}
+      ${i === 0 && (G.calls.length || d.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${G.calls.map(x => `<li><span class="itag ${x.kind}">${esc(x.tag)}</span> ${x.html}${x.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(x.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${d.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time. <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(c.url)}" target="_blank" rel="noopener">AccuLynx</a></li>`).join("")}</ul></div>` : ""}
+      ${i > 0 && d.nobody.length ? `<div class="gday"><h4>Needs a call</h4><ul class="gcall">${d.nobody.map(c => `<li>No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : ""}
+    </div>`).join("")}
+    <p class="gnote" style="margin-bottom:24px">Spots count each rep's hours, home-by time, days off, daily limit and the 2-hour gap. A spot's value is his close rate times the average ticket. Offer the earliest open time first; same day beats any other day; steer leads toward the rep already working nearby.</p>`;
+  $("#book-copy").onclick = () => copyText(guideText(guideData()));
 }
 
 let resetAsk = null;   // null, "day" or "all": waiting for the second click
@@ -1117,6 +1281,8 @@ function setTab() { try { localStorage.setItem("rr-board-tab", tab); } catch (e)
 $$(".tab").forEach(b => b.onclick = () => { tab = b.dataset.tab; setTab(); });
 $("#sumfold").onclick = () => setOpen("sum", !OPEN.sum);
 $("#ideasfold").onclick = () => setOpen("ideas", !OPEN.ideas);
+$("#guidefold").onclick = () => setOpen("guide", !OPEN.guide);
+setInterval(() => { if (!B) return; if (tab === "book") renderBookPage(); else if (tab === "board") renderGuideFold(); }, 5 * 60000);   // spots drop off as the day goes on
 $("#days").addEventListener("click", e => { const b = e.target.closest(".day"); if (!b) return; day = b.dataset.k; try { localStorage.setItem("rr-board-day", day); } catch (er) {} render(); });
 
 async function connect() {
