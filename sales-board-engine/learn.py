@@ -2,6 +2,8 @@
 Reads memory/outcomes.csv (every finished sit, which experiment arm its day was on, and how good the lead was),
 compares champion days with challenger days for the running experiment, and keeps the winner when the gap is real.
 Then starts the next experiment from the queue. Writes assignment_rules.json, memory/experiments.csv and the learning log.
+With learning.auto_promote false (the setting now), a winner is only PROPOSED: it goes to learning.proposals and the
+weekly message to Joe. Approve with: python learn.py --approve <dial>   (sets the dial, clears the proposal, logs it)
 Usage: python learn.py [today]"""
 import json, math, sys
 from datetime import datetime
@@ -43,7 +45,9 @@ def main(today=None):
             L["dials"][ex["dial"]]["value"] = ex["challenger"]; verdict = "promoted"
             log.append(line + f" PROMOTED: {ex['dial']} is now {ex['challenger']}.")
         else:
-            verdict = "proposed"; log.append(line + f" PROPOSED for approval: set {ex['dial']} to {ex['challenger']}.")
+            verdict = "proposed"; log.append(line + f" PROPOSED for Joe's approval: set {ex['dial']} to {ex['challenger']}. Nothing changes until he approves.")
+            L.setdefault("proposals", []).append(dict(dial=ex["dial"], from_value=ex["champion"], to_value=ex["challenger"],
+                                                      gain_points=round(gain, 2), z=round(z, 2), sits=n_a + n_b, decided=today.strftime("%Y-%m-%d")))
     elif gain <= -L["min_gain_points"] and z <= -L["confidence_z"]:
         verdict = "rejected"; log.append(line + f" REJECTED: keeping {ex['champion']}.")
     elif weeks >= L["max_weeks"]:
@@ -85,5 +89,17 @@ def save(R, log, today):
     print("\n".join(log))
 
 
+def approve(dial, today=None):
+    today = pd.Timestamp(today or datetime.now()).normalize()
+    R = json.loads(RULES_PATH.read_text()); L = R["learning"]
+    keep = [p for p in L.get("proposals", []) if p["dial"] != dial]; hit = [p for p in L.get("proposals", []) if p["dial"] == dial]
+    if not hit: print(f"no proposal for {dial}"); return
+    p = hit[-1]; L["dials"][dial]["value"] = p["to_value"]; L["proposals"] = keep
+    ex = L.get("experiment") or {}
+    if ex.get("active") and ex.get("dial") == dial: ex["champion"] = p["to_value"]
+    save(R, [f"Joe approved: {dial} is now {p['to_value']} (was {p['from_value']}, +{p['gain_points']} points on {p['sits']} sits)."], today)
+
+
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else None)
+    if len(sys.argv) > 2 and sys.argv[1] == "--approve": approve(sys.argv[2])
+    else: main(sys.argv[1] if len(sys.argv) > 1 else None)

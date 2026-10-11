@@ -49,3 +49,4 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 ## 2026-10-11 assignment logic improves itself
 - New weekly step learn.py tests the assignment dials live on alternating days and keeps a new value only when it closes clearly more (60+ sits per side, 2+ points better after adjusting for lead quality, z 1.64). Hard rules never change.
 - First test from 2026-10-12: hot streak boost 0 (today) vs 0.5 (hot reps get half their edge over their usual odds as extra weight). Next up: driving weight, then same-day weight.
+- Joe's call: winners are proposed to him first, never switched on automatically (auto_promote false).

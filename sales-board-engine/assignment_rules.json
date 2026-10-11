@@ -402,7 +402,7 @@
   },
   "learning": {
     "_read_me": "How the assignment logic improves on its own. Each dial has a value and a safe range. learn.py runs one experiment at a time: on half the days (alternating by date) the board uses the challenger value. Once both halves have enough finished sits, it compares how they actually closed, adjusted for how good the leads were, and keeps the winner if the gap is real. Every decision is written to memory/learning_log.md and memory/experiments.csv. Hard rules (hours, home-by, days off, lanes, daily limits, caps, no 5th sit) are never touched. Set auto_promote to false to make it propose instead of change.",
-    "auto_promote": true,
+    "auto_promote": false,
     "min_sits_per_side": 60,
     "min_gain_points": 2.0,
     "confidence_z": 1.64,
@@ -458,6 +458,8 @@
       "challenger": 0.5,
       "challenger_parity": 1,
       "started": "2026-10-12"
-    }
+    },
+    "proposals": [],
+    "read_me": "auto_promote false: a winning value is only proposed (learning.proposals, weekly message to Joe) and changes nothing until Joe approves (python learn.py --approve <dial>)."
   }
 }

@@ -83,8 +83,8 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
   with anyone, so a tough day of leads does not count against a dial. When one side has 60+ sits and wins by 2+ points
   with real confidence (z 1.64), the winner becomes the new value; otherwise the current value stays. Each test runs at
   most 8 weeks, then the next dial in the queue gets tested. Guardrails: values stay inside each dial's range, and hard
-  rules (hours, days off, lanes, daily limits, promises) are never touched. Set `learning.auto_promote` to false to make
-  it propose changes only. Results go to `memory/experiments.csv`.
+  rules (hours, days off, lanes, daily limits, promises) are never touched. Right now `learning.auto_promote` is false: a winner is
+  only proposed to Joe in the weekly message, and changes nothing until he approves (`python learn.py --approve <dial>`). Results go to `memory/experiments.csv`.
 - Every change is written in plain words to `memory/learning_log.md`.
 
 ## Files
