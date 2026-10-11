@@ -46,10 +46,15 @@ const status = existsSync(statusPath) ? JSON.parse(readFileSync(statusPath, "utf
 const best = {};
 const seen = {}; // what each schedule last delivered, saved to status.json so problems are easy to spot
 for (const [id, label] of Object.entries(SCHEDULES)) {
-  const latest = await get(`${BASE}/reports/scheduled-reports/${id}/runs/latest`, { allow404: true });
+  // AccuLynx's /runs/latest has lagged behind a run that was already emailed (Sun Oct 11 2026), so list the
+  // recent runs and take the newest by date. /runs/latest stays as the backup if the list comes back empty.
+  const list = await get(`${BASE}/reports/scheduled-reports/${id}/runs?pageSize=10&pageStartIndex=0`, { allow404: true }).catch((e) => { console.log(`${label}: run list failed (${e.message})`); return null; });
+  const runs = (list?.items || []).filter((r) => r?.runInstanceId && r?.date).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const viaLatest = await get(`${BASE}/reports/scheduled-reports/${id}/runs/latest`, { allow404: true }).catch(() => null);
+  const latest = runs[0] && (!viaLatest?.date || String(runs[0].date) >= String(viaLatest.date)) ? runs[0] : viaLatest;
   if (!latest?.runInstanceId) { console.log(`${label}: no run yet`); seen[label] = { runDate: null, files: [] }; continue; }
   const rec = await get(`${BASE}/reports/scheduled-reports/${id}/runs/${latest.runInstanceId}/recipients`);
-  seen[label] = { runDate: latest.date, files: [] };
+  seen[label] = { runDate: latest.date, files: [], listNewest: runs[0]?.date || null, apiLatest: viaLatest?.date || null };
   for (const item of rec?.items || []) {
     for (const f of item.files || []) {
       const name = decodeURIComponent((f.fileUrl || "").split("?")[0].split("/").pop()).toLowerCase();
