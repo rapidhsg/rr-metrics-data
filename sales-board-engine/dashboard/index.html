@@ -127,6 +127,20 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .load{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
 .load b{color:var(--ink);font-family:var(--display);font-weight:700;font-size:15px}
 .load .over b{color:var(--bad)}
+.meterwrap{position:relative;margin-top:6px;cursor:help;outline:none}
+.mlabel{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+.mlabel b{color:var(--ink)}
+.meterwrap .meter{margin-top:0}
+.meterwrap .meter i{height:5px}
+.mtip{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:15;background:var(--black);color:var(--white);border-radius:4px;padding:9px 11px;font-size:12.5px;line-height:1.4;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.mtip>*{display:block}
+.mtip span{display:flex;gap:7px;align-items:flex-start;margin-top:4px}
+.mtip i.k{flex:none;width:14px;height:6px;margin-top:6px;background:#555;border-radius:1px}
+.mtip i.k.on{background:var(--white)}
+.mtip i.k.min{background:#555;box-shadow:inset 0 -2px 0 var(--red)}
+.mtip small{color:#B9BBC0;margin-top:6px}
+.mtip .bad{color:#FF8A80}
+.meterwrap:hover .mtip,.meterwrap:focus .mtip,.meterwrap.open .mtip{display:block}
 .wk{margin-top:4px;font-size:12.5px;color:var(--muted)}
 .wk b{color:var(--ink);font-weight:700}
 .wk .bad{color:var(--bad);font-weight:600}
@@ -573,8 +587,15 @@ function renderBoard() {
       <div class="ch-row"><h2 title="${esc(r.name)}">${esc(r.display || r.short)}</h2><span class="pct n" title="Close rate, rolling ${r.window} days">${pct(r.close)}</span></div>
       <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today: <b>${mine.length}</b> of ${r.limits.per_day}</span>
 </div>
-      <div class="wk">This week: <b>${wc}</b> booked · ${room - wc > 0 ? `room for <b>${room - wc}</b> more` : wc > room ? `<span class="bad">${wc - room} over what his schedule holds</span>` : "full"}</div>
-      ${prom ? `<div class="wk" title="7 a week for a full schedule, scaled to the days and hours he works. Measured on the last quarter.">Promise ${prom} a week · ${r.promise_avg == null ? "new" : r.promise_avg >= r.promise ? `on pace (${r.promise_avg})` : `<span class="bad">behind (${r.promise_avg})</span>`}</div>` : ""}
+      ${room ? `<div class="meterwrap" tabindex="0" aria-label="This week: ${wc} booked of ${room} spots">
+        <div class="mlabel"><span>This week</span><span><b>${wc}</b> of ${room}</span></div>
+        <div class="meter">${Array.from({ length: Math.max(room, wc) }, (_, i) => `<i class="${i < wc ? (i >= room ? "over" : "on") : ""}${prom && i === prom - 1 ? " min" : ""}"></i>`).join("")}</div>
+        <div class="mtip" role="tooltip"><b>Week of ${md(wk)}</b>
+          <span><i class="k on"></i>${wc} booked</span>
+          <span><i class="k"></i>${Math.max(0, room - wc)} open spot${room - wc === 1 ? "" : "s"} his schedule can still hold${wc > room ? ` (<b class="bad">${wc - room} over</b>)` : ""}</span>
+          ${prom ? `<span><i class="k min"></i>Promise: ${prom} a week${r.promise < 6.95 ? `, scaled to his schedule (${Math.round(r.availability * 100)}% of a full one)` : ""}. ${r.promise_avg == null ? "" : r.promise_avg >= r.promise ? `On pace: ${r.promise_avg} a week last quarter.` : `<b class="bad">Behind: ${r.promise_avg} a week last quarter.</b>`}</span>` : ""}
+          <small>Spots count his working days this week, hours, home-by time, days off and his daily limit of ${r.limits.per_day}.</small></div>
+      </div>` : ""}
       ${r.note ? `<div class="rnote${/review/i.test(r.note) ? " bad" : ""}">${esc(r.note)}</div>` : ""}
     </div><div class="list" data-rep="${esc(r.name)}">${mine.length ? mine.map(card).join("") : '<div class="empty">No appointments. Drag one here.</div>'}</div></section>`);
   }
@@ -759,6 +780,7 @@ async function toggleOff(name, k, working) {
 }
 
 function wireBoard() {
+  $$(".meterwrap").forEach(el => el.onclick = e => { e.stopPropagation(); const o = el.classList.contains("open"); $$(".meterwrap.open").forEach(x => x.classList.remove("open")); if (!o) el.classList.add("open"); });
   $$("[data-avail]").forEach(el => el.onchange = () => toggleOff(el.dataset.avail, day, el.checked));
   $$("[data-reset]").forEach(el => el.onclick = () => { resetAsk = el.dataset.reset; render(); });
   $$("[data-reset-cancel]").forEach(el => el.onclick = () => { resetAsk = null; render(); });
