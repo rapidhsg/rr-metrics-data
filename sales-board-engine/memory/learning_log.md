@@ -45,3 +45,7 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 ## 2026-10-11 tracking predictions over time
 - Every run now logs what the board predicts for each upcoming day (memory/forecasts.csv): appointments booked, expected sales and $, same-day signs and $, bookings still to come, full-team value.
 - After each day finishes, outcomes.py scores it (memory/accuracy_daily.csv): predicted vs actual appointments, sales, $ and same-day signs, updated as late deals sign. The weekly self-test reports it and the Results tab shows it.
+
+## 2026-10-11 assignment logic improves itself
+- New weekly step learn.py tests the assignment dials live on alternating days and keeps a new value only when it closes clearly more (60+ sits per side, 2+ points better after adjusting for lead quality, z 1.64). Hard rules never change.
+- First test from 2026-10-12: hot streak boost 0 (today) vs 0.5 (hot reps get half their edge over their usual odds as extra weight). Next up: driving weight, then same-day weight.

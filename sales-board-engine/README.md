@@ -76,6 +76,15 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
   pick after manager moves, who actually ran it in AccuLynx, the predicted odds for each, and whether it sat, sold and
   sold the same day. Late sales update the row on later runs. The weekly self-test reports close rate when the engine's
   pick ran the sit vs someone else vs a manager move, each against what was predicted.
+- **Every week** (`learn.py`): the assignment logic tests itself live. Three dials decide how picks are made: how much
+  extra a hot streak counts (`hot_boost_share`), how much driving counts (`route_close_points_per_10_miles`) and how much
+  same-day signs count (`same_day_weight_scale`). One dial at a time gets a challenger value, used on alternating days
+  (the other days keep the current value). Every finished sit is scored as sold minus how likely that lead was to close
+  with anyone, so a tough day of leads does not count against a dial. When one side has 60+ sits and wins by 2+ points
+  with real confidence (z 1.64), the winner becomes the new value; otherwise the current value stays. Each test runs at
+  most 8 weeks, then the next dial in the queue gets tested. Guardrails: values stay inside each dial's range, and hard
+  rules (hours, days off, lanes, daily limits, promises) are never touched. Set `learning.auto_promote` to false to make
+  it propose changes only. Results go to `memory/experiments.csv`.
 - Every change is written in plain words to `memory/learning_log.md`.
 
 ## Files
@@ -89,6 +98,7 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
 | `assign.py` | Hands out appointments by the rules | Called by run.py |
 | `zip_centers.json` | Center point of each Long Island zip, for drive times | Code |
 | `selftest.py` | Weekly test, retune, self-correction | Runs weekly |
+| `learn.py` | Weekly live experiment on the assignment dials; keeps winners | Runs weekly after selftest.py |
 | `sync_roster.py` | Copies the board's Reps tab and days off into the rules | Runs before each engine run |
 | `board.py` | Builds board.json for the dashboard (cards, odds, money, map, results, forecast) | Runs after run.py |
 | `dashboard/` | The board page (no customer data; board.json is built per run) | Code |
@@ -101,6 +111,7 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
 | `memory/plans.csv` | Every recommended assignment, to check against results | The engine |
 | `memory/board_moves.csv` | Daily snapshot of manager moves and days off made on the board | `outcomes.py --save-board`, every run |
 | `memory/outcomes.csv` | Every finished appointment: engine pick, board pick, who actually ran it, predicted odds for each, sat, sold, same day | `outcomes.py`, every run |
+| `memory/experiments.csv` | Every finished assignment experiment: dial, values, sits each side, gain, verdict | `learn.py`, weekly |
 | `memory/hot.json` | Which reps are currently hot | The engine |
 | `memory/forecasts.csv` | What the board predicted for every upcoming day, each run (sales, $, same day, bookings still to come, full-team value) | `board.py`, every run |
 | `memory/accuracy_daily.csv` | Each finished day: predicted vs actual appointments, sales, $ and same-day signs | `outcomes.py`, every run |

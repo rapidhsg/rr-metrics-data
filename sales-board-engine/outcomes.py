@@ -40,6 +40,7 @@ def main(path, today):
     last = plans.sort_values("run_date").groupby("guid").last().reset_index()        # the plan as of the appointment day
     preds = preds[preds.run_date <= preds.appt_date].sort_values("run_date").groupby(["guid", "rep"]).last().reset_index()
     pc = preds.set_index(["guid", "rep"])["close"].astype(float).to_dict()
+    lead_base = preds.assign(c=preds.close.astype(float)).groupby("guid").c.mean().to_dict()   # how good the lead was, any rep
     bm = MEM / "board_moves.csv"
     board = {}
     if bm.exists():
@@ -57,7 +58,8 @@ def main(path, today):
         ap, ia = j["Approved Milestone Date"], j["Initial Appointment Date"]
         sat = bool(j["Primary Estimate Total"] > 0)
         sold = bool(pd.notna(ap)); same = bool(sold and (ap.normalize() - ia.normalize()).days <= 0)
-        out.append(dict(appt=r.appt, guid=r.guid, plan_run=r.run_date,
+        out.append(dict(appt=r.appt, guid=r.guid, plan_run=r.run_date, arm=getattr(r, "arm", "champion") if isinstance(getattr(r, "arm", None), str) else "champion",
+                        lead_base=round(lead_base.get(r.guid, float("nan")), 4),
                         recommended=rec, rec_close=pc.get((r.guid, rec), ""), board=brd, board_close=pc.get((r.guid, brd), ""),
                         actual=actual, actual_close=pc.get((r.guid, actual), ""),
                         followed_engine=actual == rec, followed_board=actual == brd, manager_moved=brd != rec,

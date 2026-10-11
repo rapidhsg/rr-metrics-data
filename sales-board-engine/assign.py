@@ -50,6 +50,20 @@ def promise_for(info, df, today):
     share = day_share * time_share
     return P["per_week_average"] * share, share
 
+# ---------------- self-improving dials ----------------
+# The assignment "dials" (hot boost, route weight, same-day weight) live in assignment_rules.json -> learning.dials.
+# When an experiment is running, half the days (by date) use the challenger value; learn.py later compares how those
+# days actually closed against the champion days and keeps the winner. Hard rules (hours, lanes, limits) never change.
+def arm_for(day):
+    ex = RULES.get("learning", {}).get("experiment")
+    if not ex or not ex.get("active"): return "champion"
+    return "challenger" if pd.Timestamp(day).toordinal() % 2 == ex.get("challenger_parity", 1) else "champion"
+
+def dial(name, day):
+    L = RULES.get("learning", {}); d = L.get("dials", {}).get(name, {}); ex = L.get("experiment") or {}
+    if ex.get("active") and ex.get("dial") == name and arm_for(day) == "challenger": return ex["challenger"]
+    return d.get("value", 0)
+
 HOT_FILE = E.MEM / "hot.json"
 HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
 
@@ -130,6 +144,8 @@ def plan(scores, df, today, now=None):
     if now is not None: leads = leads[leads.when >= pd.Timestamp(now)].reset_index(drop=True)
     S = pd.DataFrame(scores["scores"]); S = S[S.guid.isin(leads.guid)]; val = S.set_index(["guid", "rep"])
     w = scores["meta"]["same_day_weight"]
+    avgp = pd.DataFrame(scores["scores"]).groupby("rep").close.mean().to_dict()
+    hot_gap = {r: max(0.0, (st[r]["close"] or 0) - avgp.get(r, 0)) for r in reps if (st[r].get("note") or "").startswith("Hot streak")}
     leads["min"] = leads.when.dt.hour * 60 + leads.when.dt.minute
     leads.loc[leads.appt.str.len() <= 10, "min"] = 12 * 60
     zips = df.dropna(subset=["guid"]).set_index("guid")["Job: Location Zip Code"].astype(str).str[:5]
@@ -155,10 +171,12 @@ def plan(scores, df, today, now=None):
             elif l.spec and info["lane"] == "commercial": adj = -RULES["lanes"]["specialty_backup_penalty"]; tag = "Specialty backup"
             if reason: why_no[(l.guid, r)] = reason; continue
             v = val.loc[(l.guid, r)]
+            wd = dial("same_day_weight_scale", l.day) * w; rw = dial("route_close_points_per_10_miles", l.day) / 1000
+            boost = dial("hot_boost_share", l.day) * hot_gap.get(r, 0)   # trust a hot rep's recent record this much more
             start_zip = office["zip"] if dname in office.get("days", []) else info.get("home_zip")
             leg0 = miles(start_zip, l.zip) if start_zip and isinstance(l.zip, str) else 15.0
             pairs.append(dict(i=i, guid=l.guid, rep=r, day=l.day, week=l.week, min=l["min"], spec=bool(l.spec), same=bool(l.same_day), zip=l.zip,
-                              value=v.close + w * v.same_day + adj - RW * RT_["start_leg_share"] * leg0, close=v.close, sd=v.same_day, tag=tag, leg0=leg0))
+                              value=v.close + boost + wd * v.same_day + adj - rw * RT_["start_leg_share"] * leg0, close=v.close, rw=rw, arm=arm_for(l.day), sd=v.same_day, tag=tag, leg0=leg0))
     P = pd.DataFrame(pairs)
     # routing: drive between back-to-back appointments for the same rep costs a little (never more than a small close gap)
     blank = lambda: [dict(guid=l.guid, appt=l.appt, rep=None, options=[], blocked={r: why_no.get((l.guid, r)) for r in reps},
@@ -181,7 +199,7 @@ def plan(scores, df, today, now=None):
                 dt = P.at[idx[b], "min"] - P.at[idx[a], "min"]
                 if A["min_gap_minutes"] <= dt <= RT_["back_to_back_within_minutes"]:
                     route.append((idx[a], idx[b], miles(P.at[idx[a], "zip"], P.at[idx[b], "zip"]) if isinstance(P.at[idx[a], "zip"], str) and isinstance(P.at[idx[b], "zip"], str) else 15.0))
-    for t, (a, b, mi) in enumerate(route): extra.append(("leg", a, b)); cost.append(-RW * mi)
+    for t, (a, b, mi) in enumerate(route): extra.append(("leg", a, b)); cost.append(-P.at[a, "rw"] * mi)
     eidx = {k: n + t for t, k in enumerate(extra)}; m = n + len(extra)
     BIG = 2.0
     c = -np.r_[P.value.values + BIG + B["same_day_priority"] * P.same.values, np.array(cost)]
@@ -235,7 +253,7 @@ def plan(scores, df, today, now=None):
             if bends and st[p.rep]["rating"] in RULES["bends"]["last_resort"]["who"]: bends.append("last resort for a " + st[p.rep]["rating"] + " rep")
             best = opts.iloc[0]
             note = None if best.rep == p.rep else f"{best.rep} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
-            out.append(dict(guid=l.guid, appt=l.appt, rep=p.rep, rating=st[p.rep]["rating"], close=round(p.close, 3), same_day=round(p.sd, 3),
+            out.append(dict(guid=l.guid, appt=l.appt, arm=arm_for(l.day), rep=p.rep, rating=st[p.rep]["rating"], close=round(p.close, 3), same_day=round(p.sd, 3),
                             bends=bends, needs_ok=bool(bends), note=note, options=alts, blocked=blocked))
         else:
             out.append(dict(guid=l.guid, appt=l.appt, rep=None, options=alts, blocked=blocked,
@@ -274,7 +292,8 @@ def main(out, path, today=None):
     json.dump(p, open(Path(out) / "plan.json", "w"), indent=1, default=str)
     if live or E.CFG.get("save_hot_state", True): HOT_FILE.write_text(json.dumps(HOT, indent=1) + "\n")
     log = pd.DataFrame([dict(run_date=today.strftime("%Y-%m-%d"), guid=o["guid"], appt=o["appt"], rep=o["rep"] or "",
-                             close=o.get("close", ""), same_day=o.get("same_day", ""), bends="; ".join(o.get("bends", []))) for o in p["plan"]])
+                             close=o.get("close", ""), same_day=o.get("same_day", ""), bends="; ".join(o.get("bends", [])),
+                             arm=arm_for(o["appt"][:10])) for o in p["plan"]])
     f = E.MEM / "plans.csv"
     if f.exists():
         old = pd.read_csv(f, dtype=str); log = pd.concat([old[old.run_date != today.strftime("%Y-%m-%d")], log.astype(str)])

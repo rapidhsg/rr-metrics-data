@@ -1,13 +1,13 @@
-appt,guid,plan_run,recommended,rec_close,board,board_close,actual,actual_close,followed_engine,followed_board,manager_moved,sat,sold,sold_same_day,status,checked
-2026-10-09T18:00,12a8b948-f6c9-41bf-8888-0762ff9c629c,2026-10-09,Querlim Franco,0.2064,Querlim Franco,0.2064,Steve Burns,0.201,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-09T18:00,31cffae7-17d9-4f31-be4f-48f21b42009e,2026-10-09,Michael Dietrich,0.386,Michael Dietrich,0.386,Querlim Franco,0.2516,False,False,False,False,False,False,Dead,2026-10-11
-2026-10-09T18:00,5b68bb08-8978-40c9-ab78-b8a28bd1ea95,2026-10-09,Steve Burns,0.1529,Steve Burns,0.1529,Michael Dietrich,0.254,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-10T10:00,6e9ff9cb-04ed-4f22-be38-fa7fdb80c299,2026-10-10,Michael Dietrich,0.3738,Michael Dietrich,0.3738,Querlim Franco,0.2519,False,False,False,True,True,True,Approved,2026-10-11
-2026-10-10T10:00,a1fb714b-620d-4b9d-8188-5521dfc6a0d8,2026-10-10,Francesco Ambrosio,0.4381,Francesco Ambrosio,0.4381,Steve Burns,0.2744,False,False,False,False,False,False,Prospect,2026-10-11
-2026-10-10T10:00,febfb90d-bf9a-45d6-a3f8-1250948200ce,2026-10-10,Querlim Franco,0.1957,Querlim Franco,0.1957,Joseph Young,0.2499,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-10T12:00,0cf6f8bf-b9a1-403e-bcf5-a648c6663878,2026-10-10,Francesco Ambrosio,0.3757,Francesco Ambrosio,0.3757,Joseph Young,0.3176,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-10T12:00,b8b7dcd0-e0d4-482d-960e-fba6f5e0323b,2026-10-10,Querlim Franco,0.1403,Querlim Franco,0.1403,Steve Burns,0.1364,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-10T12:00,e8fa4472-7f0e-41f8-9664-21f26886abda,2026-10-10,Steve Burns,0.1504,Steve Burns,0.1504,Querlim Franco,0.1546,False,False,False,True,True,True,Approved,2026-10-11
-2026-10-10T14:00,20b62fdb-3a3d-402a-a84b-ebe58e2ea16f,2026-10-10,Joseph Young,0.2793,Joseph Young,0.2793,Joseph Young,0.2793,True,True,False,False,False,False,Prospect,2026-10-11
-2026-10-10T14:00,9807c356-4eb8-43db-8c58-1e0be81faef5,2026-10-10,Francesco Ambrosio,0.426,Francesco Ambrosio,0.426,Steve Burns,0.2735,False,False,False,True,False,False,Prospect,2026-10-11
-2026-10-10T14:00,ed0d560d-7d49-4136-b6e2-d6d495179f45,2026-10-10,Michael Dietrich,0.3547,Michael Dietrich,0.3547,Querlim Franco,0.2244,False,False,False,True,True,True,Approved,2026-10-11
+appt,guid,plan_run,arm,lead_base,recommended,rec_close,board,board_close,actual,actual_close,followed_engine,followed_board,manager_moved,sat,sold,sold_same_day,status,checked
+2026-10-09T18:00,12a8b948-f6c9-41bf-8888-0762ff9c629c,2026-10-09,champion,0.261,Querlim Franco,0.2064,Querlim Franco,0.2064,Steve Burns,0.201,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-09T18:00,31cffae7-17d9-4f31-be4f-48f21b42009e,2026-10-09,champion,0.3143,Michael Dietrich,0.386,Michael Dietrich,0.386,Querlim Franco,0.2516,False,False,False,False,False,False,Dead,2026-10-11
+2026-10-09T18:00,5b68bb08-8978-40c9-ab78-b8a28bd1ea95,2026-10-09,champion,0.2024,Steve Burns,0.1529,Steve Burns,0.1529,Michael Dietrich,0.254,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-10T10:00,6e9ff9cb-04ed-4f22-be38-fa7fdb80c299,2026-10-10,champion,0.3161,Michael Dietrich,0.3738,Michael Dietrich,0.3738,Querlim Franco,0.2519,False,False,False,True,True,True,Approved,2026-10-11
+2026-10-10T10:00,a1fb714b-620d-4b9d-8188-5521dfc6a0d8,2026-10-10,champion,0.3475,Francesco Ambrosio,0.4381,Francesco Ambrosio,0.4381,Steve Burns,0.2744,False,False,False,False,False,False,Prospect,2026-10-11
+2026-10-10T10:00,febfb90d-bf9a-45d6-a3f8-1250948200ce,2026-10-10,champion,0.2466,Querlim Franco,0.1957,Querlim Franco,0.1957,Joseph Young,0.2499,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-10T12:00,0cf6f8bf-b9a1-403e-bcf5-a648c6663878,2026-10-10,champion,0.3167,Francesco Ambrosio,0.3757,Francesco Ambrosio,0.3757,Joseph Young,0.3176,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-10T12:00,b8b7dcd0-e0d4-482d-960e-fba6f5e0323b,2026-10-10,champion,0.1756,Querlim Franco,0.1403,Querlim Franco,0.1403,Steve Burns,0.1364,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-10T12:00,e8fa4472-7f0e-41f8-9664-21f26886abda,2026-10-10,champion,0.1957,Steve Burns,0.1504,Steve Burns,0.1504,Querlim Franco,0.1546,False,False,False,True,True,True,Approved,2026-10-11
+2026-10-10T14:00,20b62fdb-3a3d-402a-a84b-ebe58e2ea16f,2026-10-10,champion,0.3156,Joseph Young,0.2793,Joseph Young,0.2793,Joseph Young,0.2793,True,True,False,False,False,False,Prospect,2026-10-11
+2026-10-10T14:00,9807c356-4eb8-43db-8c58-1e0be81faef5,2026-10-10,champion,0.3483,Francesco Ambrosio,0.426,Francesco Ambrosio,0.426,Steve Burns,0.2735,False,False,False,True,False,False,Prospect,2026-10-11
+2026-10-10T14:00,ed0d560d-7d49-4136-b6e2-d6d495179f45,2026-10-10,champion,0.2843,Michael Dietrich,0.3547,Michael Dietrich,0.3547,Querlim Franco,0.2244,False,False,False,True,True,True,Approved,2026-10-11

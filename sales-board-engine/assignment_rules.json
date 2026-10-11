@@ -395,9 +395,69 @@
   },
   "_rules_are_evergreen": "No rule names a person. Who gets what comes only from data and settings: close odds learned from each rep's own results, rating from his close rate, hot status, lane, hours, days off and capacity. Any rep with the same numbers and settings is treated the same.",
   "routing": {
-    "_read_me": "Smooth days without costing money. Every mile between back-to-back appointments (and half of each mile from where the rep starts) costs a small amount of close chance in the plan, so when two plans are about equal on dollars the one with less driving wins. close_points_per_10_miles = how many points of close chance 10 extra miles are worth; keep it small so routes never beat a real close-rate gap. Set 0 to turn routing off.",
+    "_read_me": "Smooth days without costing money. Every mile between back-to-back appointments (and half of each mile from where the rep starts) costs a small amount of close chance in the plan, so when two plans are about equal on dollars the one with less driving wins. close_points_per_10_miles = how many points of close chance 10 extra miles are worth; keep it small so routes never beat a real close-rate gap. Set 0 to turn routing off. The live value is the dial learning.dials.route_close_points_per_10_miles.",
     "close_points_per_10_miles": 0.5,
     "start_leg_share": 0.5,
     "back_to_back_within_minutes": 300
+  },
+  "learning": {
+    "_read_me": "How the assignment logic improves on its own. Each dial has a value and a safe range. learn.py runs one experiment at a time: on half the days (alternating by date) the board uses the challenger value. Once both halves have enough finished sits, it compares how they actually closed, adjusted for how good the leads were, and keeps the winner if the gap is real. Every decision is written to memory/learning_log.md and memory/experiments.csv. Hard rules (hours, home-by, days off, lanes, daily limits, caps, no 5th sit) are never touched. Set auto_promote to false to make it propose instead of change.",
+    "auto_promote": true,
+    "min_sits_per_side": 60,
+    "min_gain_points": 2.0,
+    "confidence_z": 1.64,
+    "max_weeks": 8,
+    "dials": {
+      "hot_boost_share": {
+        "value": 0.0,
+        "range": [
+          0.0,
+          1.0
+        ],
+        "try": [
+          0.5,
+          0.25,
+          1.0
+        ],
+        "_note": "How much more to trust a hot rep's recent close rate than the model does. 0 = model only, 1 = fully."
+      },
+      "route_close_points_per_10_miles": {
+        "value": 0.5,
+        "range": [
+          0.0,
+          2.0
+        ],
+        "try": [
+          1.0,
+          0.25
+        ],
+        "_note": "Close-chance points 10 miles of driving is worth."
+      },
+      "same_day_weight_scale": {
+        "value": 1.0,
+        "range": [
+          0.5,
+          2.0
+        ],
+        "try": [
+          1.5,
+          0.75
+        ],
+        "_note": "Multiplier on how much a same-day sign counts on top of a close (the base weight is worked out from data each week)."
+      }
+    },
+    "queue": [
+      "hot_boost_share",
+      "route_close_points_per_10_miles",
+      "same_day_weight_scale"
+    ],
+    "experiment": {
+      "active": true,
+      "dial": "hot_boost_share",
+      "champion": 0.0,
+      "challenger": 0.5,
+      "challenger_parity": 1,
+      "started": "2026-10-12"
+    }
   }
 }
