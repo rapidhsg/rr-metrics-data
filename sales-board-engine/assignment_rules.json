@@ -39,7 +39,9 @@
           null
         ]
       },
-      "days_off": []
+      "days_off": [],
+      "capacity": {},
+      "display": "Franco Querlim"
     },
     "Francesco Ambrosio": {
       "active": true,
@@ -71,14 +73,14 @@
           "10:00",
           "19:00",
           "16:30"
-        ],
-        "Sat": [
-          "10:00",
-          "19:00",
-          "16:30"
         ]
       },
-      "days_off": []
+      "days_off": [
+        "2026-10-12",
+        "2026-10-14"
+      ],
+      "capacity": {},
+      "display": "Francesco"
     },
     "Michael Dietrich": {
       "active": true,
@@ -122,7 +124,9 @@
           null
         ]
       },
-      "days_off": []
+      "days_off": [],
+      "capacity": {},
+      "display": "Mike Dietrich"
     },
     "Joseph Young": {
       "active": true,
@@ -161,7 +165,9 @@
           "16:30"
         ]
       },
-      "days_off": []
+      "days_off": [],
+      "capacity": {},
+      "display": "Joe Young"
     },
     "Steve Burns": {
       "active": true,
@@ -200,7 +206,9 @@
           null
         ]
       },
-      "days_off": []
+      "days_off": [],
+      "capacity": {},
+      "display": "Steve Burns"
     },
     "Michael Meinardus": {
       "active": true,
@@ -239,7 +247,9 @@
           null
         ]
       },
-      "days_off": []
+      "days_off": [],
+      "capacity": {},
+      "display": "Mike Meinardus"
     }
   },
   "office": {
@@ -305,7 +315,17 @@
   "yearly_promise": {
     "per_week_average": 7,
     "window_days": 91,
-    "_note": "7 appointments a week on average, measured on a rolling quarter (last 13 weeks, or since a new rep's leads started). Reps behind that pace get a nudge on close calls. A rolling quarter keeps it fair without anyone playing catch-up on a whole year."
+    "_note": "7 a week on average over a rolling quarter for a fully open schedule. Reps who limit their days or hours get a promise scaled to what they make available. Reps behind their own promise get a nudge on close calls.",
+    "full_schedule": {
+      "_read_me": "What a fully open schedule is: works 11 of every 14 days (weekends included) and can take appointments across the usual hours. typical_time_share = share of past appointment start times a standard 10 AM to 7 PM day covers. A rep with fewer days or a home-by time gets a promise cut by the share of days and appointment times he can't take.",
+      "days_of_14": 11,
+      "standard_hours": [
+        "10:00",
+        "19:00"
+      ],
+      "drive_home_minutes": 30,
+      "typical_time_share": 0.942
+    }
   },
   "weekly_order": {
     "_read_me": "Money first. Every appointment goes to the rep most likely to close it, inside hours, daily limits and caps. Minimums are a promise over a rolling quarter, not each week: a small credit nudges close calls toward reps behind their 7-a-week average over the last quarter, and toward a rep's weekly number, but never outweighs a real close-chance gap. Appointments keep coming in all week, so a light week now fills later.",

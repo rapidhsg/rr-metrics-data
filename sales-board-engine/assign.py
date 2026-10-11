@@ -29,6 +29,27 @@ def is_spec_counted():
     return RULES["weekly_order"]["specialty_counts_toward_week"]
 
 # ---------------- ratings ----------------
+def promise_for(info, df, today):
+    """The 7-a-week promise holds for a fully open schedule (full_days of every 14, standard hours). A rep who is
+    available less gets a smaller promise: share of days x share of the usual appointment times his hours can take."""
+    P = RULES["yearly_promise"]; full = P.get("full_schedule", {})
+    if not full: return P["per_week_average"], 1.0
+    days14 = 2 * sum(1 for d in DAYS if info.get("week", {}).get(d))
+    day_share = min(1.0, days14 / full.get("days_of_14", 11))
+    if not hasattr(promise_for, "starts"):
+        t = df["appt_time"].dropna(); t = t[t >= pd.Timestamp(today) - pd.Timedelta(days=365)]
+        promise_for.starts = (t.dt.hour * 60 + t.dt.minute).values
+    st_ = promise_for.starts; A = RULES["appointment"]; shares = []
+    for d in DAYS:
+        sl = info.get("week", {}).get(d)
+        if not sl: continue
+        lo, hi = hm(sl[0]), hm(sl[1])
+        if sl[2]: hi = min(hi, hm(sl[2]) - A["minutes"] - full.get("drive_home_minutes", 30))
+        shares.append(float(((st_ >= lo) & (st_ <= hi)).mean()) if len(st_) else 1.0)
+    time_share = min(1.0, (sum(shares) / len(shares)) / full.get("typical_time_share", 1.0)) if shares else 0.0
+    share = day_share * time_share
+    return P["per_week_average"] * share, share
+
 HOT_FILE = E.MEM / "hot.json"
 HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
 
@@ -86,10 +107,11 @@ def rep_status(df, today):
         n_iss = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= ls) & (df["Initial Appointment Date"] < today)).sum())
         weeks = max(1.0, (today - ls).days / 7)
         avg = n_iss / weeks if today > ls else None
-        behind = avg is not None and avg < RULES["yearly_promise"]["per_week_average"] and rating in RULES["weekly_order"].get("behind_promise_applies_to", ["New", "Coaching"])
+        promise, share = promise_for(info, df, today)
+        behind = avg is not None and avg < promise and rating in RULES["weekly_order"].get("behind_promise_applies_to", ["New", "Coaching"])
         done = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= wk0) & (df["Initial Appointment Date"] < today)).sum())
         out[r] = dict(rating=rating, close=None if rate is None else round(rate, 3), sits=int(sits), window=window, day=day_n, limits=lim,
-                      note=note, promise_avg=None if avg is None else round(avg, 1), behind_promise=bool(behind), this_week_so_far=done,
+                      note=note, promise_avg=None if avg is None else round(avg, 1), promise=round(promise, 1), availability=round(share, 2), behind_promise=bool(behind), this_week_so_far=done,
                       can_bend=rating in RULES["bends"]["who_can_bend"] or (RULES["bends"]["last_resort"]["enabled"] and rating in RULES["bends"]["last_resort"]["who"]))
     return out
 

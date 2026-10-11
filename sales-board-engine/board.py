@@ -83,10 +83,11 @@ def main(out, path, status=None):
     for name, st in P["reps"].items():
         ro = rules["roster"].get(name, {})
         if not ro.get("active", True): continue
-        disp, short = ro.get("display") or DISPLAY.get(name, (name, name.split()[0]))
+        disp, short = DISPLAY.get(name, (name, name.split()[0]))
+        if ro.get("display"): disp = ro["display"]
         reps.append(dict(name=name, display=disp, short=short, rating=st["rating"], close=st["close"], sits=st["sits"], window=st["window"],
                          day=st["day"], limits={k: v for k, v in st["limits"].items() if not k.startswith("_")},
-                         note=st.get("note"), this_week=st["this_week_so_far"], lane=ro.get("lane", "regular"),
+                         note=st.get("note"), this_week=st["this_week_so_far"], promise=st.get("promise"), availability=st.get("availability"), promise_avg=st.get("promise_avg"), lane=ro.get("lane", "regular"),
                          week=ro.get("week", {}), home_zip=ro.get("home_zip"), days_off=ro.get("days_off", [])))
     full2short = {r["name"]: r["short"] for r in reps}
     for c in cards:

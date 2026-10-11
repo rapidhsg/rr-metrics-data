@@ -835,6 +835,7 @@ function repCard(r) {
       <label class="setbox" style="margin:0"><input type="checkbox" data-k="active"${act ? " checked" : ""}> Active</label></div>
     ${st?.note ? `<div class="rnote">${esc(st.note)}</div>` : ""}
     <p class="hint">${esc(repSummary(d))}</p>
+    ${st && st.promise != null ? `<p class="hint">Promise: <b>${st.promise}</b> a week${st.availability < .99 ? ` (${Math.round(st.availability * 100)}% of a full schedule)` : ""} · last quarter: <b>${st.promise_avg ?? "–"}</b> a week${st.promise_avg != null && st.promise_avg < st.promise ? " · behind, gets a nudge" : ""}</p>` : ""}
     <details class="why-box" data-open="${id}"${openReps.has(id) ? " open" : ""}><summary>Edit hours, time off and capacity</summary>
     <div class="fields">
       <div class="f"><label for="${id}-disp">Show as</label><input id="${id}-disp" data-k="display" value="${esc(disp)}" placeholder="${esc(r.name)}"></div>
