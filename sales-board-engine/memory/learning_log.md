@@ -18,3 +18,16 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 - All assignment rules moved into one file, assignment_rules.json: ratings (New, Coaching, Tenured, Beast, Lane) from the rolling 30 close rate, per-rating daily and weekly limits, Hero's Journey ramp for new reps, minimums first then feed the beasts, specialty not counted toward weekly numbers, commercial to Meinardus only, bends only to avoid nobody-free or keep a same-day appointment.
 - Retested on 533 past sits (Apr to Aug), each month using only sits before it. Same reps who worked each day: predicted close 32.0% as assigned vs 33.5% with the plan, same-day close 15.1% vs 17.1%. Every current rep available: 34.3% close, 18.9% same-day.
 - With the new weekly caps, 77 of those 533 past sits (14%) had nobody free within the rules on days only the reps who worked were available. Past volume ran above what the caps allow.
+
+## 2026-10-11 rules rebuilt around money, hot reps and real schedules
+- Money first: every appointment goes to the best close chance inside hours, limits and caps. Weekly minimums cut to a small tiebreaker.
+- Hot hand: Beast-level close (35%+ rolling 30, 15+ sits) earns Beast whatever the start date; off below 30%. Franco is hot (52% on 21 sits).
+- Promise: 7 a week on a rolling quarter, scaled to the schedule a rep makes available (full = 11 of 14 days, usual hours). Francesco 5.1 (Mon to Fri, home by 4:30), Joe 5.6.
+- Days off from the board now reach the engine (sync_roster.py). Francesco off Mon 10/12 and Wed 10/14; Franco picks up 5 of those appointments.
+
+## 2026-10-11 engine learns from young sits
+- Found: sits newer than the 14-day close wait were ignored, so a new rep's first two weeks were invisible (Franco: 0 of 21 sits used, scored like an average new rep at about 24%).
+- Change: young sold sits count as sales; young unsold sits count as a partial sale (share of older sits still unsold at that age that sold later). Labels only use approvals known on the training date.
+- Backtest vs final outcomes, last 6 months: new reps log loss 0.4917 -> 0.4862 (better), all sits 0.5738 -> 0.5756 (about the same). Franco now about 34% on upcoming leads, Steve about 23%.
+- Also tested: bumping odds by a rep's last 30/45/90 days of results. Every version predicted worse (hot streaks cool off on average), so it is not automatic.
+- New regression test tests/test_rules.py checks hours, days off, lanes, daily limits, the 2-hour gap, no 5th sit, hot ratings and promises on every plan.

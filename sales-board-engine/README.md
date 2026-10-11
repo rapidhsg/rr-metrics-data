@@ -38,20 +38,25 @@ from what new reps have actually done, not from the team average.
 
 All assignment rules live in ONE file: **`assignment_rules.json`**. Rep roster and hours, ratings, daily and weekly
 limits, the Hero's Journey ramp, lanes, and when rules can bend. Nothing else in the repo repeats those numbers, so a
-change there is the only change needed. (When the dashboard's Reps & Availability tab is live, it will own the roster.)
+change there is the only change needed. The dashboard's Reps tab owns the roster; `sync_roster.py` copies it in before each run.
 
-How it works, in words:
+How it works, in words (rules as of Oct 11 2026):
 
-1. **Ratings** update every run from each rep's certified close rate (rolling 30): New (first 90 days), Coaching,
-   Tenured, Beast, and Lane (Meinardus). Each rating has its own daily max, weekly minimum and weekly cap.
-2. **New reps follow the Hero's Journey**: no leads in training, a light ramp, then full volume after the Day 29
-   checkpoint, or capped with no minimum and flagged for management review if they are under the checkpoint.
-3. **Weekly order**: fill minimums first (reps behind on the yearly promise get priority), then feed the beasts:
-   extra appointments go to the best close chance up to each cap. Specialty sits do not count toward the week.
-4. **Lanes**: commercial to Meinardus only, specialty to Francesco with Meinardus as backup, no Meinardus on regular work.
-5. **Bends** only to avoid leaving an appointment with nobody or to keep a same-day appointment. Never a 5th sit. Every
+1. **Money first.** Every appointment goes to the rep most likely to close it, inside his hours, home-by time,
+   daily limit and weekly cap. Minimums are only a tiebreaker on close calls.
+2. **Ratings** update every run from each rep's certified close rate (rolling 30): New (first 90 days), Coaching,
+   Tenured, Beast, and Lane (Meinardus). Each rating has its own daily max and weekly cap.
+3. **Hot hand.** Any rep at Beast level (35%+ on the rolling 30, 15+ sits) is rated Beast whatever his start date,
+   until he drops below 30%. State kept in `memory/hot.json`.
+4. **The 7-a-week promise** is measured on a rolling quarter and scales with the schedule a rep makes available
+   (full = 11 of every 14 days across the usual hours). Reps behind their own promise get a nudge on close calls.
+   The promise is a floor, never a cap: reps who want more work are only limited by their daily max and weekly cap.
+5. **New reps follow the Hero's Journey** (no leads in training, a light ramp) unless they are hot.
+6. **Lanes**: commercial to Meinardus only, specialty to Francesco with Meinardus as backup, no Meinardus on regular work.
+7. **Bends** only to avoid leaving an appointment with nobody or to keep a same-day appointment. Never a 5th sit. Every
    bend is tagged and needs Richie's OK. Anything still stuck is "Nobody free" with the reasons.
-6. **Speed**: when a lead that came in today is booked for a later day and a fitting rep is free today, the plan says so.
+8. **Days off** come from the board (Reps tab and the "Working" checkboxes above the columns). `sync_roster.py` copies
+   them into `assignment_rules.json` before each run.
 
 Inside those rules it picks the plan with the most expected closes (close chance + same-day weight x same-day chance).
 Every plan is saved to `memory/plans.csv` so it can be checked against what actually closed.
@@ -79,6 +84,11 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
 | `assign.py` | Hands out appointments by the rules | Called by run.py |
 | `zip_centers.json` | Center point of each Long Island zip, for drive times | Code |
 | `selftest.py` | Weekly test, retune, self-correction | Runs weekly |
+| `sync_roster.py` | Copies the board's Reps tab and days off into the rules | Runs before each engine run |
+| `board.py` | Builds board.json for the dashboard (cards, odds, money, map, results, forecast) | Runs after run.py |
+| `dashboard/` | The board page (no customer data; board.json is built per run) | Code |
+| `tests/test_rules.py` | Regression test: every hard rule holds in the current plan | Runs every engine run; exit 1 = broken |
+| `tests/backtest_*.py` | Backtests behind engine changes, with results in their header | Rerun before changing the model |
 | `AI_NOTES.md` | Instructions for Claude's note reading and weekly miss review | Joe |
 | `memory/tuned.json` | Settings the engine picked for itself and its latest test results | The engine |
 | `memory/learning_log.md` | What it learned and changed, in plain words | The engine |
