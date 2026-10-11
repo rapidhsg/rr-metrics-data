@@ -412,8 +412,11 @@ function computeEff() {
   const changed = new Set();
   for (const r of B.reps) {
     const was = ENGINE_AV[r.name]; if (!was) continue;
-    const weekChanged = JSON.stringify(r.week || {}) !== was.week;
-    for (const k of days) if (weekChanged || (r.days_off || []).includes(k) !== was.off.has(k)) changed.add(k);
+    const wasWeek = JSON.parse(was.week || "{}");
+    for (const k of days) {   // only the days whose hours or day-off status actually changed
+      const wd = DAYN[parse(k).getDay()];
+      if (JSON.stringify((r.week || {})[wd] || null) !== JSON.stringify(wasWeek[wd] || null) || (r.days_off || []).includes(k) !== was.off.has(k)) changed.add(k);
+    }
   }
   const redo = {};
   for (const c of B.cards) {
