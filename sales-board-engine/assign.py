@@ -79,8 +79,10 @@ def rep_status(df, today):
         cap = {k: v for k, v in (info.get("capacity") or {}).items() if k in ("per_day", "week_min", "week_cap") and v is not None}
         if cap:   # manager override from the dashboard's Reps tab
             lim.update(cap); note = (note + "; " if note else "") + "capacity set on the Reps tab"
-        # yearly promise: appointments issued per week since leads started
+        # promise: appointments issued per week over the last quarter (or since leads started, if newer)
         ls = start + pd.Timedelta(days=HJ["leads_start_day"] - 1)
+        win = RULES["yearly_promise"].get("window_days")   # rolling window (quarter) so nobody plays catch-up on a whole year
+        ls = max(ls, today - pd.Timedelta(days=win)) if win else ls
         n_iss = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= ls) & (df["Initial Appointment Date"] < today)).sum())
         weeks = max(1.0, (today - ls).days / 7)
         avg = n_iss / weeks if today > ls else None

@@ -304,10 +304,11 @@
   },
   "yearly_promise": {
     "per_week_average": 7,
-    "_note": "Promised to every Advisor on average over the year. Reps behind on it get priority for their minimum."
+    "window_days": 91,
+    "_note": "7 appointments a week on average, measured on a rolling quarter (last 13 weeks, or since a new rep's leads started). Reps behind that pace get a nudge on close calls. A rolling quarter keeps it fair without anyone playing catch-up on a whole year."
   },
   "weekly_order": {
-    "_read_me": "Money first. Every appointment goes to the rep most likely to close it, inside hours, daily limits and caps. Minimums are a promise over the year, not each week: a small credit nudges close calls toward reps behind their yearly 7-a-week average, and toward a rep's weekly number, but never outweighs a real close-chance gap. Appointments keep coming in all week, so a light week now fills later.",
+    "_read_me": "Money first. Every appointment goes to the rep most likely to close it, inside hours, daily limits and caps. Minimums are a promise over a rolling quarter, not each week: a small credit nudges close calls toward reps behind their 7-a-week average over the last quarter, and toward a rep's weekly number, but never outweighs a real close-chance gap. Appointments keep coming in all week, so a light week now fills later.",
     "minimum_credit": {
       "Tenured": 0.05,
       "Beast": 0.05,
