@@ -129,6 +129,20 @@ def main(out, path, status=None):
         if len(g) >= 15:
             s_ = g[sd0[g.index]]
             tickets[lt] = dict(any=round(float(g.mean())), same_day=round(float(s_.mean())) if len(s_) >= 10 else round(float(g.mean())), n=int(len(g)))
+    # forecast: how many more appointments usually get booked for each upcoming day between today and that day
+    FC = rules.get("forecast", {}); wins = FC.get("windows_days", [30, 60, 90])
+    ma = rr.masks(d0, today - pd.Timedelta(days=max(wins) + 120), today)["appointments"]
+    ap = d0[ma & d0["Initial Appointment Date"].notna()]
+    ia = ap["Initial Appointment Date"].dt.normalize(); lt = (ia - ap["Prospect Milestone Date"].dt.normalize()).dt.days
+    forecast = {}
+    for i in range(0, 15):
+        D = today + pd.Timedelta(days=i); f = {}
+        for w in wins:
+            days = [today - pd.Timedelta(days=k) for k in range(1, w + 1) if (today - pd.Timedelta(days=k)).dayofweek == D.dayofweek]
+            more = [int(((ia == h) & lt.between(0, i)).sum()) for h in days]
+            total = [int((ia == h).sum()) for h in days]
+            f[str(w)] = dict(more=round(sum(more) / len(more), 1) if more else 0, typical=round(sum(total) / len(total), 1) if total else 0)
+        forecast[D.strftime("%Y-%m-%d")] = f
     roster_out = {k: v for k, v in rules["roster"].items() if not k.startswith("_")}
     meta = dict(P["meta"]); meta.pop("solver", None)
     meta.update(data_as_of=S["meta"]["run"], sits_used=S["meta"]["sits_used"])
@@ -137,7 +151,7 @@ def main(out, path, status=None):
         j = json.loads(st.read_text()).get("job_export_raw", {})
         meta.update(acculynx_run=j.get("runDate"), acculynx_slot=j.get("schedule"), pulled_at=j.get("pulledAt"))
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
-                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets),
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, forecast=forecast, forecast_show=str(FC.get('show', 60))),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 

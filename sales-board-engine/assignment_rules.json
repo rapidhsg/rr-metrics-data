@@ -307,14 +307,20 @@
     "_note": "Promised to every Advisor on average over the year. Reps behind on it get priority for their minimum."
   },
   "weekly_order": {
-    "_read_me": "1) Fill minimums: Tenured and Beast to 10, New toward their Hero's Journey number, reps behind on the yearly promise first. If there are not enough appointments, Tenured and Beast reach 10 first. 2) Feed the beasts: extra appointments go to the best close chance, up to each cap. Weeks run Monday to Sunday and count appointments assigned.",
+    "_read_me": "Money first. Every appointment goes to the rep most likely to close it, inside hours, daily limits and caps. Minimums are a promise over the year, not each week: a small credit nudges close calls toward reps behind their yearly 7-a-week average, and toward a rep's weekly number, but never outweighs a real close-chance gap. Appointments keep coming in all week, so a light week now fills later.",
     "minimum_credit": {
-      "Tenured": 0.6,
-      "Beast": 0.6,
-      "New": 0.4,
-      "Coaching": 0.4
+      "Tenured": 0.05,
+      "Beast": 0.05,
+      "New": 0.05,
+      "Coaching": 0.03
     },
-    "behind_promise_extra": 0.1,
+    "behind_promise_extra": 0.12,
+    "behind_promise_applies_to": [
+      "New",
+      "Coaching",
+      "Tenured",
+      "Beast"
+    ],
     "specialty_counts_toward_week": false
   },
   "lanes": {
@@ -348,5 +354,22 @@
       ],
       "penalty": 1.5
     }
+  },
+  "hot": {
+    "_read_me": "Feed the hot hand. Any rep, new or not, whose close rate on the rolling 30 is at Beast level on enough sits is rated Beast: Beast limits and priority. Stays Beast until he drops below off_below. Day 1 sits count, so a new rep can be hot in his first month. Reps in Hero's Journey training (before Day 16) still get no leads.",
+    "on_at_or_above": 0.35,
+    "off_below": 0.3,
+    "min_sits": 15,
+    "window_days": 30,
+    "rated_as": "Beast"
+  },
+  "forecast": {
+    "_read_me": "How many more appointments usually get booked for a day between now and that day, from the last N days of history (appointment set date = Prospect Milestone Date). Shown on the board; the engine does not hold slots open for them yet.",
+    "windows_days": [
+      30,
+      60,
+      90
+    ],
+    "show": 60
   }
 }

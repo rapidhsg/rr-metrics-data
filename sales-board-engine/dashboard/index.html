@@ -451,6 +451,8 @@ function renderTop() {
     }
     return o;
   };
+  const fc = k => B.forecast && B.forecast[k] && B.forecast[k][B.forecast_show];
+  const wkMore = Object.entries(B.forecast || {}).filter(([k]) => k >= B.meta.run.slice(0, 10)).reduce((a, [, v]) => a + (v[B.forecast_show]?.more || 0), 0);
   const today = B.cards.filter(c => dkey(c.appt) === day);
   const end = new Date(parse(B.meta.run.slice(0, 10))); end.setDate(end.getDate() + 30);
   const D = sumUp(today), T = sumUp(B.cards.filter(c => parse(c.appt) < end));
@@ -462,10 +464,11 @@ function renderTop() {
   $("#sum").innerHTML = `
     <div class="sg"><h4>${dayName}</h4><div class="row">
       <div><small>Appointments</small><b class="n">${D.n}</b><em>${attn ? `<b style="color:var(--yellow)">${attn}</b> need a look` : "all set"}</em></div>
+      ${fc(day) ? `<div title="From the last ${B.forecast_show} days: appointments booked for this weekday between now and the day itself"><small>Still to book</small><b class="n">+${Math.round(fc(day).more)}</b><em>usually ${Math.round(fc(day).typical)} total</em></div>` : ""}
       <div><small>Expected sales</small><b class="n y">${money(D.rev)}</b><em><b>${D.sales.toFixed(1)}</b> sales</em></div>
       <div><small>Same-day signs</small><b class="n">${money(D.sdRev)}</b><em><b>${D.sd.toFixed(1)}</b> signed at the sit</em></div>
       <div><small>Set in AccuLynx</small><b class="n">${set}/${D.n}</b><em>marked done</em></div></div></div>
-    <div class="sg"><h4>Next 30 days · ${T.n} booked</h4><div class="row">
+    <div class="sg"><h4>Next 30 days · ${T.n} booked${wkMore ? ` · about ${Math.round(wkMore)} more coming in 2 wks` : ""}</h4><div class="row">
       <div><small>Expected sales</small><b class="n y">${money(T.rev)}</b><em><b>${T.sales.toFixed(1)}</b> sales</em></div>
       <div><small>Same-day signs</small><b class="n">${money(T.sdRev)}</b><em><b>${T.sd.toFixed(1)}</b> at the sit</em></div>
       <div><small>If plan followed</small><b class="n">${money(T.plan)}</b><em>engine's picks</em></div></div></div>

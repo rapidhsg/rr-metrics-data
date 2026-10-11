@@ -29,6 +29,9 @@ def is_spec_counted():
     return RULES["weekly_order"]["specialty_counts_toward_week"]
 
 # ---------------- ratings ----------------
+HOT_FILE = E.MEM / "hot.json"
+HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
+
 def rep_status(df, today):
     """Rating, limits, Hero's Journey stage, yearly promise for every active rep."""
     today = pd.Timestamp(today).normalize(); RT = RULES["ratings"]; HJ = RULES["hero_journey"]
@@ -54,8 +57,18 @@ def rep_status(df, today):
         elif rate is not None and rate >= RT["beast_at_or_above"]: rating = "Beast"
         elif rate is not None and rate >= RT["tenured_at_or_above"]: rating = "Tenured"
         else: rating = "Coaching"
+        # hot hand: Beast-level close on enough sits earns Beast, whatever the start date (stays until he drops below off_below)
+        H = RULES.get("hot")
+        if H and rating in ("New", "Coaching") and day_n >= HJ["leads_start_day"]:
+            hs, he = rr.rolling(today, H["window_days"]); mh = rr.metrics(df, hs, he, reps=[r])
+            hr = mh["close_sold_team"] / mh["close_sits_team"] if mh["close_sits_team"] else 0
+            was = HOT.get(r, False)
+            if mh["close_sits_team"] >= H["min_sits"] and (hr >= H["on_at_or_above"] or (was and hr >= H["off_below"])):
+                rating = H["rated_as"]; HOT[r] = True
+                note = f"Hot: {hr:.0%} on {mh['close_sits_team']} sits (rolling {H['window_days']}), rated {rating} regardless of start date"
+            else: HOT[r] = False
         lim = dict(RT["limits"][rating])
-        if rating == "New":
+        if rating == "New" and not HOT.get(r):
             leads_start = start + pd.Timedelta(days=HJ["leads_start_day"] - 1)
             if day_n < HJ["leads_start_day"]: lim.update(week_min=0, week_cap=0); note = f"Day {day_n}: training, leads start Day {HJ['leads_start_day']}"
             elif day_n <= HJ["ramp_until_day"]: lim.update(week_min=HJ["ramp_per_week"], week_cap=HJ["ramp_per_week"]); note = f"Day {day_n}: first leads, {HJ['ramp_per_week']} a week"
@@ -71,7 +84,7 @@ def rep_status(df, today):
         n_iss = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= ls) & (df["Initial Appointment Date"] < today)).sum())
         weeks = max(1.0, (today - ls).days / 7)
         avg = n_iss / weeks if today > ls else None
-        behind = avg is not None and avg < RULES["yearly_promise"]["per_week_average"] and rating in ("New", "Coaching")
+        behind = avg is not None and avg < RULES["yearly_promise"]["per_week_average"] and rating in RULES["weekly_order"].get("behind_promise_applies_to", ["New", "Coaching"])
         done = int((issued & (df["Primary Salesperson"] == r) & (df["Initial Appointment Date"] >= wk0) & (df["Initial Appointment Date"] < today)).sum())
         out[r] = dict(rating=rating, close=None if rate is None else round(rate, 3), sits=int(sits), window=window, day=day_n, limits=lim,
                       note=note, promise_avg=None if avg is None else round(avg, 1), behind_promise=bool(behind), this_week_so_far=done,
@@ -216,6 +229,7 @@ def main(out, path, today=None):
     df = E.load(path)
     p = plan(scores, df, today, now=datetime.now() if live else None)
     json.dump(p, open(Path(out) / "plan.json", "w"), indent=1, default=str)
+    if live or E.CFG.get("save_hot_state", True): HOT_FILE.write_text(json.dumps(HOT, indent=1) + "\n")
     log = pd.DataFrame([dict(run_date=today.strftime("%Y-%m-%d"), guid=o["guid"], appt=o["appt"], rep=o["rep"] or "",
                              close=o.get("close", ""), same_day=o.get("same_day", ""), bends="; ".join(o.get("bends", []))) for o in p["plan"]])
     f = E.MEM / "plans.csv"
