@@ -811,13 +811,13 @@ function whereTxt(o) {
   const city = cityOf(o.r.home_zip);
   return `Nothing booked yet, starts from home${city ? ` (${city})` : o.r.home_zip ? ` (${o.r.home_zip})` : ""}`;
 }
-function guideData() {
+function guideData(start) {   // start: the board's selected day (the fold), or nothing for today first (the CSR Guide tab)
   const t0 = todayKey();
   const reps = B.reps.filter(r => r.lane !== "commercial");
   const lanes = B.reps.filter(r => r.lane === "commercial");
   const dayOpen = (k, list) => list.map(r => openFor(r, k)).filter(o => o && o.spots > 0).sort((a, b) => spotVal(b.r) - spotVal(a.r));
-  let k0 = t0, rolled = false;
-  if (!dayOpen(t0, reps).length && nowMin() >= 15 * 60) { k0 = addDays(t0, 1); rolled = true; }   // today is done: lead with tomorrow
+  let k0 = start && start > t0 ? start : t0, rolled = false;
+  if (k0 === t0 && !dayOpen(t0, reps).length && nowMin() >= 15 * 60) { k0 = addDays(t0, 1); rolled = true; }   // today is done: lead with tomorrow
   const days = [0, 1, 2, 3].map(i => addDays(k0, i)).map(k => {
     const open = dayOpen(k, reps), comm = dayOpen(k, lanes);
     const spots = open.reduce((a, o) => a + o.spots, 0);
@@ -830,7 +830,8 @@ function guideData() {
   const calls = buildIdeas(first.k).filter(i => i.kind !== "slot" && (i.t == null || i.t >= lim));
   const called = new Set(calls.map(i => i.c && i.c.id));
   for (const d of days) d.nobody = d.nobody.filter(c => !called.has(c.id));
-  return { t0, rolled, days, calls, at: new Date() };
+  const rel = days[0].k === t0 ? "Today" : days[0].k === addDays(t0, 1) ? "Tomorrow" : "";
+  return { t0, rolled, rel, days, calls, at: new Date() };
 }
 const spotLine = o => `${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close): ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}`;
 function guideText(G) {
@@ -839,7 +840,7 @@ function guideText(G) {
   L.push(`CSR BOOKING GUIDE · ${dayLbl(head.k)} · updated ${clock}`);
   L.push(`Same-day bookings: at least 1 hour ahead, and confirm with the sales manager before you book.`);
   L.push("");
-  L.push(`${G.rolled || head.k !== G.t0 ? "TOMORROW" : "TODAY"}, ${dayLbl(head.k)}: FILL THESE FIRST${head.spots ? ` (${head.spots} open spot${head.spots > 1 ? "s" : ""}, about ${money(head.value)} in expected sales)` : ""}`);
+  L.push(`${G.rel ? G.rel.toUpperCase() + ", " : ""}${dayLbl(head.k)}: FILL THESE FIRST${head.spots ? ` (${head.spots} open spot${head.spots > 1 ? "s" : ""}, about ${money(head.value)} in expected sales)` : ""}`);
   if (!head.open.length) L.push("No open spots left. Book new leads into the next days below.");
   head.open.forEach((o, i) => { L.push(`${i + 1}. ${spotLine(o)}.`); L.push(`   ${whereTxt(o)}. Best for leads near there.`); });
   head.comm.forEach(o => L.push(`Commercial leads only: ${o.r.short}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${winsTxt(o.wins)}.`));
@@ -868,8 +869,8 @@ function guideBody(G, detail) {
   const callList = (G.calls.length || head.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${
     G.calls.slice(0, detail ? 99 : 6).map(i => `<li><span class="itag ${i.kind}">${esc(i.tag)}</span> ${i.html}${detail && i.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${
     head.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : "";
-  const label = G.rolled || head.k !== G.t0 ? "Tomorrow" : "Today";
-  const first = `<div class="gday"><h4>${label}, ${dayLbl(head.k)}: fill these first<small>${head.spots ? `${head.spots} open spot${head.spots > 1 ? "s" : ""} · about ${money(head.value)} in expected sales` : "no open spots left"}</small></h4>
+  const label = G.rel ? G.rel + ", " : "";
+  const first = `<div class="gday"><h4>${label}${dayLbl(head.k)}: fill these first<small>${head.spots ? `${head.spots} open spot${head.spots > 1 ? "s" : ""} · about ${money(head.value)} in expected sales` : "no open spots left"}</small></h4>
     ${head.open.length ? `<ol>${head.open.map(o => `<li><b>${esc(o.r.short)}</b> <span>(${esc(o.r.rating)}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close)</span>: <b>${o.spots} spot${o.spots > 1 ? "s" : ""}</b>, ${esc(winsTxt(o.wins))}.<br><span>${esc(whereTxt(o))}. Best for leads near there.</span></li>`).join("")}</ol>` : `<p class="gnote">Book new leads into the next days below.</p>`}
     ${head.comm.map(o => `<p class="gnote">Commercial leads only: ${esc(o.r.short)}, ${o.spots} spot${o.spots > 1 ? "s" : ""}, ${esc(winsTxt(o.wins))}.</p>`).join("")}</div>`;
   const rest = G.days.slice(1).map(d => `<div class="gday"><h4>${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""}` : "full"}</small></h4>${d.open.length || d.comm.length || d.nobody.length ? `<ul>${
@@ -879,15 +880,15 @@ function guideBody(G, detail) {
   return first + callList + rest;
 }
 function renderGuideFold() {
-  const G = guideData(), head = G.days[0];
+  const G = guideData(day), head = G.days[0];
   const el = $("#guide"), fold = $("#guidefold");
   fold.setAttribute("aria-expanded", String(OPEN.guide)); el.hidden = !OPEN.guide;
-  const lbl = G.rolled || head.k !== G.t0 ? "tomorrow" : "today";
+  const lbl = G.rel ? G.rel.toLowerCase() : "on " + dayLbl(head.k);
   $("#guideline").innerHTML = `<em>${head.spots}</em> open spot${head.spots === 1 ? "" : "s"} ${lbl}${head.spots ? ` · <em class="g">${money(head.value)}</em> to fill` : ""}${G.calls.length ? ` · <em>${G.calls.length}</em> call${G.calls.length > 1 ? "s" : ""} to make` : ""} · next 3 days <em>${G.days.slice(1).reduce((a, d) => a + d.spots, 0)}</em> open`;
   if (!OPEN.guide) return;
   el.innerHTML = `<div class="ghead"><p>What the CSRs should book, built from the board as it stands. Same-day: book 1 hour or more ahead and confirm with the sales manager.</p>
     <button class="btn red" id="guide-copy">Copy for CSRs</button><button class="btn ghost" id="guide-open">Full guide</button></div>` + guideBody(G, false);
-  $("#guide-copy").onclick = () => copyText(guideText(guideData()));
+  $("#guide-copy").onclick = () => copyText(guideText(guideData(day)));
   $("#guide-open").onclick = () => { tab = "book"; setTab(); };
 }
 function renderBookPage() {
@@ -905,7 +906,7 @@ function renderBookPage() {
   const off = d => B.reps.filter(r => isOffDay(r, d.k)).map(r => r.short);
   $("#bookpage").innerHTML = `<div class="bpanel"><div class="ghead"><p>Open spots for the CSRs to fill, best first. Built from the board as it stands, so when the sales manager moves appointments or marks a rep off, this changes with it. A new booking shows up here after the next AccuLynx pull. Same-day: book at least 1 hour ahead and confirm with the sales manager. Updated ${clock}.</p>
       <button class="btn red" id="book-copy">Copy for CSRs</button></div></div>
-    ${G.days.map((d, i) => `<div class="bpanel"><h2>${i === 0 ? (G.rolled || d.k !== G.t0 ? "Tomorrow, " : "Today, ") : ""}${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""} · about ${money(d.value)} expected` : "full"}${off(d).length ? ` · off: ${esc(off(d).join(", "))}` : ""}</small></h2>
+    ${G.days.map((d, i) => `<div class="bpanel"><h2>${i === 0 && G.rel ? G.rel + ", " : ""}${dayLbl(d.k)}<small>${d.spots ? `${d.spots} open spot${d.spots > 1 ? "s" : ""} · about ${money(d.value)} expected` : "full"}${off(d).length ? ` · off: ${esc(off(d).join(", "))}` : ""}</small></h2>
       ${rows(d)}
       ${i === 0 && (G.calls.length || d.nobody.length) ? `<div class="gday"><h4>Call now</h4><ul class="gcall">${G.calls.map(x => `<li><span class="itag ${x.kind}">${esc(x.tag)}</span> ${x.html}${x.c ? ` <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(x.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}</li>`).join("")}${d.nobody.map(c => `<li><span class="itag need">Needs a call</span> No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time. <a class="btn dark" style="padding:2px 7px;font-size:12px" href="${esc(c.url)}" target="_blank" rel="noopener">AccuLynx</a></li>`).join("")}</ul></div>` : ""}
       ${i > 0 && d.nobody.length ? `<div class="gday"><h4>Needs a call</h4><ul class="gcall">${d.nobody.map(c => `<li>No rep free for <b>${esc(c.name || "a customer")}</b> (${esc(c.town || "")}) at ${hm(c.appt)}. Call to offer another time.</li>`).join("")}</ul></div>` : ""}
