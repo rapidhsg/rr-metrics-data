@@ -26,9 +26,6 @@ LABEL = {"Rep": "Strong rep overall", "has_notes": "Has lead notes", "Newer rep 
 
 NOTE = {"leak": "Notes mention a leak", "noleak": "Notes say no leak", "storm": "Notes mention storm damage", "firstcall": "First call to us",
         "referral": "Notes mention a referral", "skylight": "Notes mention a skylight"}
-DISPLAY = {"Querlim Franco": ("Franco Querlim", "Franco"), "Francesco Ambrosio": ("Francesco", "Francesco"),
-           "Michael Dietrich": ("Mike Dietrich", "Dietrich"), "Joseph Young": ("Joe Young", "Joe"),
-           "Steve Burns": ("Steve Burns", "Steve"), "Michael Meinardus": ("Mike Meinardus", "Meinardus")}
 DAYS = "Mon Tue Wed Thu Fri Sat Sun".split()
 
 
@@ -83,12 +80,15 @@ def main(out, path, status=None):
     for name, st in P["reps"].items():
         ro = rules["roster"].get(name, {})
         if not ro.get("active", True): continue
-        disp, short = DISPLAY.get(name, (name, name.split()[0]))
-        if ro.get("display"): disp = ro["display"]
-        reps.append(dict(name=name, display=disp, short=short, rating=st["rating"], close=st["close"], sits=st["sits"], window=st["window"],
+        disp = ro.get("display") or name   # "Show as" on the Reps tab
+        reps.append(dict(name=name, display=disp, short=None, rating=st["rating"], close=st["close"], sits=st["sits"], window=st["window"],
                          day=st["day"], limits={k: v for k, v in st["limits"].items() if not k.startswith("_")},
                          note=st.get("note"), this_week=st["this_week_so_far"], promise=st.get("promise"), availability=st.get("availability"), promise_avg=st.get("promise_avg"), lane=ro.get("lane", "regular"),
                          week=ro.get("week", {}), home_zip=ro.get("home_zip"), days_off=ro.get("days_off", [])))
+    # short names: first word of "Show as", or the last word when two reps share a first word
+    firsts = [r["display"].split()[0] for r in reps]
+    for r in reps:
+        w = r["display"].split(); r["short"] = w[-1] if firsts.count(w[0]) > 1 and len(w) > 1 else w[0]
     full2short = {r["name"]: r["short"] for r in reps}
     for c in cards:
         if c["note"]:

@@ -31,3 +31,6 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 - Backtest vs final outcomes, last 6 months: new reps log loss 0.4917 -> 0.4862 (better), all sits 0.5738 -> 0.5756 (about the same). Franco now about 34% on upcoming leads, Steve about 23%.
 - Also tested: bumping odds by a rep's last 30/45/90 days of results. Every version predicted worse (hot streaks cool off on average), so it is not automatic.
 - New regression test tests/test_rules.py checks hours, days off, lanes, daily limits, the 2-hour gap, no 5th sit, hot ratings and promises on every plan.
+
+## 2026-10-11 rules made evergreen
+- No rule or piece of code names a person anymore. Lanes, ratings, hot status, promises, hours and days off come from each rep's data and Reps tab settings. Display names come from "Show as" on the Reps tab. Plan unchanged (9.6 expected sales); rules test passes.

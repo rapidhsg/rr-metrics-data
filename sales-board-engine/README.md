@@ -40,19 +40,19 @@ All assignment rules live in ONE file: **`assignment_rules.json`**. Rep roster a
 limits, the Hero's Journey ramp, lanes, and when rules can bend. Nothing else in the repo repeats those numbers, so a
 change there is the only change needed. The dashboard's Reps tab owns the roster; `sync_roster.py` copies it in before each run.
 
-How it works, in words (rules as of Oct 11 2026):
+How it works, in words (rules as of Oct 11 2026). No rule names a person: who gets what comes only from each rep's data and settings, so anyone with the same numbers and settings is treated the same.
 
 1. **Money first.** Every appointment goes to the rep most likely to close it, inside his hours, home-by time,
    daily limit and weekly cap. Minimums are only a tiebreaker on close calls.
 2. **Ratings** update every run from each rep's certified close rate (rolling 30): New (first 90 days), Coaching,
-   Tenured, Beast, and Lane (Meinardus). Each rating has its own daily max and weekly cap.
+   Tenured, Beast, and Lane (reps on the commercial lane). Each rating has its own daily max and weekly cap.
 3. **Hot hand.** Any rep at Beast level (35%+ on the rolling 30, 15+ sits) is rated Beast whatever his start date,
    until he drops below 30%. State kept in `memory/hot.json`.
 4. **The 7-a-week promise** is measured on a rolling quarter and scales with the schedule a rep makes available
    (full = 11 of every 14 days across the usual hours). Reps behind their own promise get a nudge on close calls.
    The promise is a floor, never a cap: reps who want more work are only limited by their daily max and weekly cap.
 5. **New reps follow the Hero's Journey** (no leads in training, a light ramp) unless they are hot.
-6. **Lanes**: commercial to Meinardus only, specialty to Francesco with Meinardus as backup, no Meinardus on regular work.
+6. **Lanes** (set per rep on the Reps tab): commercial work only to commercial-lane reps, specialty to specialty-lane reps first with commercial-lane reps as backup, commercial-lane reps never on regular work.
 7. **Bends** only to avoid leaving an appointment with nobody or to keep a same-day appointment. Never a 5th sit. Every
    bend is tagged and needs Richie's OK. Anything still stuck is "Nobody free" with the reasons.
 8. **Days off** come from the board (Reps tab and the "Working" checkboxes above the columns). `sync_roster.py` copies

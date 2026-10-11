@@ -147,9 +147,9 @@ def plan(scores, df, today, now=None):
             elif l["min"] > hm(slot[1]): reason = "after his last appointment"
             elif slot[2] and info.get("home_zip") and l["min"] + A["minutes"] + miles(l.zip, info["home_zip"]) / A["drive_mph"] * 60 > hm(slot[2]):
                 reason = "needs to be home by " + slot[2]
-            elif l.comm and info["lane"] != "commercial": reason = "commercial goes to Meinardus only"
-            elif l.spec and info["lane"] not in ("specialty", "commercial"): reason = "specialty goes to Francesco"
-            elif not l.comm and not l.spec and info["lane"] == "commercial": reason = "Meinardus does not run regular appointments"
+            elif l.comm and info["lane"] != "commercial": reason = "commercial only goes to commercial-lane reps"
+            elif l.spec and info["lane"] not in ("specialty", "commercial"): reason = "specialty only goes to specialty-lane reps"
+            elif not l.comm and not l.spec and info["lane"] == "commercial": reason = "commercial-lane reps do not run regular appointments"
             elif l.spec and info["lane"] == "commercial": adj = -RULES["lanes"]["specialty_backup_penalty"]; tag = "Specialty backup"
             if reason: why_no[(l.guid, r)] = reason; continue
             v = val.loc[(l.guid, r)]

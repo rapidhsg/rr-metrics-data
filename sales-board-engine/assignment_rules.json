@@ -1,5 +1,5 @@
 {
-  "_read_me": "THE ONE PLACE for how appointments get handed out: rep roster and hours, ratings, daily and weekly limits, lanes, and when rules can bend. Nothing else in the repo repeats these numbers. When the dashboard's Reps & Availability tab is live, it will own the 'roster' section and this file's roster becomes its saved copy.",
+  "_read_me": "THE ONE PLACE for how appointments get handed out: rep roster and hours (set on the board's Reps tab), ratings, daily and weekly limits, lanes, and when rules can bend. Nothing else in the repo repeats these numbers. When the dashboard's Reps & Availability tab is live, it will own the 'roster' section and this file's roster becomes its saved copy.",
   "roster": {
     "_read_me": "One entry per rep, name exactly as in AccuLynx. week: day -> [earliest appt, last appt, home by or null]; a missing day = off. start_date = first day at Rapid (Hero's Journey Day 1). lane: regular, specialty (also runs regular), commercial (commercial/flat only, plus specialty backup).",
     "Querlim Franco": {
@@ -299,7 +299,7 @@
         "per_day": 3,
         "week_min": 0,
         "week_cap": 99,
-        "_note": "Meinardus: commercial and specialty backup only."
+        "_note": "Reps on the commercial lane: commercial work, plus specialty backup."
       }
     }
   },
@@ -345,10 +345,10 @@
     "specialty_counts_toward_week": false
   },
   "lanes": {
-    "commercial": "Meinardus only. If he cannot take it: Nobody free, for Richie.",
-    "specialty": "Francesco. Meinardus only when Francesco cannot.",
+    "commercial": "Commercial work goes only to reps on the commercial lane. If none can take it: Nobody free, for the sales manager.",
+    "specialty": "Specialty work goes to reps on the specialty lane first, commercial-lane reps as backup.",
     "specialty_backup_penalty": 0.15,
-    "regular": "Sales reps only. Never Meinardus."
+    "regular": "Regular work goes to regular and specialty-lane reps. Never to commercial-lane reps."
   },
   "bends": {
     "_read_me": "Bends only happen when an appointment would otherwise have nobody (no reschedule) or to keep a same-day appointment. Never a 5th sit. New and Coaching reps never bend. Every bend is tagged on the card and needs Richie's OK. Penalties are set higher than any close-chance difference, so the engine never bends just to put a better closer on a lead, only to avoid leaving an appointment with nobody.",
@@ -392,5 +392,6 @@
       90
     ],
     "show": 60
-  }
+  },
+  "_rules_are_evergreen": "No rule names a person. Who gets what comes only from data and settings: close odds learned from each rep's own results, rating from his close rate, hot status, lane, hours, days off and capacity. Any rep with the same numbers and settings is treated the same."
 }

@@ -585,7 +585,7 @@ function card(c) {
 let dismissed = {}, ideasAll = false;
 const hm2m = t => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 const m2t = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-const LANE = /commercial|specialty|Meinardus/i;
+const LANE = /commercial|specialty/i;
 function driveMin(c, r) { const a = center(c.zip), b = center(r.home_zip); return a && b ? Math.round(miles(a, b) / 30 * 60) : 45; }
 function slotFor(c, r, k, nearMin) {   // a start time on day k this rep can take inside his hours, home-by, daily limit and the 2-hour gap
   const s = r.week && r.week[DAYN[parse(k).getDay()]]; if (!s || isOffDay(r, k)) return null;
