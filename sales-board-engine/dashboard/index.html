@@ -1,0 +1,820 @@
+<title>Rapid Roofing Sales Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: red brand bar, tab row (Board, Map, Reps, Results), shared day picker + black day summary,
+   then the active view. Board = kanban that always scrolls sideways, one column per rep.
+   Single light look on purpose, matching the Rapid scoreboard. Colors from the Rapid brand guide. */
+:root{
+  color-scheme:light;
+  --red:#FF0000; --yellow:#FFFF00; --black:#000000; --white:#FFFFFF; --steel:#E6E7E8;
+  --bg:#F2F2F3; --card:#FFFFFF; --ink:#0A0A0B; --muted:#5C5F66; --faint:#8A8D93; --line:#DCDDE0; --colbg:#E8E9EB;
+  --good:#0B7A3B; --warn:#7A5000; --warn-bg:#FFF6C2; --bad:#C40000; --bad-bg:#FDE8E6; --nodata:#FAFAFA;
+  --display:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,system-ui,sans-serif;
+  --col:292px; --r:6px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.4}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--black);outline-offset:2px}
+.n{font-family:var(--display);font-variant-numeric:tabular-nums}
+
+.bar{background:var(--red);color:var(--white);border-bottom:4px solid var(--black)}
+.bar-in{max-width:1600px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap}
+.mark{font-family:var(--display);font-weight:800;font-style:italic;font-size:15px;line-height:.9;letter-spacing:.02em;text-transform:uppercase;border-left:6px solid var(--white);padding-left:8px}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6vw,38px);letter-spacing:.01em;text-transform:uppercase;line-height:1}
+.fresh{margin-left:auto;position:relative;display:flex;gap:8px;align-items:stretch}
+.fchip{display:flex;align-items:center;gap:12px;background:var(--yellow);color:var(--black);border:0;border-radius:2px;padding:6px 12px;cursor:pointer;text-align:left}
+.fchip small{display:block;font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+.fchip b{font-family:var(--display);font-weight:800;font-size:16px;text-transform:uppercase;white-space:nowrap}
+.fsep{border-left:1.5px solid rgba(0,0,0,.25);padding-left:12px}
+.fdot{width:12px;height:12px;border-radius:50%;background:var(--good);box-shadow:0 0 0 2px var(--black);flex:none}
+.fdot.late{background:#E39B00}.fdot.stale{background:var(--black)}
+.refresh{border-color:var(--white);background:var(--black);color:var(--white)}
+.fpanel{position:absolute;right:0;top:calc(100% + 8px);width:min(340px,calc(100vw - 32px));background:var(--card);color:var(--ink);border:1px solid var(--line);border-top:4px solid var(--black);border-radius:4px;padding:12px 14px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px}
+.fpanel dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
+.fpanel dt{color:var(--muted)}.fpanel dd{margin:0;font-weight:600}
+.fpanel p{margin:10px 0 0;color:var(--muted)}
+.stamp{margin-left:auto;background:var(--yellow);color:var(--black);font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;padding:6px 12px;letter-spacing:.02em}
+
+.tabs{background:var(--black);position:sticky;top:env(safe-area-inset-top,0px);z-index:6}
+.tabs-in{max-width:1600px;margin:0 auto;padding-inline:16px;display:flex;gap:2px;overflow-x:auto}
+.tab{border:0;background:none;color:#B9BBC0;padding:12px 14px 10px;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-bottom:4px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--white);border-bottom-color:var(--red)}
+
+.wrap{max-width:1600px;margin:0 auto;padding-inline:16px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;padding-block:14px 12px}
+.days{display:flex;gap:6px;overflow-x:auto;flex:1 1 420px;min-width:0;padding-bottom:2px;scrollbar-width:thin}
+.day{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:var(--r);padding:8px 12px;cursor:pointer;text-align:left;min-width:80px}
+.day b{display:block;font-family:var(--display);font-weight:800;font-size:18px;text-transform:uppercase;line-height:1}
+.day span{font-size:12px;color:var(--muted)}
+.day[aria-selected="true"]{background:var(--black);border-color:var(--black);color:var(--white)}
+.day[aria-selected="true"] span{color:#C9CBCF}
+.day .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:4px;vertical-align:1px}
+.sum{background:var(--black);color:var(--white);border-top:4px solid var(--red);border-radius:2px;display:flex;flex-wrap:wrap;flex:1 1 520px}
+.sum div{padding:10px 16px;flex:1 1 96px;border-right:1px solid #222}
+.sum div:last-child{border-right:0}
+.sum small{display:block;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:12px;color:#B9BBC0;text-transform:uppercase}
+.sum b{font-family:var(--display);font-weight:800;font-size:28px;line-height:1.05}
+.sum b.y{color:var(--yellow)}
+.sum em{font-style:normal;font-size:12px;color:#B9BBC0;margin-left:4px}
+.banner{background:var(--warn-bg);color:var(--warn);border:1px solid #EBD77A;border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-weight:500}
+.offnote{color:var(--muted);font-size:13px;margin:0 0 10px}
+
+/* board: one row that always scrolls sideways */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:24px;align-items:flex-start;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.col{flex:0 0 min(var(--col),84vw);background:var(--colbg);border-radius:var(--r);display:flex;flex-direction:column;min-width:0;scroll-snap-align:start}
+.col.na{background:#F6E3E1}
+.col.slim{flex-basis:170px}
+.ch{background:var(--card);border-radius:var(--r) var(--r) 0 0;padding:10px 12px;border-top:4px solid var(--rc,var(--black))}
+.col.na .ch{border-top-color:var(--red)}
+.ch-row{display:flex;align-items:center;gap:8px}
+.ch h2{margin:0;font-family:var(--display);font-weight:800;font-size:21px;text-transform:uppercase;line-height:1.05;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col.na h2{white-space:normal}
+.ch .pct{font-family:var(--display);font-weight:800;font-size:20px}
+.badge{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.b-Beast{background:var(--black);color:var(--yellow)}
+.b-Tenured{background:var(--black);color:var(--white)}
+.b-Coaching{background:var(--steel);color:var(--ink)}
+.b-New{background:var(--yellow);color:var(--black)}
+.b-Lane{background:var(--white);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.load{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
+.load b{color:var(--ink);font-family:var(--display);font-weight:700;font-size:15px}
+.load .over b{color:var(--bad)}
+.meter{display:flex;gap:3px;margin-top:6px}
+.meter i{height:5px;flex:1;background:var(--steel);border-radius:1px}
+.meter i.on{background:var(--black)}
+.meter i.min{box-shadow:inset 0 -2px 0 var(--red)}
+.meter i.over{background:var(--red)}
+.rnote{margin-top:6px;font-size:12px;color:var(--warn);background:var(--warn-bg);padding:3px 6px;border-radius:3px}
+.list{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:84px}
+.col.slim .list{min-height:40px}
+.empty{color:var(--faint);font-size:13px;text-align:center;padding:18px 6px;border:1.5px dashed #C9CBCF;border-radius:var(--r)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px 8px;cursor:grab;position:relative}
+.card:hover{border-color:#B9BBC0}
+.card.moved{box-shadow:inset 3px 0 0 var(--black)}
+.card.flag{box-shadow:inset 3px 0 0 var(--red)}
+.card.hl{outline:3px solid var(--black);outline-offset:1px}
+.sortable-ghost{opacity:.35}
+.sortable-chosen{cursor:grabbing}
+.eyebrow{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.eyebrow span{font-family:var(--display);font-weight:700;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eyebrow time{font-family:var(--display);font-weight:800;font-size:17px;white-space:nowrap}
+.who{font-weight:600;font-size:15px;margin-top:1px;overflow-wrap:anywhere}
+.odds{display:flex;align-items:flex-end;gap:8px;margin-top:6px}
+.odds b{font-family:var(--display);font-weight:800;font-size:34px;line-height:.9}
+.odds b.hi{color:var(--good)}
+.odds small{font-size:12px;color:var(--muted);line-height:1.25;margin-left:auto;text-align:right}
+.lift{align-self:flex-start;margin-top:2px;background:var(--yellow);color:var(--black);font-family:var(--display);font-weight:800;font-size:14px;padding:1px 6px;border-radius:2px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.chip{font-size:11.5px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--steel);color:var(--ink);white-space:nowrap}
+.chip.hot{background:#FFE0DC;color:var(--bad)}
+.chip.red{background:var(--red);color:var(--white)}
+.chip.blk{background:var(--black);color:var(--white)}
+.chip.y{background:var(--yellow);color:var(--black)}
+.warns{margin-top:8px;display:flex;flex-direction:column;gap:3px}
+.warn{font-size:12px;color:var(--bad);background:var(--bad-bg);padding:3px 6px;border-radius:3px}
+.info{font-size:12px;color:var(--warn);background:var(--warn-bg);padding:3px 6px;border-radius:3px}
+details.why-box{margin-top:8px;border-top:1px solid var(--line);padding-top:6px}
+summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);list-style:none;display:flex;justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:16px;line-height:1}
+details[open]>summary::after{content:"–"}
+.why{display:flex;flex-direction:column;gap:2px;margin-top:6px;font-size:12.5px}
+.why .u::before{content:"▲ ";color:var(--good);font-size:10px}
+.why .d::before{content:"▼ ";color:var(--bad);font-size:10px}
+.sec{margin-top:8px;font-size:12.5px}
+.sec h3{margin:0 0 3px;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.sec p{margin:0}
+.others{width:100%;border-collapse:collapse;font-size:12.5px}
+.others td{padding:3px 0;border-bottom:1px solid #EEEFF1;vertical-align:top}
+.others td.p{text-align:right;font-family:var(--display);font-weight:700;font-size:14px;white-space:nowrap;padding-left:8px}
+.others tr.x td{color:var(--faint)}
+.others .why-x{display:block;font-size:11.5px}
+.act{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.act select{flex:1 1 140px;min-width:0;border:1px solid var(--line);border-radius:4px;padding:5px 6px;background:var(--card)}
+.btn{border:1px solid var(--ink);background:var(--card);border-radius:4px;padding:6px 10px;font-weight:600;font-size:13px;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn.dark{background:var(--black);color:var(--white);border-color:var(--black)}
+.btn.red{background:var(--red);color:var(--white);border-color:var(--red)}
+.btn.ghost{border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.setbox{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px}
+.setbox input{width:16px;height:16px;accent-color:var(--good)}
+.card.done{opacity:.72}
+.card.done .who::after{content:" ✓";color:var(--good)}
+
+/* map */
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;padding-bottom:24px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-width:0}
+.panel h2{margin:0 0 8px;font-family:var(--display);font-weight:800;font-size:20px;text-transform:uppercase}
+.reptog{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.rt{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--rc);background:var(--card);color:var(--ink);border-radius:999px;padding:4px 11px 4px 8px;font-size:13px;font-weight:700;cursor:pointer}
+.rt i{width:11px;height:11px;border-radius:50%;background:var(--rc);display:inline-block}
+.rt span{font-family:var(--display);font-weight:700;color:var(--muted)}
+.rt[aria-pressed="false"]{border-color:var(--line);color:var(--faint)}
+.rt[aria-pressed="false"] i{background:#C9CBCF}
+.rt.all{--rc:var(--ink)}
+.mapbox{position:relative;border-radius:4px;background:#EEF3F7;overflow:hidden}
+.mapbox svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.zip{stroke:#FFFFFF;stroke-width:.6;vector-effect:non-scaling-stroke}
+.route{fill:none;stroke-width:3;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.pin{stroke:#FFFFFF;stroke-width:1.8;vector-effect:non-scaling-stroke;cursor:pointer}
+.pin.need{fill:#FFFFFF!important;stroke:var(--red);stroke-width:2.6;stroke-dasharray:3 2}
+.pinlab{font-family:var(--display);font-weight:800;fill:#FFFFFF;pointer-events:none}
+.startpt{stroke:#FFFFFF;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.tip{position:absolute;pointer-events:none;background:var(--black);color:var(--white);font-size:12.5px;padding:7px 9px;border-radius:4px;max-width:230px;line-height:1.35;z-index:3}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.ramp{width:100px;height:8px;border-radius:4px;background:linear-gradient(90deg,#F4F4F5,#FF0000);display:inline-block}
+.sq{width:10px;height:10px;display:inline-block;background:var(--ink);vertical-align:-1px;margin-right:4px}
+.stops{display:flex;flex-direction:column;gap:12px}
+.stops h3{margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-family:var(--display);font-weight:800;font-size:16px;text-transform:uppercase}
+.stops h3 i{width:11px;height:11px;border-radius:50%;background:var(--rc)}
+.stops h3 small{margin-left:auto;font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted);text-transform:none}
+.stops ol{margin:4px 0 0;padding-left:20px;font-size:13px}
+.stops li{padding:2px 0;cursor:pointer}
+.stops li span{color:var(--muted)}
+
+/* reps */
+.repsgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:14px;padding-bottom:24px}
+.repcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);border-top:4px solid var(--rc,var(--black));padding:12px 14px;min-width:0}
+.repcard.inactive{opacity:.6}
+.rhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rhead h2{margin:0;font-family:var(--display);font-weight:800;font-size:22px;text-transform:uppercase;flex:1;min-width:0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px 10px;margin-top:10px}
+.f label{display:block;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.f input,.f select{width:100%;border:1px solid var(--line);border-radius:4px;padding:6px 7px;background:var(--card);min-width:0}
+.hint{font-size:12px;color:var(--muted);margin:4px 0 0}
+.sched-wrap{overflow-x:auto;margin-top:6px}
+.sched{border-collapse:collapse;width:100%;min-width:440px;font-size:13px}
+.sched th{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+.sched td{padding:4px 6px;border-bottom:1px solid #EEEFF1}
+.sched td:first-child{font-weight:700;white-space:nowrap}
+.sched input[type=time]{border:1px solid var(--line);border-radius:4px;padding:3px 4px;width:100%;min-width:92px;background:var(--card)}
+.sched input[type=checkbox]{width:16px;height:16px;accent-color:var(--black)}
+.sched tr.off td:nth-child(n+3){opacity:.35}
+.sublabel{margin:14px 0 4px;font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.offs{display:flex;flex-wrap:wrap;gap:6px}
+.offchip{display:inline-flex;align-items:center;gap:6px;background:var(--steel);border-radius:3px;padding:3px 4px 3px 8px;font-size:12.5px;font-weight:600}
+.offchip button{border:0;background:none;cursor:pointer;font-size:15px;line-height:1;padding:0 4px;color:var(--muted)}
+.addoff{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-top:6px}
+.addoff .f{flex:1 1 130px}
+.savebar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.savebar .msg{font-size:12.5px;color:var(--muted);margin-right:auto}
+.savebar .msg.err{color:var(--bad)}
+.addrep{background:var(--card);border:1.5px dashed #B9BBC0;border-radius:var(--r);padding:12px 14px}
+
+/* results */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));background:var(--black);color:var(--white);border-top:4px solid var(--red);margin-block:14px}
+.tiles div{padding:12px 16px;border-right:1px solid #222}
+.tiles small{display:block;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:12px;color:#B9BBC0;text-transform:uppercase}
+.tiles b{font-family:var(--display);font-weight:800;font-size:32px}
+.tiles b.y{color:var(--yellow)}
+.tiles em{display:block;font-style:normal;font-size:12px;color:#B9BBC0}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:560px;height:auto}
+.ax{font-family:var(--body);font-size:11px;fill:var(--muted)}
+.grid{stroke:#ECEDEF;stroke-width:1}
+.lgd{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:6px}
+.lgd i{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:5px}
+.score-wrap{overflow-x:auto}
+.score{width:100%;min-width:560px;border-collapse:separate;border-spacing:0 6px;font-size:14px}
+.score th{font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--white);background:var(--black);padding:8px 10px;text-align:right}
+.score th:first-child,.score th:nth-child(2),.score th:nth-child(3){text-align:left}
+.score td{background:var(--card);padding:10px;text-align:right;font-family:var(--display);font-weight:800;font-size:20px;border-block:1px solid var(--line)}
+.score td:first-child{text-align:center;color:var(--faint);border-left:4px solid var(--rc,var(--line));width:44px}
+.score td.nm{text-align:left;font-size:21px;text-transform:uppercase}
+.score td.rt2{text-align:left}
+.score td.nm small{display:block;font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted);text-transform:none}
+.score td.g{color:var(--good)}
+.rgrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;padding-bottom:14px}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+
+.foot{border-top:4px solid var(--red);background:var(--black);color:#C9CBCF;font-size:12px}
+.foot .wrap{padding-block:10px;display:flex;flex-wrap:wrap;gap:6px 20px}
+.foot b{color:var(--white);font-family:var(--display);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.loading{padding:40px 0;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--black);color:var(--white);padding:9px 14px;border-radius:4px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+
+@media (max-width:900px){.mapgrid,.rgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.fresh{margin-left:0;width:100%;min-width:0}.fchip{flex:1;min-width:0;gap:8px;padding:6px 8px}.fchip b{font-size:14px}.fsep{padding-left:8px}.col.slim{display:none}.sum b{font-size:22px}.sum div{padding:8px 12px}.tab{padding:11px 10px 9px;font-size:15px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="bar"><div class="bar-in">
+  <div class="mark">Rapid<br>Roofing</div>
+  <h1>Sales Board</h1>
+  <div class="fresh" id="fresh">
+    <button class="fchip" id="fchip" aria-expanded="false" aria-controls="fpanel"><i class="fdot" id="fdot"></i>
+      <span><small>AccuLynx data</small><b id="f-ax">Loading…</b></span><span class="fsep"><small>Plan built</small><b id="f-plan">–</b></span></button>
+    <button class="btn refresh" id="refresh" hidden>Refresh now</button>
+    <div class="fpanel" id="fpanel" hidden></div>
+  </div>
+</div></header>
+<nav class="tabs" aria-label="Sections"><div class="tabs-in" role="tablist">
+  <button class="tab" role="tab" data-tab="board" aria-selected="true">Board</button>
+  <button class="tab" role="tab" data-tab="map" aria-selected="false">Map</button>
+  <button class="tab" role="tab" data-tab="reps" aria-selected="false">Reps</button>
+  <button class="tab" role="tab" data-tab="results" aria-selected="false">Results</button>
+</div></nav>
+
+<main class="wrap">
+  <div class="top" id="dayrow">
+    <div class="days" id="days" role="tablist" aria-label="Appointment days"></div>
+    <div class="sum" id="sum" aria-live="polite"></div>
+  </div>
+  <div class="banner" id="offline" hidden>Changes you make here won't save for the team in this view. Open the board from its link while signed in to save.</div>
+
+  <section id="v-board">
+    <p class="offnote" id="offnote" hidden></p>
+    <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
+  </section>
+
+  <section id="v-map" hidden>
+    <div class="mapgrid">
+      <div class="panel">
+        <div class="reptog" id="reptog" role="group" aria-label="Show or hide each rep's route"></div>
+        <div class="mapbox" id="mapbox"><svg id="map" role="img" aria-label="Long Island zip codes with the day's appointments and routes"></svg><div class="tip" id="tip" hidden></div></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="panel"><h2>Routes</h2><div class="stops" id="stops"></div></div>
+    </div>
+  </section>
+
+  <section id="v-reps" hidden>
+    <p class="note" id="reps-note" style="margin:14px 0 12px">Hours, days off and capacity for each rep. The board uses changes right away, and the engine picks them up on its next run (after each AccuLynx pull).</p>
+    <div class="repsgrid" id="repsgrid"></div>
+  </section>
+
+  <section id="v-results" hidden>
+    <div class="tiles" id="tiles"></div>
+    <div class="rgrid">
+      <div class="panel"><h2>Team close rate by week</h2><div class="chart" id="chart"></div>
+        <div class="lgd"><span><i style="background:var(--black)"></i>Close rate</span><span><i style="background:var(--red)"></i>Signed at first sit</span><span><i style="background:transparent;border-top:2px dashed #9A9DA3;height:0"></i>Engine goes live</span></div>
+        <p class="note" id="chart-note"></p></div>
+      <div class="panel"><h2>Moves on the board</h2><div id="moves-sum"></div></div>
+    </div>
+    <div class="panel" style="margin-bottom:24px"><h2>Rep scoreboard · rolling 90</h2><div class="score-wrap"><table class="score" id="score"></table></div></div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap">
+  <span><b>Data</b> <span id="f-data">AccuLynx job export</span></span>
+  <span><b>Picks</b> engine close chance, inside the assignment rules</span>
+  <span><b>Drag</b> a card to another rep, or use Move to on the card</span>
+</div></footer>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = v => v == null || isNaN(v) ? "–" : Math.round(v * 100) + "%";
+const pct1 = v => v == null || isNaN(v) ? "–" : (v * 100).toFixed(1) + "%";
+const money = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + Math.round(v || 0);
+const DAYN = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const WEEK = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const COLORS = ["#1D5BD8","#7B3AED","#0E8C7E","#E36A00","#C11574","#4B5565","#2E7D32","#8A6D00","#0077B6","#A4161A"];
+const parse = s => { const [d, t = "00:00"] = s.split("T"); const [y, m, dd] = d.split("-").map(Number); const [h, mi] = t.split(":").map(Number); return new Date(y, m - 1, dd, h || 0, mi || 0); };
+const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const hm = s => { const d = parse(s); let h = d.getHours(), m = d.getMinutes(); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2, "0") : "") + " " + ap; };
+const mins = s => { const d = parse(s); return d.getHours() * 60 + d.getMinutes(); };
+const dkey = s => s.slice(0, 10);
+const monday = k => { const d = parse(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return iso(d); };
+const md = k => { const d = parse(k); return (d.getMonth() + 1) + "/" + d.getDate(); };
+const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+let B = null, Z = null, day = null, tab = "board", moves = {}, roster = null, db = null, userApi = null, me = null, canWrite = true;
+const hidden = {}; let openPin = null, proj = null;
+try { day = localStorage.getItem("rr-board-day"); tab = localStorage.getItem("rr-board-tab") || "board"; } catch (e) {}
+if (/^#(board|map|reps|results)$/.test(location.hash)) tab = location.hash.slice(1);
+
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+function banner(t) { const o = $("#offline"); if (t) o.textContent = t; o.hidden = false; }
+
+const repOf = c => (moves[c.id] && moves[c.id].rep !== undefined) ? moves[c.id].rep : c.pick;
+const repBy = n => B.reps.find(r => r.name === n);
+const short = n => n ? (repBy(n)?.short || n.split(" ")[0]) : "Nobody";
+const color = n => { const i = B.reps.findIndex(r => r.name === n); return i < 0 ? "#888" : COLORS[i % COLORS.length]; };
+
+function weekCount(rep, wk) {
+  let n = 0;
+  for (const c of B.cards) if (repOf(c) === rep && monday(dkey(c.appt)) === wk && c.lane !== "specialty") n++;
+  if (wk === monday(B.meta.run.slice(0, 10))) n += repBy(rep)?.this_week || 0;
+  return n;
+}
+const dayCards = (rep, k) => B.cards.filter(c => dkey(c.appt) === k && repOf(c) === rep).sort((a, b) => a.appt.localeCompare(b.appt));
+const onDay = (r, k) => !!(r.week && r.week[DAYN[parse(k).getDay()]]) && !(r.days_off || []).includes(k);
+
+function problems(c) {
+  const rep = repOf(c); const out = [];
+  if (!rep) return out;
+  const r = repBy(rep); const k = dkey(c.appt);
+  if (r && (r.days_off || []).includes(k)) out.push("Has this day off");
+  else if (c.blocked[rep]) out.push(c.blocked[rep]);
+  const same = dayCards(rep, k);
+  if (r && same.length > r.limits.per_day) out.push(`${same.length} appointments that day, limit is ${r.limits.per_day}`);
+  for (const o of same) if (o.id !== c.id && Math.abs(mins(o.appt) - mins(c.appt)) < (B.appointment?.min_gap_minutes || 120)) { out.push(`Within 2 hours of his ${hm(o.appt)}`); break; }
+  const wc = weekCount(rep, monday(k));
+  if (r && wc > r.limits.week_cap) out.push(`${wc} this week, cap is ${r.limits.week_cap}`);
+  return out;
+}
+
+/* ---------- shared: tabs, days, summary ---------- */
+function renderTop() {
+  $$(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  ["board","map","reps","results"].forEach(t => $("#v-" + t).hidden = t !== tab);
+  $("#dayrow").hidden = !(tab === "board" || tab === "map");
+  const ks = [...new Set(B.cards.map(c => dkey(c.appt)))].sort();
+  if (!ks.includes(day)) day = ks[0];
+  $("#days").innerHTML = ks.map(k => {
+    const n = B.cards.filter(c => dkey(c.appt) === k).length;
+    const flag = B.cards.some(c => dkey(c.appt) === k && (!repOf(c) || problems(c).length || c.needs_ok));
+    return `<button class="day" role="tab" aria-selected="${k === day}" data-k="${k}"><b>${DAYN[parse(k).getDay()]} ${md(k)}</b><span>${n} appt${n > 1 ? "s" : ""}</span>${flag ? '<i class="dot" title="Needs a look"></i>' : ""}</button>`;
+  }).join("");
+  const today = B.cards.filter(c => dkey(c.appt) === day);
+  const exp = today.reduce((s, c) => { const r = repOf(c); return s + (r && c.odds[r] ? c.odds[r].close : 0); }, 0);
+  const expE = today.reduce((s, c) => s + (c.pick ? c.close : 0), 0);
+  const sd = today.reduce((s, c) => { const r = repOf(c); return s + (r && c.odds[r] ? c.odds[r].same_day : 0); }, 0);
+  const attn = today.filter(c => !repOf(c) || problems(c).length || c.needs_ok).length;
+  const set = today.filter(c => moves[c.id]?.set).length;
+  $("#sum").innerHTML = `
+    <div><small>Appointments</small><b class="n">${today.length}</b></div>
+    <div><small>Expected sales</small><b class="n y">${exp.toFixed(1)}</b>${Math.abs(exp - expE) >= .05 ? `<em>engine ${expE.toFixed(1)}</em>` : ""}</div>
+    <div><small>Same-day signs</small><b class="n">${sd.toFixed(1)}</b></div>
+    <div><small>Needs a look</small><b class="n" style="color:${attn ? "var(--yellow)" : "inherit"}">${attn}</b></div>
+    <div><small>Set in AccuLynx</small><b class="n">${set}/${today.length}</b></div>`;
+}
+function render() {
+  if (!B) return;
+  renderTop();
+  if (tab === "board") renderBoard();
+  else if (tab === "map") renderMap();
+  else if (tab === "reps") renderReps();
+  else renderResults();
+}
+
+/* ---------- board ---------- */
+function renderBoard() {
+  const today = B.cards.filter(c => dkey(c.appt) === day);
+  const reps = B.reps.filter(r => onDay(r, day) || today.some(c => repOf(c) === r.name));
+  const off = B.reps.filter(r => !reps.includes(r)).map(r => r.short);
+  $("#offnote").hidden = !off.length; $("#offnote").textContent = off.length ? `Off this day: ${off.join(", ")}` : "";
+  const wk = monday(day);
+  const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
+  const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
+    <div class="load"><span>${na.length ? "Nobody free inside the rules. Move the time, or drag to a rep." : "Every appointment has a rep."}</span></div></div>
+    <div class="list" data-rep="">${na.map(card).join("")}</div></section>`];
+  for (const r of reps) {
+    const mine = dayCards(r.name, day);
+    const wc = weekCount(r.name, wk); const cap = r.limits.week_cap, min = r.limits.week_min;
+    const capShow = cap >= 99 ? null : cap;
+    const segs = capShow ? Array.from({ length: Math.max(capShow, wc) }, (_, i) => `<i class="${i < wc ? (i >= capShow ? "over" : "on") : ""}${min && i === min - 1 ? " min" : ""}"></i>`).join("") : "";
+    cols.push(`<section class="col" aria-label="${esc(r.name)}" style="--rc:${color(r.name)}"><div class="ch">
+      <div class="ch-row"><h2 title="${esc(r.name)}">${esc(r.display || r.short)}</h2><span class="pct n" title="Close rate, rolling ${r.window} days">${pct(r.close)}</span></div>
+      <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today <b>${mine.length}/${r.limits.per_day}</b></span>
+        <span class="${capShow && wc > capShow ? "over" : ""}">Week <b>${wc}</b>${capShow ? ` of ${min && min !== capShow ? min + "–" : ""}${capShow}` : ""}</span></div>
+      ${segs ? `<div class="meter" title="This week. Red underline marks the minimum.">${segs}</div>` : ""}
+      ${r.note ? `<div class="rnote">${esc(r.note)}</div>` : ""}
+    </div><div class="list" data-rep="${esc(r.name)}">${mine.length ? mine.map(card).join("") : '<div class="empty">No appointments. Drag one here.</div>'}</div></section>`);
+  }
+  $("#board").innerHTML = cols.join("");
+  wireBoard();
+}
+
+function card(c) {
+  const rep = repOf(c); const m = moves[c.id] || {};
+  const isMoved = m.rep !== undefined; const pr = problems(c);
+  const o = rep && c.odds[rep] ? c.odds[rep] : null;
+  const where = [c.town, c.zip].filter(Boolean).join(" · ") || "Location not set";
+  const src = [c.parent, c.source].filter(Boolean).join(" · ");
+  const chips = [];
+  if (c.lane === "commercial") chips.push('<span class="chip blk">Commercial</span>');
+  if (c.lane === "specialty") chips.push('<span class="chip blk">Specialty</span>');
+  if (c.booked_today) chips.push('<span class="chip y">Booked same day</span>');
+  if (c.hot && /hot/i.test(c.hot)) chips.push('<span class="chip hot">Hot</span>');
+  if (src) chips.push(`<span class="chip">${esc(src)}</span>`);
+  if (c.needs_ok) chips.push(`<span class="chip red">Needs Richie's OK</span>`);
+  const warns = [];
+  if (isMoved && c.pick) warns.push(`<div class="info">Moved from ${esc(short(c.pick))} (${pct(c.close)})${m.byName ? " by " + esc(m.byName) : ""}</div>`);
+  for (const p of pr) warns.push(`<div class="warn">${esc(p)}</div>`);
+  if (c.bends.length) warns.push(`<div class="info">Rule bend: ${esc(c.bends.join(", "))}</div>`);
+  if (c.in_acculynx && rep && c.in_acculynx !== rep) warns.push(`<div class="info">AccuLynx has ${esc(short(c.in_acculynx))}</div>`);
+  const others = Object.entries(c.odds).filter(([n]) => n !== rep).sort((a, b) => b[1].close - a[1].close).map(([n, v]) =>
+    `<tr class="${c.blocked[n] ? "x" : ""}"><td>${esc(short(n))}${c.blocked[n] ? `<span class="why-x">${esc(c.blocked[n])}</span>` : ""}</td><td class="p">${pct(v.close)}</td></tr>`).join("");
+  const opts = [`<option value="">Move to…</option>`].concat(rep ? [`<option value="__none__">Needs a call</option>`] : []).concat(B.reps.filter(r => r.name !== rep).map(r =>
+    `<option value="${esc(r.name)}">${esc(r.short)} · ${pct(c.odds[r.name]?.close)}${c.blocked[r.name] ? " (breaks a rule)" : ""}</option>`)).join("");
+  return `<article class="card${isMoved ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
+    <div class="eyebrow"><span>${esc(where)}</span><time datetime="${esc(c.appt)}">${hm(c.appt)}</time></div>
+    <div class="who">${esc(c.name || "Customer")}</div>
+    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
+    ${chips.length ? `<div class="chips">${chips.join("")}</div>` : ""}
+    ${warns.length ? `<div class="warns">${warns.join("")}</div>` : ""}
+    <details class="why-box"><summary>Why this rep</summary>
+      ${!isMoved && c.note ? `<div class="sec"><p>${esc(c.note)}</p></div>` : ""}
+      ${!isMoved && (c.up.length || c.down.length) ? `<div class="why">${c.up.map(u => `<span class="u">${esc(u)}</span>`).join("")}${c.down.map(d => `<span class="d">${esc(d)}</span>`).join("")}</div>` : ""}
+      <div class="sec"><h3>Other reps</h3><table class="others">${others}</table></div>
+      ${c.notes ? `<div class="sec"><h3>Lead notes</h3><p>${esc(c.notes)}</p></div>` : ""}
+      ${c.more_notes ? `<div class="sec"><h3>More notes</h3><p>${esc(c.more_notes)}</p></div>` : ""}
+      <div class="sec"><h3>Lead</h3><p>${esc([c.set_by && "Set by " + c.set_by, c.days_out != null && (c.days_out === 0 ? "booked same day" : c.days_out + " days from lead to appointment"), c.lead_close != null && pct(c.lead_close) + " with an average rep"].filter(Boolean).join(" · "))}</p></div>
+      <div class="act"><select aria-label="Move this appointment" data-move="${c.id}">${opts}</select>
+        ${isMoved ? `<button class="btn" data-undo="${c.id}">Back to ${esc(short(c.pick))}</button>` : ""}
+        <a class="btn dark" href="${esc(c.url)}" target="_blank" rel="noopener">Open in AccuLynx</a></div>
+    </details>
+    <label class="setbox"><input type="checkbox" data-set="${c.id}"${m.set ? " checked" : ""}> Set in AccuLynx</label>
+  </article>`;
+}
+
+function wireBoard() {
+  $$("[data-move]").forEach(s => s.onchange = () => { if (!s.value) return; move(s.dataset.move, s.value === "__none__" ? "" : s.value); });
+  $$("[data-undo]").forEach(b => b.onclick = () => move(b.dataset.undo, null, true));
+  $$("[data-set]").forEach(b => b.onchange = () => save(b.dataset.set, { set: b.checked }));
+  if (window.Sortable) $$(".list").forEach(el => Sortable.create(el, {
+    group: "board", draggable: ".card", filter: "details,select,a,button,input,label", preventOnFilter: false,
+    animation: 120, delay: 160, delayOnTouchOnly: true, scroll: true, bubbleScroll: true,
+    onEnd: e => { const id = e.item.dataset.id; const to = e.to.dataset.rep || ""; if (e.from !== e.to) move(id, to); else render(); }
+  }));
+}
+function move(id, to, undo) {
+  const c = B.cards.find(x => x.id === id); if (!c) return;
+  const target = undo ? c.pick : (to || null);
+  save(id, target === c.pick ? { rep: undefined } : { rep: target });
+  const p = problems(c);
+  toast(undo ? `Back to ${short(c.pick)}` : `Moved to ${target ? short(target) : "Needs a call"}${p.length ? ". It breaks a rule, see the card." : ""}`);
+}
+async function save(id, patch) {
+  const cur = { ...(moves[id] || {}) };
+  if ("rep" in patch) { if (patch.rep === undefined) delete cur.rep; else cur.rep = patch.rep; cur.by = me?.id || null; cur.byName = me?.name || null; cur.at = new Date().toISOString(); }
+  if ("set" in patch) cur.set = patch.set;
+  if (cur.rep === undefined && !cur.set) delete moves[id]; else moves[id] = cur;
+  render();
+  if (!db) return;
+  const c = B.cards.find(x => x.id === id);
+  try {
+    const ref = db.doc("cards/" + id);
+    if (!moves[id]) await ref.delete();
+    else await ref.set({ rep: cur.rep === undefined ? "__engine__" : cur.rep, set: !!cur.set, by: cur.by || null, at: cur.at || new Date().toISOString(), appt: c?.appt || null, pick: c?.pick || null, pick_close: c?.close ?? null });
+  } catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
+}
+
+/* ---------- map ---------- */
+let mapReady = null;
+function loadZips() {
+  if (mapReady) return mapReady;
+  mapReady = (async () => {
+    try { Z = await (await fetch("zips.json")).json(); } catch (e) { Z = {}; }
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    Object.values(Z).forEach(z => z.r.forEach(r => r.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); })));
+    const k = Math.cos(40.8 * Math.PI / 180), S = 1000 / ((x1 - x0) * k || 1);
+    proj = ([x, y]) => [(x - x0) * k * S, (y1 - y) * S];
+    const H = Math.ceil((y1 - y0) * S) || 400;
+    const svg = $("#map"); svg.setAttribute("viewBox", `-10 -10 1020 ${H + 20}`);
+    const vals = Object.keys(Z).map(zipRate).filter(v => v != null).sort((a, b) => a - b);
+    const lo = vals[Math.floor(vals.length * .05)] || 0, hi = vals[Math.floor(vals.length * .95)] || 1;
+    const a = [244,244,245], b = [255,0,0];
+    const heat = t => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",")})`;
+    svg.innerHTML = `<g>${Object.entries(Z).map(([zip, z]) => { const v = zipRate(zip); return `<path class="zip" data-zip="${zip}" style="fill:${v == null ? "var(--nodata)" : heat(Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1))))}" d="${z.r.map(r => "M" + r.map(p => proj(p).map(v => v.toFixed(1)).join(",")).join("L") + "Z").join("")}"/>`; }).join("")}</g><g id="gr"></g><g id="gs"></g><g id="gp"></g>`;
+    $("#legend").innerHTML = `<span>Area color: close rate, last 12 months</span><span class="n">${pct(lo)}</span><span class="ramp"></span><span class="n">${pct(hi)}+</span><span><span class="sq"></span>where each rep starts</span><span>Pin number = stop order</span><span>Dashed pin = needs a call</span>`;
+    svg.addEventListener("mousemove", hover); svg.addEventListener("mouseleave", () => $("#tip").hidden = true);
+    svg.addEventListener("click", e => { const p = e.target.closest(".pin"); if (p) focusCard(p.dataset.id); });
+  })();
+  return mapReady;
+}
+function zipRate(zip) { const s = B.zips[zip]; return s && s.n >= 3 ? s.sold / s.n : null; }
+const center = zip => (Z && zip && Z[zip]) ? Z[zip].c : null;
+function startOf(r, k) {
+  const office = (B.office?.days || []).includes(DAYN[parse(k).getDay()]);
+  const zip = office ? B.office.zip : r.home_zip;
+  return { label: office ? "the Bohemia office" : "home", c: center(zip) };
+}
+function miles(a, b) { if (!a || !b) return 0; const dx = (a[0] - b[0]) * 69 * Math.cos(40.8 * Math.PI / 180), dy = (a[1] - b[1]) * 69; return Math.hypot(dx, dy) * 1.25; }
+
+async function renderMap() {
+  await loadZips();
+  if (tab !== "map") return;
+  const d = day, show = B.cards.filter(c => dkey(c.appt) === d), seen = {}, P = {};
+  show.forEach(c => { const cc = center(c.zip); if (!cc) return; const p = proj(cc); const k = seen[c.zip] = (seen[c.zip] || 0) + 1; const a = k * 2.4; P[c.id] = [p[0] + (k > 1 ? Math.cos(a) * 11 : 0), p[1] + (k > 1 ? Math.sin(a) * 11 : 0)]; });
+  const reps = B.reps.filter(r => onDay(r, d) || show.some(c => repOf(c) === r.name));
+  let routes = "", starts = "", pins = ""; const placed = {}; const list = [];
+  for (const r of reps) {
+    const ls = dayCards(r.name, d); const st = startOf(r, d);
+    let mi = 0, prev = st.c;
+    ls.forEach(c => { const cc = center(c.zip); mi += miles(prev, cc); prev = cc || prev; });
+    list.push({ r, ls, st, mi });
+    if (hidden[r.name] || !ls.length || !st.c) continue;
+    let sp = proj(st.c); const key = sp.map(v => v.toFixed(0)).join(","); const k = placed[key] = (placed[key] || 0) + 1; sp = [sp[0] + (k - 1) * 8, sp[1] - (k - 1) * 8];
+    starts += `<rect class="startpt" x="${(sp[0] - 6).toFixed(1)}" y="${(sp[1] - 6).toFixed(1)}" width="12" height="12" style="fill:${color(r.name)}"><title>${esc(r.short)} starts at ${esc(st.label)}</title></rect>`;
+    const pts = [sp, ...ls.filter(c => P[c.id]).map(c => P[c.id])];
+    routes += `<polyline class="route" style="stroke:${color(r.name)}" points="${pts.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ")}"/>`;
+  }
+  show.forEach(c => {
+    if (!P[c.id]) return; const r = repOf(c); if (r && hidden[r]) return;
+    const [x, y] = P[c.id]; const i = r ? dayCards(r, d).indexOf(c) + 1 : "";
+    pins += `<g><circle class="pin${r ? "" : " need"}" data-id="${c.id}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10.5" style="fill:${r ? color(r) : "#fff"}"><title>${esc(hm(c.appt) + " " + (c.town || "") + " · " + (r ? short(r) : "needs a call"))}</title></circle>${i ? `<text class="pinlab" x="${x.toFixed(1)}" y="${(y + 4.2).toFixed(1)}" text-anchor="middle" font-size="12.5">${i}</text>` : ""}</g>`;
+  });
+  $("#gr").innerHTML = routes; $("#gs").innerHTML = starts; $("#gp").innerHTML = pins;
+  const allOn = reps.every(r => !hidden[r.name]);
+  $("#reptog").innerHTML = `<button class="rt all" data-all="1" aria-pressed="${allOn}"><i></i>All</button>` + reps.map(r =>
+    `<button class="rt" style="--rc:${color(r.name)}" data-hide="${esc(r.name)}" aria-pressed="${!hidden[r.name]}"><i></i>${esc(r.short)}<span>${dayCards(r.name, d).length}</span></button>`).join("");
+  $$(".rt[data-hide]").forEach(b => b.onclick = () => { hidden[b.dataset.hide] = !hidden[b.dataset.hide]; renderMap(); });
+  $(".rt[data-all]").onclick = () => { reps.forEach(r => hidden[r.name] = allOn); renderMap(); };
+  const na = show.filter(c => !repOf(c)), off = show.filter(c => !P[c.id]);
+  $("#stops").innerHTML = list.filter(x => x.ls.length).map(({ r, ls, st, mi }) => `<div style="--rc:${hidden[r.name] ? "#C9CBCF" : color(r.name)}"><h3><i></i>${esc(r.display || r.short)}<small>from ${esc(st.label)} · about ${Math.round(mi)} mi</small></h3>
+    <ol>${ls.map(c => `<li data-go="${c.id}"><b>${hm(c.appt)}</b> ${esc(c.town || c.zip || "")} <span>· ${esc(c.name || "")}</span></li>`).join("")}</ol></div>`).join("")
+    + (na.length ? `<div style="--rc:var(--red)"><h3><i></i>Needs a call</h3><ol>${na.map(c => `<li data-go="${c.id}"><b>${hm(c.appt)}</b> ${esc(c.town || "")}</li>`).join("")}</ol></div>` : "")
+    + (off.length ? `<p class="note">${off.length} not on the map (zip missing or off Long Island).</p>` : "")
+    + `<p class="note">Tap a pin or a stop to jump to its card. Miles are straight-line plus 25%, a rough guide.</p>`;
+  $$("[data-go]").forEach(li => li.onclick = () => focusCard(li.dataset.go));
+}
+function hover(e) {
+  const tip = $("#tip"), box = $("#mapbox").getBoundingClientRect(), p = e.target.closest(".zip");
+  if (!p || e.target.closest(".pin")) { tip.hidden = true; return; }
+  const zip = p.dataset.zip, s = B.zips[zip];
+  tip.innerHTML = `<b>${esc(s?.city || "")} ${zip}</b><br>${s ? `${s.n} sits, ${pct(s.sold / s.n)} closed, last 12 months` : "No sits in the last 12 months"}`;
+  tip.hidden = false; let x = e.clientX - box.left + 14, y = e.clientY - box.top + 14; if (x > box.width - 240) x -= 260; if (y > box.height - 70) y -= 80;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function focusCard(id) {
+  openPin = id; tab = "board"; setTab();
+  requestAnimationFrame(() => { const el = document.getElementById("c-" + id); if (el) el.scrollIntoView({ block: "center", inline: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); });
+  setTimeout(() => { openPin = null; const el = document.getElementById("c-" + id); if (el) el.classList.remove("hl"); }, 2500);
+}
+
+/* ---------- reps ---------- */
+const drafts = {}; const openReps = new Set();
+function repSummary(d) {
+  const days = WEEK.filter(w => d.week && d.week[w]);
+  const hb = [...new Set(days.map(w => d.week[w][2]).filter(Boolean))];
+  const fut = (d.days_off || []).filter(x => x >= iso(new Date()));
+  const cap = d.capacity || {}; const cp = Object.keys(cap).length ? "capacity overridden" : "capacity by rating";
+  return [days.length ? days.join(", ") : "No working days", hb.length ? "home by " + hb.map(t => hm("2000-01-01T" + t)).join("/") : null,
+    fut.length ? fut.length + " day" + (fut.length > 1 ? "s" : "") + " off coming up" : "no time off", cp].filter(Boolean).join(" · ");
+}
+function rosterList() {
+  const src = roster || B.roster;
+  return Object.entries(src).map(([name, v]) => ({ ...v, name })).sort((a, b) => (b.active !== false) - (a.active !== false) || (B.reps.findIndex(r => r.name === a.name) + 99 * !repBy(a.name)) - (B.reps.findIndex(r => r.name === b.name) + 99 * !repBy(b.name)));
+}
+function renderReps() {
+  if (!canWrite) $("#reps-note").textContent = "You can view rep settings. Ask Joe for edit access to change them.";
+  $("#repsgrid").innerHTML = rosterList().map(repCard).join("") + `<div class="addrep"><div class="sublabel" style="margin-top:0">Add a rep</div>
+    <div class="fields"><div class="f" style="grid-column:1/-1"><label for="new-name">Name exactly as in AccuLynx</label><input id="new-name" placeholder="First Last" autocomplete="off"></div>
+    <div class="f"><label for="new-start">First day</label><input id="new-start" type="date"></div>
+    <div class="f"><label for="new-zip">Home zip</label><input id="new-zip" inputmode="numeric" maxlength="5"></div></div>
+    <div class="savebar"><span class="msg" id="new-msg">New reps follow the Hero's Journey: no appointments until Day 16.</span><button class="btn red" id="new-add"${canWrite ? "" : " disabled"}>Add rep</button></div></div>`;
+  wireReps();
+}
+function repCard(r) {
+  const id = slug(r.name); const d = drafts[id] || r; const st = repBy(r.name);
+  const wk = d.week || {}; const cap = d.capacity || {}; const act = d.active !== false;
+  const disp = d.display || st?.display || "";
+  return `<article class="repcard${act ? "" : " inactive"}" data-rep="${esc(r.name)}" data-id="${id}" style="--rc:${color(r.name)}">
+    <div class="rhead"><h2>${esc(disp || r.name)}</h2>${st ? `<span class="badge b-${esc(st.rating)}">${esc(st.rating)}</span><span class="n" style="font-size:18px;font-weight:800">${pct(st.close)}</span>` : ""}
+      <label class="setbox" style="margin:0"><input type="checkbox" data-k="active"${act ? " checked" : ""}> Active</label></div>
+    ${st?.note ? `<div class="rnote">${esc(st.note)}</div>` : ""}
+    <p class="hint">${esc(repSummary(d))}</p>
+    <details class="why-box" data-open="${id}"${openReps.has(id) ? " open" : ""}><summary>Edit hours, time off and capacity</summary>
+    <div class="fields">
+      <div class="f"><label for="${id}-disp">Show as</label><input id="${id}-disp" data-k="display" value="${esc(disp)}" placeholder="${esc(r.name)}"></div>
+      <div class="f"><label for="${id}-lane">Runs</label><select id="${id}-lane" data-k="lane">${[["regular","Regular"],["specialty","Specialty + regular"],["commercial","Commercial + specialty backup"]].map(([v, t]) => `<option value="${v}"${(d.lane || "regular") === v ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+      <div class="f"><label for="${id}-start">First day</label><input id="${id}-start" type="date" data-k="start_date" value="${esc(d.start_date || "")}"></div>
+      <div class="f"><label for="${id}-zip">Home zip</label><input id="${id}-zip" data-k="home_zip" inputmode="numeric" maxlength="5" value="${esc(d.home_zip || "")}"></div>
+    </div>
+    <div class="sublabel">Weekly hours</div>
+    <div class="sched-wrap"><table class="sched"><thead><tr><th>Day</th><th>Works</th><th>First appt</th><th>Last appt</th><th>Home by</th></tr></thead><tbody>
+      ${WEEK.map(w => { const s = wk[w]; return `<tr class="${s ? "" : "off"}"><td>${w}</td><td><input type="checkbox" aria-label="Works ${w}" data-day="${w}" data-p="on"${s ? " checked" : ""}></td>
+        <td><input type="time" aria-label="${w} first appointment" data-day="${w}" data-p="0" value="${esc(s?.[0] || "10:00")}"${s ? "" : " disabled"}></td>
+        <td><input type="time" aria-label="${w} last appointment" data-day="${w}" data-p="1" value="${esc(s?.[1] || "19:00")}"${s ? "" : " disabled"}></td>
+        <td><input type="time" aria-label="${w} home by" data-day="${w}" data-p="2" value="${esc(s?.[2] || "")}"${s ? "" : " disabled"}></td></tr>`; }).join("")}
+    </tbody></table></div>
+    <p class="hint">Home by: the appointment plus the drive home has to finish before this time. Blank means no limit.</p>
+    <div class="sublabel">Time off</div>
+    <div class="offs">${(d.days_off || []).length ? groupOff(d.days_off).map(g => `<span class="offchip">${esc(g.label)}<button aria-label="Remove ${esc(g.label)}" data-rmoff="${esc(g.days.join(","))}">×</button></span>`).join("") : '<span class="hint" style="margin:0">None scheduled.</span>'}</div>
+    <div class="addoff"><div class="f"><label for="${id}-of">From</label><input type="date" id="${id}-of"></div><div class="f"><label for="${id}-ot">To (optional)</label><input type="date" id="${id}-ot"></div><button class="btn" data-addoff="1">Add time off</button></div>
+    <div class="sublabel">Capacity</div>
+    <div class="fields">
+      ${[["per_day","Per day"],["week_min","Week minimum"],["week_cap","Week cap"]].map(([k, t]) => `<div class="f"><label for="${id}-${k}">${t}</label><input id="${id}-${k}" type="number" min="0" max="30" inputmode="numeric" data-cap="${k}" value="${cap[k] ?? ""}" placeholder="${st && st.limits[k] != null && cap[k] == null ? (st.limits[k] >= 99 ? "no cap" : st.limits[k]) : "by rating"}"></div>`).join("")}
+    </div>
+    <p class="hint">Blank follows the ${st ? esc(st.rating) + " rating" : "rating"}. A number here overrides it until you clear it.</p>
+    </details>
+    ${drafts[id] ? `<div class="savebar"><span class="msg" data-msg>Unsaved changes</span><button class="btn ghost" data-cancel="1">Cancel</button><button class="btn dark" data-save="1"${canWrite ? "" : " disabled"}>Save</button></div>` : ""}
+  </article>`;
+}
+function groupOff(days) {
+  const ds = [...new Set(days)].sort(); const out = [];
+  for (const d of ds) {
+    const last = out[out.length - 1]; let nextOfLast = null;
+    if (last) { const p = parse(last.days[last.days.length - 1]); p.setDate(p.getDate() + 1); nextOfLast = iso(p); }
+    if (last && nextOfLast === d) last.days.push(d); else out.push({ days: [d] });
+  }
+  out.forEach(g => g.label = g.days.length > 1 ? `${md(g.days[0])} – ${md(g.days[g.days.length - 1])}` : `${DAYN[parse(g.days[0]).getDay()]} ${md(g.days[0])}`);
+  return out;
+}
+function draftOf(el) {
+  const art = el.closest(".repcard"); const id = art.dataset.id; const name = art.dataset.rep;
+  if (!drafts[id]) drafts[id] = JSON.parse(JSON.stringify(rosterList().find(x => x.name === name)));
+  return drafts[id];
+}
+function keepScroll(fn) { const y = window.scrollY; fn(); window.scrollTo({ top: y }); }
+function wireReps() {
+  $$(".repcard details[data-open]").forEach(el => el.ontoggle = () => { if (el.open) openReps.add(el.dataset.open); else openReps.delete(el.dataset.open); });
+  $$(".repcard [data-k]").forEach(el => el.onchange = () => { const d = draftOf(el); d[el.dataset.k] = el.type === "checkbox" ? el.checked : (el.value.trim() || null); keepScroll(renderReps); });
+  $$(".repcard [data-day]").forEach(el => el.onchange = () => { const d = draftOf(el); d.week = d.week || {}; const w = el.dataset.day, p = el.dataset.p;
+    if (p === "on") { if (el.checked) d.week[w] = ["10:00", "19:00", null]; else delete d.week[w]; }
+    else if (d.week[w]) d.week[w][+p] = el.value || null;
+    keepScroll(renderReps); });
+  $$(".repcard [data-cap]").forEach(el => el.onchange = () => { const d = draftOf(el); d.capacity = d.capacity || {}; const v = el.value === "" ? null : Math.max(0, Math.round(+el.value)); if (v == null) delete d.capacity[el.dataset.cap]; else d.capacity[el.dataset.cap] = v; keepScroll(renderReps); });
+  $$(".repcard [data-addoff]").forEach(el => el.onclick = () => { const art = el.closest(".repcard"); const id = art.dataset.id;
+    const f = art.querySelector(`#${id}-of`).value, t = art.querySelector(`#${id}-ot`).value || f; if (!f) { toast("Pick a start date"); return; }
+    const a = parse(f), b = parse(t); if (b < a) { toast("The end date is before the start"); return; }
+    const d = draftOf(el); const days = new Set(d.days_off || []);
+    for (let x = new Date(a); x <= b; x.setDate(x.getDate() + 1)) days.add(iso(x)); d.days_off = [...days].sort(); keepScroll(renderReps); });
+  $$(".repcard [data-rmoff]").forEach(el => el.onclick = () => { const d = draftOf(el); const rm = new Set(el.dataset.rmoff.split(",")); d.days_off = (d.days_off || []).filter(x => !rm.has(x)); keepScroll(renderReps); });
+  $$(".repcard [data-cancel]").forEach(el => el.onclick = () => { delete drafts[el.closest(".repcard").dataset.id]; keepScroll(renderReps); });
+  $$(".repcard [data-save]").forEach(el => el.onclick = () => saveRep(el.closest(".repcard").dataset.id));
+  const add = $("#new-add"); if (add) add.onclick = addRep;
+}
+function cleanRep(d) {
+  const o = { name: d.name, active: d.active !== false, display: d.display || null, lane: d.lane || "regular", start_date: d.start_date || null, home_zip: d.home_zip || null,
+    week: {}, days_off: d.days_off || [], capacity: d.capacity || {} };
+  for (const w of WEEK) if (d.week && d.week[w]) o.week[w] = [d.week[w][0] || "10:00", d.week[w][1] || "19:00", d.week[w][2] || null];
+  return o;
+}
+async function saveRep(id) {
+  const d = drafts[id]; if (!d) return; const msg = document.querySelector(`.repcard[data-id="${id}"] [data-msg]`);
+  if (!db) { banner("Rep changes can't save in this view."); return; }
+  try { await db.doc("roster/" + id).set({ ...cleanRep(d), updated_at: new Date().toISOString(), updated_by: me?.id || null }); delete drafts[id]; toast("Saved. The engine uses it on its next run."); }
+  catch (e) { if (msg) { msg.textContent = e?.code === "not_granted" ? "You have view-only access." : "Didn't save. Try again."; msg.className = "msg err"; } }
+}
+async function addRep() {
+  const name = $("#new-name").value.trim().replace(/\s+/g, " "); const msg = $("#new-msg");
+  if (name.split(" ").length < 2) { msg.textContent = "Enter the full name exactly as it shows in AccuLynx."; msg.className = "msg err"; return; }
+  if (rosterList().some(r => r.name.toLowerCase() === name.toLowerCase())) { msg.textContent = "That rep is already on the list."; msg.className = "msg err"; return; }
+  if (!db) { banner("Rep changes can't save in this view."); return; }
+  const rep = cleanRep({ name, start_date: $("#new-start").value || null, home_zip: $("#new-zip").value.trim() || null, week: Object.fromEntries(["Mon","Tue","Wed","Thu","Fri","Sat"].map(w => [w, ["10:00", "19:00", null]])) });
+  try { await db.doc("roster/" + slug(name)).set({ ...rep, updated_at: new Date().toISOString(), updated_by: me?.id || null }); toast(`Added ${name}`); }
+  catch (e) { msg.textContent = "Didn't save. Try again."; msg.className = "msg err"; }
+}
+
+/* ---------- results ---------- */
+function renderResults() {
+  const R = B.results; const W = R.weeks;
+  const r30 = R.r30.sits ? R.r30.sold / R.r30.sits : null, r90 = R.r90.sits ? R.r90.sold / R.r90.sits : null;
+  const last8 = W.slice(-8); const s8 = last8.reduce((a, w) => a + w.sits, 0); const sd8 = last8.reduce((a, w) => a + w.same_day, 0);
+  $("#tiles").innerHTML = `<div><small>Team close · rolling 30</small><b class="n y">${pct1(r30)}</b><em>${R.r30.sold} sold of ${R.r30.sits} sits</em></div>
+    <div><small>Team close · rolling 90</small><b class="n">${pct1(r90)}</b><em>${R.r90.sold} sold of ${R.r90.sits} sits</em></div>
+    <div><small>Signed at first sit · 8 wks</small><b class="n">${pct1(s8 ? sd8 / s8 : null)}</b><em>${sd8} of ${s8} sits</em></div>
+    <div><small>Sold · rolling 90</small><b class="n">${money(R.r90.sales)}</b><em>whole company</em></div>
+    <div><small>Engine live</small><b class="n">${DAYN[parse(R.engine_start).getDay()]} ${md(R.engine_start)}</b><em>dashed line on the chart</em></div>`;
+  const w = 900, h = 260, L = 40, Rm = 14, T = 16, Bm = 30;
+  const xs = i => L + i * (w - L - Rm) / (W.length - 1 || 1);
+  const ymax = Math.max(.6, ...W.map(x => x.sits ? x.sold / x.sits : 0));
+  const ys = v => T + (1 - v / ymax) * (h - T - Bm);
+  const line = f => W.map((x, i) => x.sits ? `${xs(i).toFixed(1)},${ys(f(x)).toFixed(1)}` : null).filter(Boolean).join(" ");
+  const ticks = [0, .1, .2, .3, .4, .5, .6].filter(t => t <= ymax);
+  const es = W.findIndex(x => x.week >= monday(R.engine_start));
+  const ex = es >= 0 ? xs(es) : w - Rm;
+  const lastI = W.length - 1, lw = W[lastI];
+  $("#chart").innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Weekly team close rate and first-sit signing rate, last ${W.length} weeks">
+    ${ticks.map(t => `<line class="grid" x1="${L}" x2="${w - Rm}" y1="${ys(t)}" y2="${ys(t)}"/><text class="ax" x="${L - 6}" y="${ys(t) + 4}" text-anchor="end">${Math.round(t * 100)}%</text>`).join("")}
+    ${W.map((x, i) => i % 2 === (lastI % 2) ? `<text class="ax" x="${xs(i)}" y="${h - 10}" text-anchor="middle">${md(x.week)}</text>` : "").join("")}
+    <line x1="${ex}" x2="${ex}" y1="${T}" y2="${h - Bm}" stroke="#9A9DA3" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <polyline fill="none" stroke="#FF0000" stroke-width="2.2" stroke-linejoin="round" points="${line(x => x.same_day / x.sits)}"/>
+    <polyline fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round" points="${line(x => x.sold / x.sits)}"/>
+    ${W.map((x, i) => x.sits ? `<circle cx="${xs(i)}" cy="${ys(x.sold / x.sits)}" r="${i === lastI ? 5 : 3}" fill="#000000"><title>Week of ${md(x.week)}: ${pct(x.sold / x.sits)} close (${x.sold} of ${x.sits}), ${pct(x.same_day / x.sits)} signed at first sit</title></circle>` : "").join("")}
+    ${lw && lw.sits ? `<text x="${xs(lastI) - 10}" y="${ys(lw.sold / lw.sits) + 18}" text-anchor="end" style="font-family:var(--display);font-weight:800;font-size:15px;fill:#000">${pct(lw.sold / lw.sits)}</text>` : ""}
+  </svg>`;
+  $("#chart-note").textContent = es < 0 ? `Weeks run Monday to Sunday. The engine goes live ${DAYN[parse(R.engine_start).getDay()]} ${md(R.engine_start)}, so weeks after the dashed line will show the change.` : "Weeks right of the dashed line ran with the engine.";
+  const mv = Object.entries(moves).filter(([, m]) => m.rep !== undefined);
+  const setN = Object.values(moves).filter(m => m.set).length;
+  const delta = mv.reduce((s, [id, m]) => { const c = B.cards.find(x => x.id === id); if (!c || !c.pick) return s; const to = m.rep ? c.odds[m.rep]?.close || 0 : 0; return s + (to - c.close); }, 0);
+  $("#moves-sum").innerHTML = `<div class="tiles" style="margin:0;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
+    <div><small>Cards moved</small><b class="n">${mv.length}</b><em>of ${B.cards.length} upcoming</em></div>
+    <div><small>Expected sales</small><b class="n${delta >= 0 ? " y" : ""}">${delta >= 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}</b><em>moves vs engine picks</em></div>
+    <div><small>Set in AccuLynx</small><b class="n">${setN}</b><em>marked done</em></div></div>
+    <p class="note">After moved appointments have sat, this will show how they closed compared with the engine's pick.</p>`;
+  const rows = R.reps90.map(x => ({ ...x, r: repBy(x.name), c: x.sits ? x.sold / x.sits : null })).filter(x => x.sits).sort((a, b) => (b.c ?? 0) - (a.c ?? 0));
+  $("#score").innerHTML = `<thead><tr><th>#</th><th>Rep</th><th>Rating</th><th>Sits</th><th>Sold</th><th>Sold $</th><th>Close</th></tr></thead><tbody>${rows.map((x, i) => `<tr style="--rc:${color(x.name)}">
+    <td>${i + 1}</td><td class="nm">${esc(x.r?.display || x.name)}<small>${x.r ? `Rated on ${x.r.sits} sits, rolling ${x.r.window}` : ""}</small></td>
+    <td class="rt2">${x.r ? `<span class="badge b-${esc(x.r.rating)}">${esc(x.r.rating)}</span>` : ""}</td><td>${x.sits}</td><td>${x.sold}</td><td>${money(x.sales)}</td><td class="${x.c >= .35 ? "g" : ""}">${pct1(x.c)}</td></tr>`).join("")}</tbody>`;
+}
+
+/* ---------- freshness ---------- */
+const SLOTS = [6, 9, 12, 15, 18];   // AccuLynx report runs, Eastern
+const when = d => `${DAYN[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} ${hm(iso(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"))}`;
+const ago = d => { const m = Math.round((Date.now() - d) / 60000); return m < 60 ? m + " min ago" : m < 48 * 60 ? Math.round(m / 60) + " hr ago" : Math.round(m / 1440) + " days ago"; };
+function expectedSlot(now) {   // the newest report run that should have landed by now (allow 90 min to reach GitHub)
+  const t = new Date(now - 90 * 60000);
+  for (let back = 0; back < 4; back++) {
+    const d = new Date(t); d.setDate(d.getDate() - back);
+    for (const h of [...SLOTS].reverse()) { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, 0); if (s <= t) return s; }
+  }
+  return null;
+}
+function freshness() {
+  const M = B.meta; const plan = parse(M.data_as_of.replace(" ", "T"));
+  const ax = M.acculynx_run ? new Date(M.acculynx_run) : null; const pulled = M.pulled_at ? new Date(M.pulled_at) : null;
+  const exp = expectedSlot(Date.now());
+  let state = "ok", label = "Up to date";
+  if (!ax) { state = "late"; label = "Report time unknown"; }
+  else if (exp && ax < new Date(exp - 30 * 60000)) {
+    const missed = SLOTS.length * Math.floor((exp - ax) / 864e5) + SLOTS.filter(h => { const s = new Date(exp); s.setHours(h, 0, 0, 0); return s > ax && s <= exp; }).length;
+    state = missed >= 2 ? "stale" : "late"; label = missed >= 2 ? `Behind: missed ${missed} report runs` : "Behind: missed the last report run";
+  }
+  $("#fdot").className = "fdot" + (state === "ok" ? "" : " " + state);
+  $("#f-ax").textContent = ax ? when(ax) : "Unknown";
+  $("#f-plan").textContent = when(plan);
+  $("#fchip").title = label;
+  $("#fpanel").innerHTML = `<dl><dt>Status</dt><dd>${esc(label)}</dd>
+    <dt>AccuLynx report</dt><dd>${ax ? esc(when(ax)) + (M.acculynx_slot ? ` (${esc(M.acculynx_slot)} run)` : "") + `, ${ago(ax)}` : "Unknown"}</dd>
+    <dt>Reached GitHub</dt><dd>${pulled ? esc(when(pulled)) + ", " + ago(pulled) : "Unknown"}</dd>
+    <dt>Plan built</dt><dd>${esc(when(plan))}, ${ago(plan)}</dd>
+    ${exp ? `<dt>Newest expected</dt><dd>${esc(when(exp))} run</dd>` : ""}</dl>
+    <p>AccuLynx runs the job report at 6 AM, 9 AM, 12 PM, 3 PM and 6 PM. GitHub checks for a new one every 15 minutes, then the engine rebuilds this plan. Moves and rep changes save instantly and don't wait for a refresh.</p>`;
+}
+$("#fchip").onclick = () => { const p = $("#fpanel"); p.hidden = !p.hidden; $("#fchip").setAttribute("aria-expanded", String(!p.hidden)); };
+document.addEventListener("click", e => { if (!e.target.closest("#fresh")) { $("#fpanel").hidden = true; $("#fchip").setAttribute("aria-expanded", "false"); } });
+setInterval(() => { if (B) freshness(); }, 60000);
+
+/* ---------- wiring ---------- */
+function setTab() { try { localStorage.setItem("rr-board-tab", tab); } catch (e) {} render(); window.scrollTo({ top: 0 }); }
+$$(".tab").forEach(b => b.onclick = () => { tab = b.dataset.tab; setTab(); });
+$("#days").addEventListener("click", e => { const b = e.target.closest(".day"); if (!b) return; day = b.dataset.k; try { localStorage.setItem("rr-board-day", day); } catch (er) {} render(); });
+
+async function connect() {
+  const claude = window.claude;
+  if (!claude?.use) { banner(); return; }
+  try { [db, userApi] = await Promise.all([claude.use("db"), claude.use("user")]); } catch (e) { db = null; }
+  if (!db) { banner(); return; }
+  try { me = userApi ? await userApi.me() : null; } catch (e) { me = null; }
+  try { const c = userApi ? await userApi.can("data.write") : null; canWrite = c !== false; } catch (e) {}
+  db.collection("cards").onSnapshot(async snap => {
+    const next = {}; const ids = new Set();
+    snap.docs.forEach(d => { const v = d.data() || {}; next[d.id] = { set: !!v.set, by: v.by || null, at: v.at || null }; if (v.rep !== "__engine__") next[d.id].rep = v.rep ?? null; if (v.by) ids.add(v.by); });
+    if (userApi && ids.size) { try { const ps = await userApi.profiles([...ids]); for (const k in next) if (next[k].by && ps[next[k].by]) next[k].byName = ps[next[k].by].name || ""; } catch (e) {} }
+    moves = next; if (tab !== "reps") render();
+  }, () => banner("Lost the connection to saved moves. Refresh to try again."));
+  db.collection("roster").onSnapshot(snap => {
+    if (snap.empty) { roster = null; return; }
+    const r = {}; snap.docs.forEach(d => { const v = d.data() || {}; if (v.name) r[v.name] = v; });
+    roster = r;
+    for (const rep of B.reps) { const v = r[rep.name]; if (v) { rep.week = v.week || rep.week; rep.days_off = v.days_off || []; if (v.display) rep.display = v.display; } }
+    render();
+  }, () => {});
+}
+async function load() {
+  try { B = await (await fetch("board.json", { cache: "no-store" })).json(); }
+  catch (e) { $("#board").innerHTML = '<div class="loading">Could not load the plan. Refresh the page.</div>'; return; }
+  freshness();
+  $("#f-data").textContent = `AccuLynx job export, ${B.meta.sits_used.toLocaleString()} past sits learned from`;
+  render();
+  connect();
+}
+load();
+})();
+</script>

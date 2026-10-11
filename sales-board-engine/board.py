@@ -1,7 +1,7 @@
 """Build board.json for the dashboard from the engine's scores.json + plan.json and the job export.
 One card per upcoming appointment: who the engine picked, every rep's odds, why, and what blocks each rep.
 Customer name only. Phone numbers and emails are stripped from notes.
-Usage: python board.py <out dir> <job export csv>   (reads <out>/scores.json and <out>/plan.json, writes <out>/board.json)"""
+Usage: python board.py <out dir> <job export csv> [status.json, default: next to the csv]   (reads <out>/scores.json and <out>/plan.json, writes <out>/board.json)"""
 import json, re, sys
 from pathlib import Path
 import pandas as pd
@@ -41,7 +41,7 @@ def label(s):
     return s[0].upper() + s[1:] if s else s
 
 
-def main(out, path):
+def main(out, path, status=None):
     out = Path(out)
     S = json.loads((out / "scores.json").read_text())
     P = json.loads((out / "plan.json").read_text())
@@ -122,6 +122,10 @@ def main(out, path):
     roster_out = {k: v for k, v in rules["roster"].items() if not k.startswith("_")}
     meta = dict(P["meta"]); meta.pop("solver", None)
     meta.update(data_as_of=S["meta"]["run"], sits_used=S["meta"]["sits_used"])
+    st = Path(status) if status else Path(path).with_name("status.json")
+    if st.exists():   # when AccuLynx ran the report and when GitHub pulled it (data branch status.json)
+        j = json.loads(st.read_text()).get("job_export_raw", {})
+        meta.update(acculynx_run=j.get("runDate"), acculynx_slot=j.get("schedule"), pulled_at=j.get("pulledAt"))
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
                    cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
@@ -129,4 +133,4 @@ def main(out, path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
