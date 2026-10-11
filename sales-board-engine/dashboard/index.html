@@ -74,6 +74,14 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .av.off{background:var(--bad-bg);border-color:#F3B4AE;color:var(--bad);text-decoration:line-through}
 .av.sched{opacity:.55;cursor:default}
 .avail .hint{margin:0 0 0 4px;flex:1 1 220px}
+.fold{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:1px solid var(--line);border-left:6px solid var(--black);border-radius:var(--r);padding:9px 14px;cursor:pointer;text-align:left;margin:0 0 8px;min-width:0}
+.fold b{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.fold .fline{flex:1;min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fold .fline em{font-style:normal;font-weight:700;color:var(--ink)}
+.fold .fline em.r{color:var(--bad)}.fold .fline em.g{color:var(--good)}
+.fold .chev{font-style:normal;font-size:14px;transition:transform .15s}
+.fold[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.fold.ideasf{border-left-color:var(--yellow)}
 .ideas{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--yellow);border-radius:var(--r);padding:10px 14px;margin:0 0 12px}
 .ideas h3{margin:0 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--display);font-weight:800;font-size:18px;text-transform:uppercase}
 .ideas h3 small{font-family:var(--body);font-weight:500;font-size:12.5px;color:var(--muted);text-transform:none}
@@ -86,7 +94,7 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .iact .gain{font-family:var(--display);font-weight:800;font-size:20px;color:var(--good);white-space:nowrap}
 .iact .btn{padding:4px 8px;font-size:12px}
 .ideas .more{border:0;background:none;color:var(--muted);font-weight:600;font-size:12.5px;cursor:pointer;padding:6px 0 0;text-decoration:underline}
-@media (max-width:640px){.idea{grid-template-columns:minmax(0,1fr) auto}.itag{grid-column:1/-1;justify-self:start}}
+@media (max-width:640px){.fold{flex-wrap:wrap;row-gap:2px}.fold .fline{white-space:normal;order:3;flex-basis:100%}.fold .chev{margin-left:auto}.avail .hint{display:none}.idea{grid-template-columns:minmax(0,1fr) auto}.itag{grid-column:1/-1;justify-self:start}}
 .reset{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
 .reset .btn.red{white-space:normal}
 .sum small{display:block;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:12px;color:#B9BBC0;text-transform:uppercase}
@@ -296,11 +304,13 @@ details[open]>summary::after{content:"–"}
 <main class="wrap">
   <div id="dayrow">
     <div class="top"><div class="days" id="days" role="tablist" aria-label="Appointment days"></div></div>
-    <div class="sum" id="sum" aria-live="polite"></div>
+    <button class="fold" id="sumfold" aria-expanded="false" aria-controls="sum"><b>The numbers</b><span class="fline" id="sumline"></span><i class="chev" aria-hidden="true">▾</i></button>
+    <div class="sum" id="sum" aria-live="polite" hidden></div>
   </div>
   <div class="banner" id="offline" hidden>Changes you make here won't save for the team in this view. Open the board from its link while signed in to save.</div>
 
   <section id="v-board">
+    <button class="fold ideasf" id="ideasfold" aria-expanded="false" aria-controls="ideas" hidden><b>Ideas to add revenue</b><span class="fline" id="ideasline"></span><i class="chev" aria-hidden="true">▾</i></button>
     <div class="ideas" id="ideas" aria-live="polite" hidden></div>
     <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
@@ -362,6 +372,9 @@ const monday = k => { const d = parse(k); d.setDate(d.getDate() - ((d.getDay() +
 const md = k => { const d = parse(k); return (d.getMonth() + 1) + "/" + d.getDate(); };
 const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+let OPEN = { sum: false, ideas: false };
+try { OPEN = Object.assign(OPEN, JSON.parse(localStorage.getItem("rr-board-open") || "{}")); } catch (e) {}
+function setOpen(k, v) { OPEN[k] = v; try { localStorage.setItem("rr-board-open", JSON.stringify(OPEN)); } catch (e) {} render(); }
 let B = null, Z = null, day = null, tab = "board", moves = {}, roster = null, db = null, userApi = null, me = null, canWrite = true;
 const hidden = {}; let openPin = null, proj = null;
 try { day = localStorage.getItem("rr-board-day"); tab = localStorage.getItem("rr-board-tab") || "board"; } catch (e) {}
@@ -475,6 +488,8 @@ function renderTop() {
   const cost = T.plan - T.rev, dcost = D.plan - D.rev;
   const sgn = v => Math.abs(v) < 50 ? "$0" : (v > 0 ? "−" : "+") + money(Math.abs(v));
   const dayName = `${DAYN[parse(day).getDay()]} ${md(day)}`;
+  $("#sumline").innerHTML = `${dayName}: <em>${D.n}</em> appts · <em>${money(D.rev)}</em> expected · <em>${money(D.sdRev)}</em> same day${attn ? ` · <em class="r">${attn}</em> need a look` : ""} · next 30 days <em>${money(T.rev)}</em> · changes <em class="${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</em>`;
+  $("#sumfold").setAttribute("aria-expanded", String(OPEN.sum)); $("#sum").hidden = !OPEN.sum;
   $("#sum").innerHTML = `
     <div class="sg"><h4>${dayName}</h4><div class="row">
       <div><small>Appointments</small><b class="n">${D.n}</b><em>${attn ? `<b style="color:var(--yellow)">${attn}</b> need a look` : "all set"}</em></div>
@@ -651,10 +666,13 @@ function buildIdeas() {
 }
 async function renderIdeas() {
   if (!Z && !mapReady) loadZips().then(() => { if (tab === "board") renderIdeas(); });
-  const list = buildIdeas(); const el = $("#ideas");
-  el.hidden = !list.length; if (!list.length) return;
+  const list = buildIdeas(); const el = $("#ideas"), fold = $("#ideasfold");
+  fold.hidden = !list.length; el.hidden = !list.length || !OPEN.ideas; fold.setAttribute("aria-expanded", String(OPEN.ideas));
+  if (!list.length) return;
+  $("#ideasline").innerHTML = `<em>${list.length}</em> idea${list.length > 1 ? "s" : ""} for ${DAYN[parse(day).getDay()]} ${md(day)} · up to <em class="g">+${money(Math.max(...list.map(i => i.g)))}</em> on the best one`;
+  if (!OPEN.ideas) return;
   const show = ideasAll ? list : list.slice(0, 4);
-  el.innerHTML = `<h3>Ideas to add revenue · ${DAYN[parse(day).getDay()]} ${md(day)}<small>Worth a call. The engine keeps appointment times as booked, so these need the customer to agree.</small></h3>` +
+  el.innerHTML = `<h3><small style="margin:0">Worth a call. The engine keeps appointment times as booked, so these need the customer to agree.</small></h3>` +
     show.map(i => `<div class="idea"><span class="itag ${i.kind}">${esc(i.tag)}</span><div class="itxt">${i.html}</div>
       <div class="iact"><span class="gain">+${money(i.g)}</span>${i.c ? `<a class="btn dark" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}<button class="btn ghost" data-dismiss="${esc(i.key)}">Done</button></div></div>`).join("") +
     (list.length > 4 ? `<button class="more" id="ideas-more">${ideasAll ? "Show fewer" : `Show all ${list.length}`}</button>` : "");
@@ -1021,6 +1039,8 @@ setInterval(() => { if (B) freshness(); }, 60000);
 /* ---------- wiring ---------- */
 function setTab() { try { localStorage.setItem("rr-board-tab", tab); } catch (e) {} render(); window.scrollTo({ top: 0 }); }
 $$(".tab").forEach(b => b.onclick = () => { tab = b.dataset.tab; setTab(); });
+$("#sumfold").onclick = () => setOpen("sum", !OPEN.sum);
+$("#ideasfold").onclick = () => setOpen("ideas", !OPEN.ideas);
 $("#days").addEventListener("click", e => { const b = e.target.closest(".day"); if (!b) return; day = b.dataset.k; try { localStorage.setItem("rr-board-day", day); } catch (er) {} render(); });
 
 async function connect() {
