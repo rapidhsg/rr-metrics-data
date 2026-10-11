@@ -2,6 +2,8 @@
   "_read_me": "Model settings for the sales board engine (data window, note words, tuning). Assignment rules and the rep roster live ONLY in assignment_rules.json.",
   "data_window_days": 395,
   "close_label_wait_days": 14,
+  "use_young_sits": true,
+  "_young_sits_read_me": "Sits newer than close_label_wait_days still count: sold = a sale, unsold = a partial sale (the share of older sits that sold after that age). Without this a new rep's first 2 weeks are invisible. Backtest Oct 11 2026: new-rep log loss 0.492 -> 0.486, all sits 0.574 -> 0.576.",
   "same_day_label_wait_days": 1,
   "new_rep_bands": [
     25,

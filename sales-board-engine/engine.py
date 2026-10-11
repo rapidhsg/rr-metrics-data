@@ -132,11 +132,12 @@ class Model:
         self.cols = cols
         return sparse.hstack(blocks).tocsr()
 
-    def fit(self, x, y, ref):
+    def fit(self, x, y, ref, w0=None):
         self.ref, self.levels = pd.Timestamp(ref), {}
         X = self._design(x, fit=True)
         w = 0.5 ** ((self.ref - x.date).dt.days.clip(lower=0) / self.hl)
-        self.m = LogisticRegression(C=self.C, max_iter=5000).fit(X, y, sample_weight=w.values)
+        if w0 is not None: w = w * w0
+        self.m = LogisticRegression(C=self.C, max_iter=5000).fit(X, y, sample_weight=np.asarray(w, dtype=float))
         return self
 
     def predict(self, x):
@@ -170,15 +171,40 @@ def training(df, today, x_all=None):
     x = features(S)
     hist, n = rep_experience(df)
     x["rep_n"] = n.reindex(x.index).fillna(0)
-    ap = S["Approved Milestone Date"]
+    ap = S["Approved Milestone Date"].where(S["Approved Milestone Date"] <= today)   # only what was known on `today`
     x["y_close"] = ap.notna().astype(int)
+    x["age"] = (today - S["Initial Appointment Date"]).dt.days
+    x["days_to_sale"] = (ap - S["Initial Appointment Date"]).dt.days
     x["y_same"] = (ap.notna() & ((ap - S["Initial Appointment Date"]).dt.days <= 0)).astype(int)
     x["ok_close"] = S["Initial Appointment Date"] <= today - pd.Timedelta(days=CFG["close_label_wait_days"])
     x["ok_same"] = S["Initial Appointment Date"] <= today - pd.Timedelta(days=CFG["same_day_label_wait_days"])
     return S, x
 
+def young_sits(x):
+    """Sits younger than the close wait still teach the engine (a new rep's first weeks are all young sits).
+    A young sit already sold counts as a sale. A young unsold sit counts as a partial sale: the share of
+    older sits that were still unsold at that age but sold later (learned from the data)."""
+    old = x[x.ok_close]; yng = x[~x.ok_close & x.ok_same & x.age.ge(0)]
+    if not len(yng): return x.iloc[0:0], np.array([]), np.array([])
+    q = {}
+    for a in sorted(yng.age.unique()):
+        still = old[old.days_to_sale.isna() | (old.days_to_sale > a)]
+        q[a] = float((still.days_to_sale > a).sum() / max(len(still), 1))
+    sold = yng[yng.y_close.eq(1)]; open_ = yng[yng.y_close.eq(0)]
+    qa = open_.age.map(q).values
+    xs = pd.concat([sold, open_, open_]); ys = np.r_[np.ones(len(sold)), np.ones(len(open_)), np.zeros(len(open_))]
+    ws = np.r_[np.ones(len(sold)), qa, 1 - qa]
+    return xs, ys, ws
+
 def fit_both(x, today, t):
     c = x[x.ok_close]; s = x[x.ok_same]
+    if CFG.get("use_young_sits", True):
+        xs, ys, ws = young_sits(x)
+        if len(xs):
+            cc = pd.concat([c, xs]); w0 = np.r_[np.ones(len(c)), ws]
+            mc = Model(t["shrink_C"], t["half_life_days"], CFG["new_rep_bands"]).fit(cc, np.r_[c.y_close.values, ys], today, w0)
+            ms = Model(t["shrink_C"], t["half_life_days"], CFG["new_rep_bands"]).fit(s, s.y_same.values, today)
+            return mc, ms
     mc = Model(t["shrink_C"], t["half_life_days"], CFG["new_rep_bands"]).fit(c, c.y_close.values, today)
     ms = Model(t["shrink_C"], t["half_life_days"], CFG["new_rep_bands"]).fit(s, s.y_same.values, today)
     return mc, ms
