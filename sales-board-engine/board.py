@@ -180,7 +180,7 @@ def main(out, path, status=None):
     ap = E.MEM / "accuracy_daily.csv"
     if ap.exists(): accuracy = pd.read_csv(ap).tail(30).to_dict("records")
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out, accuracy=accuracy,
-                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60))),
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60)), spread=rules.get('learning', {}).get('dials', {}).get('spread_points_per_extra_sit', {}).get('value', 0)),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 

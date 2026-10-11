@@ -200,6 +200,13 @@ def plan(scores, df, today, now=None):
                 if A["min_gap_minutes"] <= dt <= RT_["back_to_back_within_minutes"]:
                     route.append((idx[a], idx[b], miles(P.at[idx[a], "zip"], P.at[idx[b], "zip"]) if isinstance(P.at[idx[a], "zip"], str) and isinstance(P.at[idx[b], "zip"], str) else 15.0))
     for t, (a, b, mi) in enumerate(route): extra.append(("leg", a, b)); cost.append(-P.at[a, "rw"] * mi)
+    # spread: when reps close about the same, split the day evenly. A rep's 2nd appointment that day has to be worth
+    # this many close points more than giving it to someone else with room, his 3rd twice that, and so on.
+    for (r, d) in sorted(set(zip(P.rep, P.day))):
+        sp = dial("spread_points_per_extra_sit", d) / 100 if "spread_points_per_extra_sit" in RULES.get("learning", {}).get("dials", {}) else 0
+        if sp <= 0: continue
+        for k in range(1, int(st[r]["limits"]["per_day"]) + 1):
+            extra.append(("spread", r, d, k)); cost.append(-sp * k)
     eidx = {k: n + t for t, k in enumerate(extra)}; m = n + len(extra)
     BIG = 2.0
     c = -np.r_[P.value.values + BIG + B["same_day_priority"] * P.same.values, np.array(cost)]
@@ -216,6 +223,9 @@ def plan(scores, df, today, now=None):
                 if abs(P.at[idx[a], "min"] - P.at[idx[b], "min"]) < A["min_gap_minutes"]: add({idx[a]: 1, idx[b]: 1}, 0, 1)
     for (a, b, mi) in route:   # leg is on when both appointments go to that rep: leg >= x_a + x_b - 1
         add({eidx[("leg", a, b)]: 1, a: -1, b: -1}, -1, np.inf)
+    for e in extra:   # spread_k >= appointments that day - k
+        if e[0] != "spread": continue
+        co = {j: -1 for j in P.index[(P.rep == e[1]) & (P.day == e[2])]}; co[eidx[e]] = 1; add(co, -e[3], np.inf)
     for (r, wk), g in P.groupby(["rep", "week"]):
         lim = st[r]["limits"]; done = st[r]["this_week_so_far"] if wk == today - pd.Timedelta(days=today.dayofweek) else 0
         gi = [j for j in g.index if counted[j]]
@@ -232,8 +242,8 @@ def plan(scores, df, today, now=None):
     M = lil_matrix((len(rows), m))
     for k, co in enumerate(rows):
         for j, v in co.items(): M[k, j] = v
-    ub = np.ones(m); ub[[eidx[e] for e in extra if e[0] == "floor"]] = 50
-    integ = np.ones(m); integ[[eidx[e] for e in extra if e[0] == "leg"]] = 0
+    ub = np.ones(m); ub[[eidx[e] for e in extra if e[0] in ("floor", "spread")]] = 50
+    integ = np.ones(m); integ[[eidx[e] for e in extra if e[0] in ("leg", "spread")]] = 0
     res = milp(c, constraints=LinearConstraint(M.tocsr(), lo, hi), integrality=integ, bounds=Bounds(0, ub), options=dict(time_limit=120))
     x = np.round(res.x[:n]).astype(int); P["pick"] = x == 1
     bday = {k[1:]: round(res.x[eidx[k]]) for k in extra if k[0] == "bday"}
@@ -252,7 +262,8 @@ def plan(scores, df, today, now=None):
             if bweek.get((p.rep, p.week)) and counted[p.name]: bends.append("over weekly cap" + (" (keeps a same-day appointment)" if l.same_day else " (nobody else free)"))
             if bends and st[p.rep]["rating"] in RULES["bends"]["last_resort"]["who"]: bends.append("last resort for a " + st[p.rep]["rating"] + " rep")
             best = opts.iloc[0]
-            note = None if best.rep == p.rep else f"{best.rep} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
+            boosted = dial("hot_boost_share", p.day) > 0 and hot_gap.get(p.rep, 0) > 0
+            note = None if best.rep == p.rep else f"{best.rep} rates higher ({best.close:.0%}), but {p.rep} is on a hot streak and hot streaks count extra today (test day)" if boosted else f"{best.rep} rates only a little higher ({best.close:.0%}), so the day is split evenly" if best.close - p.close < dial("spread_points_per_extra_sit", p.day) / 100 * st[best.rep]["limits"]["per_day"] and P[(P.pick) & (P.rep == best.rep) & (P.day == p.day)].shape[0] > 0 and P[(P.pick) & (P.rep == best.rep) & (P.day == p.day) & ((P["min"] - p["min"]).abs() < A["min_gap_minutes"])].empty else f"{best.rep} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
             out.append(dict(guid=l.guid, appt=l.appt, arm=arm_for(l.day), rep=p.rep, rating=st[p.rep]["rating"], close=round(p.close, 3), same_day=round(p.sd, 3),
                             bends=bends, needs_ok=bool(bends), note=note, options=alts, blocked=blocked))
         else:

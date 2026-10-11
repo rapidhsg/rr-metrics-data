@@ -444,12 +444,25 @@
           0.75
         ],
         "_note": "Multiplier on how much a same-day sign counts on top of a close (the base weight is worked out from data each week)."
+      },
+      "spread_points_per_extra_sit": {
+        "value": 3.0,
+        "range": [
+          0,
+          8
+        ],
+        "try": [
+          1.5,
+          5.0
+        ],
+        "_note": "When reps close about the same, split the day evenly: a rep's 2nd appointment that day must be worth this many close points more than giving it to someone else with room (3rd: twice that). 0 = no spreading."
       }
     },
     "queue": [
       "hot_boost_share",
       "route_close_points_per_10_miles",
-      "same_day_weight_scale"
+      "same_day_weight_scale",
+      "spread_points_per_extra_sit"
     ],
     "experiment": {
       "active": true,

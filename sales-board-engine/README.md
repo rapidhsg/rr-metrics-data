@@ -60,6 +60,8 @@ How it works, in words (rules as of Oct 11 2026). No rule names a person: who ge
    them into `assignment_rules.json` before each run.
 
 Inside those rules it picks the plan with the most expected closes (close chance + same-day weight x same-day chance).
+When reps close about the same, it splits the day evenly: a rep's 2nd appointment that day has to be worth 3 close points more than
+giving it to someone else with room, his 3rd 6 points (`learning.dials.spread_points_per_extra_sit`). A clearly better closer still gets more.
 Every plan is saved to `memory/plans.csv` so it can be checked against what actually closed.
 
 ## How it learns and corrects itself
@@ -78,7 +80,8 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
   pick ran the sit vs someone else vs a manager move, each against what was predicted.
 - **Every week** (`learn.py`): the assignment logic tests itself live. Three dials decide how picks are made: how much
   extra a hot streak counts (`hot_boost_share`), how much driving counts (`route_close_points_per_10_miles`) and how much
-  same-day signs count (`same_day_weight_scale`). One dial at a time gets a challenger value, used on alternating days
+  same-day signs count (`same_day_weight_scale`), and how evenly a day is split when reps close about the same
+  (`spread_points_per_extra_sit`). One dial at a time gets a challenger value, used on alternating days
   (the other days keep the current value). Every finished sit is scored as sold minus how likely that lead was to close
   with anyone, so a tough day of leads does not count against a dial. When one side has 60+ sits and wins by 2+ points
   with real confidence (z 1.64), the winner becomes the new value; otherwise the current value stays. Each test runs at

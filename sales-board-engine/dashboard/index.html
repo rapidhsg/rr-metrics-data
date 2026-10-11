@@ -481,7 +481,8 @@ function computeEff() {
     while (left.length) {   // hardest call first: the appointment that loses the most if its best rep is taken
       let pickC = null, pickR = null, pickRegret = -1;
       for (const c of left) {
-        const opts = B.reps.filter(r => can(c, r)).map(r => ({ r: r.name, v: c.odds[r.name]?.close ?? 0 })).sort((a, b) => b.v - a.v);
+        const load = r => B.cards.filter(o => dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name).length;   // spread: same rule as the engine
+        const opts = B.reps.filter(r => can(c, r)).map(r => ({ r: r.name, v: (c.odds[r.name]?.close ?? 0) - (B.spread || 0) / 100 * load(r) })).sort((a, b) => b.v - a.v);
         const regret = opts.length ? opts[0].v - (opts[1]?.v ?? 0) : 9;
         if (regret > pickRegret) { pickRegret = regret; pickC = c; pickR = opts[0]?.r ?? null; }
       }
