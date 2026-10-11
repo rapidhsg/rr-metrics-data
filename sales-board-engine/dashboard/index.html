@@ -55,9 +55,25 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .day[aria-selected="true"]{background:var(--black);border-color:var(--black);color:var(--white)}
 .day[aria-selected="true"] span{color:#C9CBCF}
 .day .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:4px;vertical-align:1px}
-.sum{background:var(--black);color:var(--white);border-top:4px solid var(--red);border-radius:2px;display:flex;flex-wrap:wrap;flex:1 1 520px}
-.sum div{padding:10px 16px;flex:1 1 96px;border-right:1px solid #222}
-.sum div:last-child{border-right:0}
+.sum{background:var(--black);color:var(--white);border-top:4px solid var(--red);border-radius:2px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.8fr);margin-bottom:12px}
+.sg{padding:10px 0 12px;border-right:1px solid #2A2A2A;min-width:0}
+.sg:last-child{border-right:0}
+.sg h4{margin:0 16px 4px;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--yellow)}
+.sg .row{display:flex;flex-wrap:wrap}
+.sg .row>div{padding:4px 16px;flex:1 1 100px;min-width:0}
+.sum em{display:block;font-style:normal;font-size:12.5px;color:#B9BBC0;margin:0}
+.sum em b{font-size:12.5px;font-family:var(--body);font-weight:700;color:var(--white)}
+.sum b.r{color:#FF5A4E}.sum b.g{color:#5BD68A}
+.sg.cost{background:#160404}
+.sg.cost.ok{background:transparent}
+.avail{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.avail .lbl{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
+.av{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px 5px 8px;font-size:13px;font-weight:700;cursor:pointer;user-select:none}
+.av input{width:16px;height:16px;accent-color:var(--black);margin:0}
+.av i{width:10px;height:10px;border-radius:50%;background:var(--rc)}
+.av.off{background:var(--bad-bg);border-color:#F3B4AE;color:var(--bad);text-decoration:line-through}
+.av.sched{opacity:.55;cursor:default}
+.avail .hint{margin:0 0 0 4px}
 .sum small{display:block;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:12px;color:#B9BBC0;text-transform:uppercase}
 .sum b{font-family:var(--display);font-weight:800;font-size:28px;line-height:1.05}
 .sum b.y{color:var(--yellow)}
@@ -240,8 +256,8 @@ details[open]>summary::after{content:"–"}
 .loading{padding:40px 0;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--black);color:var(--white);padding:9px 14px;border-radius:4px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
 
-@media (max-width:900px){.mapgrid,.rgrid{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:640px){.fresh{margin-left:0;width:100%;min-width:0}.fchip{flex:1;min-width:0;gap:8px;padding:6px 8px}.fchip b{font-size:14px}.fsep{padding-left:8px}.col.slim{display:none}.sum b{font-size:22px}.sum div{padding:8px 12px}.tab{padding:11px 10px 9px;font-size:15px}}
+@media (max-width:900px){.mapgrid,.rgrid,.sum{grid-template-columns:minmax(0,1fr)}.sg{border-right:0;border-bottom:1px solid #2A2A2A}}
+@media (max-width:640px){.fresh{margin-left:0;width:100%;min-width:0}.fchip{flex:1;min-width:0;gap:8px;padding:6px 8px}.fchip b{font-size:14px}.fsep{padding-left:8px}.col.slim{display:none}.sum b{font-size:22px}.sg .row>div{padding:4px 12px;flex-basis:90px}.sg h4{margin-inline:12px}.tab{padding:11px 10px 9px;font-size:15px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -263,14 +279,14 @@ details[open]>summary::after{content:"–"}
 </div></nav>
 
 <main class="wrap">
-  <div class="top" id="dayrow">
-    <div class="days" id="days" role="tablist" aria-label="Appointment days"></div>
+  <div id="dayrow">
+    <div class="top"><div class="days" id="days" role="tablist" aria-label="Appointment days"></div></div>
     <div class="sum" id="sum" aria-live="polite"></div>
   </div>
   <div class="banner" id="offline" hidden>Changes you make here won't save for the team in this view. Open the board from its link while signed in to save.</div>
 
   <section id="v-board">
-    <p class="offnote" id="offnote" hidden></p>
+    <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
   </section>
 
@@ -338,7 +354,39 @@ if (/^#(board|map|reps|results)$/.test(location.hash)) tab = location.hash.slice
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
 function banner(t) { const o = $("#offline"); if (t) o.textContent = t; o.hidden = false; }
 
-const repOf = c => (moves[c.id] && moves[c.id].rep !== undefined) ? moves[c.id].rep : c.pick;
+let EFF = {};   // card id -> {rep, kind: engine | moved | timeoff, from}
+const repOf = c => EFF[c.id] ? EFF[c.id].rep : c.pick;
+const GAP = () => B.appointment?.min_gap_minutes || 120;
+const ticket = c => (B.tickets && (B.tickets[c.ltype] || B.tickets.all)) || { any: 0, same_day: 0 };
+const val = (c, rep) => rep && c.odds[rep] ? c.odds[rep].close * ticket(c).any : 0;
+const sdVal = (c, rep) => rep && c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
+const planVal = c => c.pick ? c.close * ticket(c).any : 0;
+const isOffDay = (r, k) => !(r.week && r.week[DAYN[parse(k).getDay()]]) || (r.days_off || []).includes(k);
+function computeEff() {
+  EFF = {}; const redo = {};
+  for (const c of B.cards) {
+    const m = moves[c.id];
+    if (m && m.rep !== undefined) { EFF[c.id] = { rep: m.rep, kind: "moved" }; continue; }
+    const r = c.pick && repBy(c.pick);
+    if (!c.pick || !r || !isOffDay(r, dkey(c.appt))) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }
+    (redo[dkey(c.appt)] = redo[dkey(c.appt)] || []).push(c);   // the engine's rep is now off that day
+  }
+  for (const [k, list] of Object.entries(redo)) {
+    list.sort((a, b) => (b.close || 0) - (a.close || 0));
+    for (const c of list) {
+      let best = null, bv = -1;
+      for (const r of B.reps) {
+        if (isOffDay(r, k)) continue;
+        const why = c.blocked[r.name]; if (why && why !== "off that day") continue;
+        const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name);
+        if (mine.length >= r.limits.per_day) continue;
+        if (mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP())) continue;
+        const v = c.odds[r.name]?.close ?? 0; if (v > bv) { bv = v; best = r.name; }
+      }
+      EFF[c.id] = { rep: best, kind: "timeoff", from: c.pick };
+    }
+  }
+}
 const repBy = n => B.reps.find(r => r.name === n);
 const short = n => n ? (repBy(n)?.short || n.split(" ")[0]) : "Nobody";
 const color = n => { const i = B.reps.findIndex(r => r.name === n); return i < 0 ? "#888" : COLORS[i % COLORS.length]; };
@@ -350,7 +398,7 @@ function weekCount(rep, wk) {
   return n;
 }
 const dayCards = (rep, k) => B.cards.filter(c => dkey(c.appt) === k && repOf(c) === rep).sort((a, b) => a.appt.localeCompare(b.appt));
-const onDay = (r, k) => !!(r.week && r.week[DAYN[parse(k).getDay()]]) && !(r.days_off || []).includes(k);
+const onDay = (r, k) => !isOffDay(r, k);
 
 function problems(c) {
   const rep = repOf(c); const out = [];
@@ -378,21 +426,41 @@ function renderTop() {
     const flag = B.cards.some(c => dkey(c.appt) === k && (!repOf(c) || problems(c).length || c.needs_ok));
     return `<button class="day" role="tab" aria-selected="${k === day}" data-k="${k}"><b>${DAYN[parse(k).getDay()]} ${md(k)}</b><span>${n} appt${n > 1 ? "s" : ""}</span>${flag ? '<i class="dot" title="Needs a look"></i>' : ""}</button>`;
   }).join("");
+  const sumUp = list => {
+    const o = { n: list.length, sales: 0, rev: 0, sd: 0, sdRev: 0, plan: 0, offCost: 0, moveCost: 0 };
+    for (const c of list) {
+      const r = repOf(c); const v = val(c, r), p = planVal(c);
+      o.sales += r && c.odds[r] ? c.odds[r].close : 0; o.rev += v; o.sd += r && c.odds[r] ? c.odds[r].same_day : 0; o.sdRev += sdVal(c, r); o.plan += p;
+      const k = EFF[c.id]?.kind; if (k === "timeoff") o.offCost += p - v; else if (k === "moved") o.moveCost += p - v;
+    }
+    return o;
+  };
   const today = B.cards.filter(c => dkey(c.appt) === day);
-  const exp = today.reduce((s, c) => { const r = repOf(c); return s + (r && c.odds[r] ? c.odds[r].close : 0); }, 0);
-  const expE = today.reduce((s, c) => s + (c.pick ? c.close : 0), 0);
-  const sd = today.reduce((s, c) => { const r = repOf(c); return s + (r && c.odds[r] ? c.odds[r].same_day : 0); }, 0);
+  const end = new Date(parse(B.meta.run.slice(0, 10))); end.setDate(end.getDate() + 30);
+  const D = sumUp(today), T = sumUp(B.cards.filter(c => parse(c.appt) < end));
   const attn = today.filter(c => !repOf(c) || problems(c).length || c.needs_ok).length;
   const set = today.filter(c => moves[c.id]?.set).length;
+  const cost = T.plan - T.rev, dcost = D.plan - D.rev;
+  const sgn = v => Math.abs(v) < 50 ? "$0" : (v > 0 ? "−" : "+") + money(Math.abs(v));
+  const dayName = `${DAYN[parse(day).getDay()]} ${md(day)}`;
   $("#sum").innerHTML = `
-    <div><small>Appointments</small><b class="n">${today.length}</b></div>
-    <div><small>Expected sales</small><b class="n y">${exp.toFixed(1)}</b>${Math.abs(exp - expE) >= .05 ? `<em>engine ${expE.toFixed(1)}</em>` : ""}</div>
-    <div><small>Same-day signs</small><b class="n">${sd.toFixed(1)}</b></div>
-    <div><small>Needs a look</small><b class="n" style="color:${attn ? "var(--yellow)" : "inherit"}">${attn}</b></div>
-    <div><small>Set in AccuLynx</small><b class="n">${set}/${today.length}</b></div>`;
+    <div class="sg"><h4>${dayName}</h4><div class="row">
+      <div><small>Appointments</small><b class="n">${D.n}</b><em>${attn ? `<b style="color:var(--yellow)">${attn}</b> need a look` : "all set"}</em></div>
+      <div><small>Expected sales</small><b class="n y">${money(D.rev)}</b><em><b>${D.sales.toFixed(1)}</b> sales</em></div>
+      <div><small>Same-day signs</small><b class="n">${money(D.sdRev)}</b><em><b>${D.sd.toFixed(1)}</b> signed at the sit</em></div>
+      <div><small>Set in AccuLynx</small><b class="n">${set}/${D.n}</b><em>marked done</em></div></div></div>
+    <div class="sg"><h4>Next 30 days · ${T.n} booked</h4><div class="row">
+      <div><small>Expected sales</small><b class="n y">${money(T.rev)}</b><em><b>${T.sales.toFixed(1)}</b> sales</em></div>
+      <div><small>Same-day signs</small><b class="n">${money(T.sdRev)}</b><em><b>${T.sd.toFixed(1)}</b> at the sit</em></div>
+      <div><small>If plan followed</small><b class="n">${money(T.plan)}</b><em>engine's picks</em></div></div></div>
+    <div class="sg cost${Math.abs(cost) < 50 ? " ok" : ""}"><h4>Cost of changes</h4><div class="row">
+      <div><small>Next 30 days</small><b class="n ${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</b>
+        <em>${Math.abs(cost) < 50 ? "Following the plan" : `Time off <b>${sgn(T.offCost)}</b> · Moves <b>${sgn(T.moveCost)}</b>`}</em></div>
+      <div><small>${dayName}</small><b class="n ${dcost >= 50 ? "r" : dcost <= -50 ? "g" : ""}">${Math.abs(dcost) < 50 ? "$0" : sgn(dcost)}</b><em>vs the plan</em></div></div></div>`;
 }
 function render() {
   if (!B) return;
+  computeEff();
   renderTop();
   if (tab === "board") renderBoard();
   else if (tab === "map") renderMap();
@@ -404,8 +472,12 @@ function render() {
 function renderBoard() {
   const today = B.cards.filter(c => dkey(c.appt) === day);
   const reps = B.reps.filter(r => onDay(r, day) || today.some(c => repOf(c) === r.name));
-  const off = B.reps.filter(r => !reps.includes(r)).map(r => r.short);
-  $("#offnote").hidden = !off.length; $("#offnote").textContent = off.length ? `Off this day: ${off.join(", ")}` : "";
+  const wd = DAYN[parse(day).getDay()];
+  $("#avail").innerHTML = `<span class="lbl">Working ${wd} ${md(day)}</span>` + B.reps.map(r => {
+    const sched = !!(r.week && r.week[wd]); const off = (r.days_off || []).includes(day);
+    if (!sched) return `<span class="av sched" style="--rc:${color(r.name)}" title="Not on ${r.short}'s weekly schedule. Change it on the Reps tab."><i></i>${esc(r.short)} · not scheduled</span>`;
+    return `<label class="av${off ? " off" : ""}" style="--rc:${color(r.name)}" title="Untick if ${esc(r.short)} can't work ${wd} ${md(day)}"><input type="checkbox" data-avail="${esc(r.name)}"${off ? "" : " checked"}${canWrite ? "" : " disabled"}><i></i>${esc(r.short)}</label>`;
+  }).join("") + `<span class="hint">Untick a rep for a one-off day off. His appointments move to the next best rep.</span>`;
   const wk = monday(day);
   const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
@@ -430,7 +502,7 @@ function renderBoard() {
 
 function card(c) {
   const rep = repOf(c); const m = moves[c.id] || {};
-  const isMoved = m.rep !== undefined; const pr = problems(c);
+  const isMoved = m.rep !== undefined; const pr = problems(c); const ef = EFF[c.id] || {};
   const o = rep && c.odds[rep] ? c.odds[rep] : null;
   const where = [c.town, c.zip].filter(Boolean).join(" · ") || "Location not set";
   const src = [c.parent, c.source].filter(Boolean).join(" · ");
@@ -442,7 +514,10 @@ function card(c) {
   if (src) chips.push(`<span class="chip">${esc(src)}</span>`);
   if (c.needs_ok) chips.push(`<span class="chip red">Needs Richie's OK</span>`);
   const warns = [];
-  if (isMoved && c.pick) warns.push(`<div class="info">Moved from ${esc(short(c.pick))} (${pct(c.close)})${m.byName ? " by " + esc(m.byName) : ""}</div>`);
+  const dv = c.pick ? val(c, rep) - planVal(c) : 0;
+  const dtxt = Math.abs(dv) >= 50 ? `, ${dv < 0 ? "−" : "+"}${money(Math.abs(dv))} expected` : "";
+  if (isMoved && c.pick) warns.push(`<div class="info">Moved from ${esc(short(c.pick))} (${pct(c.close)})${m.byName ? " by " + esc(m.byName) : ""}${dtxt}</div>`);
+  if (ef.kind === "timeoff") warns.push(`<div class="info">${esc(short(ef.from))} is off this day. ${rep ? `Moved to ${esc(short(rep))}${dtxt}` : "Nobody else is free"}</div>`);
   for (const p of pr) warns.push(`<div class="warn">${esc(p)}</div>`);
   if (c.bends.length) warns.push(`<div class="info">Rule bend: ${esc(c.bends.join(", "))}</div>`);
   if (c.in_acculynx && rep && c.in_acculynx !== rep) warns.push(`<div class="info">AccuLynx has ${esc(short(c.in_acculynx))}</div>`);
@@ -453,7 +528,7 @@ function card(c) {
   return `<article class="card${isMoved ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
     <div class="eyebrow"><span>${esc(where)}</span><time datetime="${esc(c.appt)}">${hm(c.appt)}</time></div>
     <div class="who">${esc(c.name || "Customer")}</div>
-    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
+    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && ef.kind !== "timeoff" && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
     ${chips.length ? `<div class="chips">${chips.join("")}</div>` : ""}
     ${warns.length ? `<div class="warns">${warns.join("")}</div>` : ""}
     <details class="why-box"><summary>Why this rep</summary>
@@ -471,7 +546,23 @@ function card(c) {
   </article>`;
 }
 
+async function toggleOff(name, k, working) {
+  const r = repBy(name); if (!r) return;
+  const set = new Set(r.days_off || []); if (working) set.delete(k); else set.add(k);
+  r.days_off = [...set].sort();
+  if (roster && roster[name]) roster[name].days_off = r.days_off;
+  const before = B.cards.filter(c => dkey(c.appt) === k && c.pick === name);
+  render();
+  const lost = before.reduce((s, c) => s + planVal(c) - val(c, repOf(c)), 0);
+  toast(working ? `${r.short} is back on for ${DAYN[parse(k).getDay()]} ${md(k)}` :
+    `${r.short} marked off ${DAYN[parse(k).getDay()]} ${md(k)}${before.length ? `. ${before.length} appointment${before.length > 1 ? "s" : ""} moved${lost >= 50 ? `, −${money(lost)} expected` : ""}` : ""}`);
+  if (!db) return;
+  try { await db.doc("roster/" + slug(name)).update({ days_off: r.days_off, updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
+  catch (e) { banner("That day off didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
+}
+
 function wireBoard() {
+  $$("[data-avail]").forEach(el => el.onchange = () => toggleOff(el.dataset.avail, day, el.checked));
   $$("[data-move]").forEach(s => s.onchange = () => { if (!s.value) return; move(s.dataset.move, s.value === "__none__" ? "" : s.value); });
   $$("[data-undo]").forEach(b => b.onclick = () => move(b.dataset.undo, null, true));
   $$("[data-set]").forEach(b => b.onchange = () => save(b.dataset.set, { set: b.checked }));

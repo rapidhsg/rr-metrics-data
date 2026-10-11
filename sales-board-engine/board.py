@@ -72,7 +72,7 @@ def main(out, path, status=None):
             in_acculynx=(lambda v: v if v in rules["roster"] else None)(txt(r["Primary Salesperson"])) if r is not None else None,
             notes=clean(r["INITIAL LEAD NOTES"]) if r is not None else None,
             more_notes=clean(r["ADDITIONAL LEAD NOTES"]) if r is not None else None,
-            lane=tag, booked_today=L.get("days_lead_to_appt") == 0, days_out=L.get("days_lead_to_appt"),
+            lane=tag, ltype=L.get("ltype"), booked_today=L.get("days_lead_to_appt") == 0, days_out=L.get("days_lead_to_appt"),
             lead_close=L.get("lead_close"),
             pick=pick, close=p.get("close"), same_day=p.get("same_day"),
             lift=round(p["close"] - max(free), 4) if pick and free else None,
@@ -119,6 +119,16 @@ def main(out, path, status=None):
     results = dict(weeks=weeks, engine_start=rules.get("engine_start", "2026-10-12"),
                    r30=dict(sits=r30["close_sits_team"], sold=r30["close_sold_team"]),
                    r90=dict(sits=r90["close_sits_team"], sold=r90["close_sold_team"], sales=r90["sales"]), reps90=board)
+    # average contract per sale, last 12 months of certified sold sits, by lead type and same day vs later
+    sold = m["close_sold_company"] & (d0["Contract Amount"] > 0)
+    xs = E.features(d0[sold]); xs.index = d0[sold].index
+    sd0 = (d0.loc[sold, "Approved Milestone Date"].dt.normalize() == d0.loc[sold, "Initial Appointment Date"].dt.normalize())
+    amt = d0.loc[sold, "Contract Amount"]
+    tickets = {"all": dict(any=round(float(amt.mean())), same_day=round(float(amt[sd0].mean())), n=int(len(amt)))}
+    for lt, g in amt.groupby(xs["ltype"]):
+        if len(g) >= 15:
+            s_ = g[sd0[g.index]]
+            tickets[lt] = dict(any=round(float(g.mean())), same_day=round(float(s_.mean())) if len(s_) >= 10 else round(float(g.mean())), n=int(len(g)))
     roster_out = {k: v for k, v in rules["roster"].items() if not k.startswith("_")}
     meta = dict(P["meta"]); meta.pop("solver", None)
     meta.update(data_as_of=S["meta"]["run"], sits_used=S["meta"]["sits_used"])
@@ -127,7 +137,7 @@ def main(out, path, status=None):
         j = json.loads(st.read_text()).get("job_export_raw", {})
         meta.update(acculynx_run=j.get("runDate"), acculynx_slot=j.get("schedule"), pulled_at=j.get("pulledAt"))
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
-                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results),
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 
