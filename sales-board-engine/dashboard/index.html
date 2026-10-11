@@ -378,28 +378,42 @@ const val = (c, rep) => rep && c.odds[rep] ? c.odds[rep].close * ticket(c).any :
 const sdVal = (c, rep) => rep && c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
 const planVal = c => c.pick ? c.close * ticket(c).any : 0;
 const isOffDay = (r, k) => !(r.week && r.week[DAYN[parse(k).getDay()]]) || (r.days_off || []).includes(k);
+let ENGINE_AV = {};   // who the engine thought was working when it built the plan: {rep: {off:Set, week:json}}
 function computeEff() {
-  EFF = {}; const redo = {};
+  EFF = {};
+  const days = [...new Set(B.cards.map(c => dkey(c.appt)))];
+  const changed = new Set();
+  for (const r of B.reps) {
+    const was = ENGINE_AV[r.name]; if (!was) continue;
+    const weekChanged = JSON.stringify(r.week || {}) !== was.week;
+    for (const k of days) if (weekChanged || (r.days_off || []).includes(k) !== was.off.has(k)) changed.add(k);
+  }
+  const redo = {};
   for (const c of B.cards) {
     const m = moves[c.id];
     if (m && m.rep !== undefined) { EFF[c.id] = { rep: m.rep, kind: "moved" }; continue; }
-    const r = c.pick && repBy(c.pick);
-    if (!c.pick || !r || !isOffDay(r, dkey(c.appt))) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }
-    (redo[dkey(c.appt)] = redo[dkey(c.appt)] || []).push(c);   // the engine's rep is now off that day
+    const k = dkey(c.appt);
+    if (!changed.has(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }
+    (redo[k] = redo[k] || []).push(c);   // who's working changed since the engine ran: re-plan this whole day
   }
   for (const [k, list] of Object.entries(redo)) {
-    list.sort((a, b) => (b.close || 0) - (a.close || 0));
-    for (const c of list) {
-      let best = null, bv = -1;
-      for (const r of B.reps) {
-        if (isOffDay(r, k)) continue;
-        const why = c.blocked[r.name]; if (why && why !== "off that day") continue;
-        const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name);
-        if (mine.length >= r.limits.per_day) continue;
-        if (mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP())) continue;
-        const v = c.odds[r.name]?.close ?? 0; if (v > bv) { bv = v; best = r.name; }
+    const can = (c, r) => {
+      if (isOffDay(r, k)) return false;
+      const why = c.blocked[r.name]; if (why && why !== "off that day") return false;
+      const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name);
+      if (mine.length >= r.limits.per_day) return false;
+      return !mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP());
+    };
+    let left = list.slice();
+    while (left.length) {   // hardest call first: the appointment that loses the most if its best rep is taken
+      let pickC = null, pickR = null, pickRegret = -1;
+      for (const c of left) {
+        const opts = B.reps.filter(r => can(c, r)).map(r => ({ r: r.name, v: c.odds[r.name]?.close ?? 0 })).sort((a, b) => b.v - a.v);
+        const regret = opts.length ? opts[0].v - (opts[1]?.v ?? 0) : 9;
+        if (regret > pickRegret) { pickRegret = regret; pickC = c; pickR = opts[0]?.r ?? null; }
       }
-      EFF[c.id] = { rep: best, kind: "timeoff", from: c.pick };
+      EFF[pickC.id] = { rep: pickR, kind: pickR === pickC.pick ? "engine" : "replan", from: pickC.pick };
+      left = left.filter(c => c !== pickC);
     }
   }
 }
@@ -447,7 +461,7 @@ function renderTop() {
     for (const c of list) {
       const r = repOf(c); const v = val(c, r), p = planVal(c);
       o.sales += r && c.odds[r] ? c.odds[r].close : 0; o.rev += v; o.sd += r && c.odds[r] ? c.odds[r].same_day : 0; o.sdRev += sdVal(c, r); o.plan += p;
-      const k = EFF[c.id]?.kind; if (k === "timeoff") o.offCost += p - v; else if (k === "moved") o.moveCost += p - v;
+      const k = EFF[c.id]?.kind; if (k === "replan") o.offCost += p - v; else if (k === "moved") o.moveCost += p - v;
     }
     return o;
   };
@@ -474,7 +488,7 @@ function renderTop() {
       <div><small>If plan followed</small><b class="n">${money(T.plan)}</b><em>engine's picks</em></div></div></div>
     <div class="sg cost${Math.abs(cost) < 50 ? " ok" : ""}"><h4>Cost of changes</h4><div class="row">
       <div><small>Next 30 days</small><b class="n ${cost >= 50 ? "r" : cost <= -50 ? "g" : ""}">${Math.abs(cost) < 50 ? "$0" : sgn(cost)}</b>
-        <em>${Math.abs(cost) < 50 ? "Following the plan" : `Time off <b>${sgn(T.offCost)}</b> · Moves <b>${sgn(T.moveCost)}</b>`}</em></div>
+        <em>${Math.abs(cost) < 50 ? "Following the plan" : `Who's working <b>${sgn(T.offCost)}</b> · Moves <b>${sgn(T.moveCost)}</b>`}</em></div>
       <div><small>${dayName}</small><b class="n ${dcost >= 50 ? "r" : dcost <= -50 ? "g" : ""}">${Math.abs(dcost) < 50 ? "$0" : sgn(dcost)}</b><em>vs the plan</em></div></div></div>`;
 }
 function render() {
@@ -497,7 +511,7 @@ function renderBoard() {
     const sched = !!(r.week && r.week[wd]); const off = (r.days_off || []).includes(day);
     if (!sched) return `<span class="av sched" style="--rc:${color(r.name)}" title="Not on ${r.short}'s weekly schedule. Change it on the Reps tab."><i></i>${esc(r.short)} · not scheduled</span>`;
     return `<label class="av${off ? " off" : ""}" style="--rc:${color(r.name)}" title="Untick if ${esc(r.short)} can't work ${wd} ${md(day)}"><input type="checkbox" data-avail="${esc(r.name)}"${off ? "" : " checked"}${canWrite ? "" : " disabled"}><i></i>${esc(r.short)}</label>`;
-  }).join("") + `<span class="hint">Untick a rep for a one-off day off. His appointments move to the next best rep.</span>` + resetUi();
+  }).join("") + `<span class="hint">Untick a rep for a one-off day off, tick him back on when he can work. The day re-plans either way.</span>` + resetUi();
   const wk = monday(day);
   const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
@@ -537,7 +551,8 @@ function card(c) {
   const dv = c.pick ? val(c, rep) - planVal(c) : 0;
   const dtxt = Math.abs(dv) >= 50 ? `, ${dv < 0 ? "−" : "+"}${money(Math.abs(dv))} expected` : "";
   if (isMoved && c.pick) warns.push(`<div class="info">Moved from ${esc(short(c.pick))} (${pct(c.close)})${m.byName ? " by " + esc(m.byName) : ""}${dtxt}</div>`);
-  if (ef.kind === "timeoff") warns.push(`<div class="info">${esc(short(ef.from))} is off this day. ${rep ? `Moved to ${esc(short(rep))}${dtxt}` : "Nobody else is free"}</div>`);
+  if (ef.kind === "replan") { const fr = ef.from && repBy(ef.from); const off = fr && isOffDay(fr, dkey(c.appt));
+    warns.push(`<div class="info">${off ? `${esc(short(ef.from))} is off this day. ` : `Re-planned for who's working${ef.from ? `, was ${esc(short(ef.from))}` : ""}. `}${rep ? `Now ${esc(short(rep))}${dtxt}` : "Nobody else is free"}</div>`); }
   for (const p of pr) warns.push(`<div class="warn">${esc(p)}</div>`);
   if (c.bends.length) warns.push(`<div class="info">Rule bend: ${esc(c.bends.join(", "))}</div>`);
   if (c.in_acculynx && rep && c.in_acculynx !== rep) warns.push(`<div class="info">AccuLynx has ${esc(short(c.in_acculynx))}</div>`);
@@ -548,7 +563,7 @@ function card(c) {
   return `<article class="card${isMoved ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
     <div class="eyebrow"><span>${esc(where)}</span><time datetime="${esc(c.appt)}">${hm(c.appt)}</time></div>
     <div class="who">${esc(c.name || "Customer")}</div>
-    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && ef.kind !== "timeoff" && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
+    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${!isMoved && ef.kind !== "replan" && c.lift != null && c.lift >= .01 ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small>to close${o ? `<br>${pct(o.same_day)} same day` : ""}</small></div>
     ${chips.length ? `<div class="chips">${chips.join("")}</div>` : ""}
     ${warns.length ? `<div class="warns">${warns.join("")}</div>` : ""}
     <details class="why-box"><summary>Why this rep</summary>
@@ -674,11 +689,15 @@ async function toggleOff(name, k, working) {
   const set = new Set(r.days_off || []); if (working) set.delete(k); else set.add(k);
   r.days_off = [...set].sort();
   if (roster && roster[name]) roster[name].days_off = r.days_off;
-  const before = B.cards.filter(c => dkey(c.appt) === k && c.pick === name);
+  const dayList = B.cards.filter(c => dkey(c.appt) === k);
+  const before = new Map(dayList.map(c => [c.id, repOf(c)])); const revBefore = dayList.reduce((s, c) => s + val(c, repOf(c)), 0);
   render();
-  const lost = before.reduce((s, c) => s + planVal(c) - val(c, repOf(c)), 0);
-  toast(working ? `${r.short} is back on for ${DAYN[parse(k).getDay()]} ${md(k)}` :
-    `${r.short} marked off ${DAYN[parse(k).getDay()]} ${md(k)}${before.length ? `. ${before.length} appointment${before.length > 1 ? "s" : ""} moved${lost >= 50 ? `, −${money(lost)} expected` : ""}` : ""}`);
+  const movedN = dayList.filter(c => before.get(c.id) !== repOf(c)).length;
+  const dRev = dayList.reduce((s, c) => s + val(c, repOf(c)), 0) - revBefore;
+  const mine = dayList.filter(c => repOf(c) === name).length;
+  const label = `${DAYN[parse(k).getDay()]} ${md(k)}`;
+  toast((working ? `${r.short} is back on ${label}${mine ? `, takes ${mine}` : ""}` : `${r.short} marked off ${label}`) +
+    (movedN ? `. ${movedN} appointment${movedN > 1 ? "s" : ""} re-planned` : "") + (Math.abs(dRev) >= 50 ? `, ${dRev > 0 ? "+" : "−"}${money(Math.abs(dRev))} expected` : ""));
   if (!db) return;
   try { await db.doc("roster/" + slug(name)).update({ days_off: r.days_off, updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
   catch (e) { banner("That day off didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
@@ -1029,6 +1048,7 @@ async function connect() {
 async function load() {
   try { B = await (await fetch("board.json", { cache: "no-store" })).json(); }
   catch (e) { $("#board").innerHTML = '<div class="loading">Could not load the plan. Refresh the page.</div>'; return; }
+  for (const r of (B && B.reps) || []) ENGINE_AV[r.name] = { off: new Set(r.days_off || []), week: JSON.stringify(r.week || {}) };
   freshness();
   $("#f-data").textContent = `AccuLynx job export, ${B.meta.sits_used.toLocaleString()} past sits learned from`;
   render();
