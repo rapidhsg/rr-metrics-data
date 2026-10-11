@@ -55,7 +55,8 @@ How it works, in words (rules as of Oct 11 2026). No rule names a person: who ge
 6. **Lanes** (set per rep on the Reps tab): commercial work only to commercial-lane reps, specialty to specialty-lane reps first with commercial-lane reps as backup, commercial-lane reps never on regular work.
 7. **Bends** only to avoid leaving an appointment with nobody or to keep a same-day appointment. Never a 5th sit. Every
    bend is tagged and needs Richie's OK. Anything still stuck is "Nobody free" with the reasons.
-8. **Days off** come from the board (Reps tab and the "Working" checkboxes above the columns). `sync_roster.py` copies
+8. **Routes**: every mile between back-to-back appointments, and half of each mile from where the rep starts, costs a little close chance (0.5 points per 10 miles, in `assignment_rules.json`). When plans are about equal on dollars, the one with less driving wins.
+9. **Days off** come from the board (Reps tab and the "Working" checkboxes above the columns). `sync_roster.py` copies
    them into `assignment_rules.json` before each run.
 
 Inside those rules it picks the plan with the most expected closes (close chance + same-day weight x same-day chance).

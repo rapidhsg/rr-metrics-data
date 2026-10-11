@@ -121,6 +121,8 @@ def bend_cost(rating):
     return B["penalty"][rating] if rating in B["penalty"] else B["last_resort"]["penalty"]
 
 def plan(scores, df, today, now=None):
+    RT_ = RULES.get("routing", {"close_points_per_10_miles": 0, "start_leg_share": 0, "back_to_back_within_minutes": 0})
+    RW = RT_["close_points_per_10_miles"] / 100 / 10   # close-chance points given up per mile driven
     today = pd.Timestamp(today).normalize(); A = RULES["appointment"]; B = RULES["bends"]; WO = RULES["weekly_order"]
     R = roster(); st = rep_status(df, today); reps = list(R)
     leads = pd.DataFrame(scores["leads"])
@@ -153,9 +155,12 @@ def plan(scores, df, today, now=None):
             elif l.spec and info["lane"] == "commercial": adj = -RULES["lanes"]["specialty_backup_penalty"]; tag = "Specialty backup"
             if reason: why_no[(l.guid, r)] = reason; continue
             v = val.loc[(l.guid, r)]
-            pairs.append(dict(i=i, guid=l.guid, rep=r, day=l.day, week=l.week, min=l["min"], spec=bool(l.spec), same=bool(l.same_day),
-                              value=v.close + w * v.same_day + adj, close=v.close, sd=v.same_day, tag=tag))
+            start_zip = office["zip"] if dname in office.get("days", []) else info.get("home_zip")
+            leg0 = miles(start_zip, l.zip) if start_zip and isinstance(l.zip, str) else 15.0
+            pairs.append(dict(i=i, guid=l.guid, rep=r, day=l.day, week=l.week, min=l["min"], spec=bool(l.spec), same=bool(l.same_day), zip=l.zip,
+                              value=v.close + w * v.same_day + adj - RW * RT_["start_leg_share"] * leg0, close=v.close, sd=v.same_day, tag=tag, leg0=leg0))
     P = pd.DataFrame(pairs)
+    # routing: drive between back-to-back appointments for the same rep costs a little (never more than a small close gap)
     blank = lambda: [dict(guid=l.guid, appt=l.appt, rep=None, options=[], blocked={r: why_no.get((l.guid, r)) for r in reps},
                           note="Nobody free within the rules. Needs a call: move the time or day.") for l in leads.itertuples()]
     if P.empty:
@@ -168,6 +173,15 @@ def plan(scores, df, today, now=None):
         if st[r]["can_bend"]: extra.append(("bweek", r, wk)); cost.append(-bend_cost(st[r]["rating"]))
         credit = WO["minimum_credit"].get(st[r]["rating"], 0) + (WO["behind_promise_extra"] if st[r]["behind_promise"] else 0)
         extra.append(("floor", r, wk)); cost.append(credit)
+    route = []   # (pair a, pair b, miles) for same rep, same day, close enough in time to be back to back
+    for (r, d), g in P.groupby(["rep", "day"]):
+        idx = g.sort_values("min").index.tolist()
+        for a in range(len(idx)):
+            for b in range(a + 1, len(idx)):
+                dt = P.at[idx[b], "min"] - P.at[idx[a], "min"]
+                if A["min_gap_minutes"] <= dt <= RT_["back_to_back_within_minutes"]:
+                    route.append((idx[a], idx[b], miles(P.at[idx[a], "zip"], P.at[idx[b], "zip"]) if isinstance(P.at[idx[a], "zip"], str) and isinstance(P.at[idx[b], "zip"], str) else 15.0))
+    for t, (a, b, mi) in enumerate(route): extra.append(("leg", a, b)); cost.append(-RW * mi)
     eidx = {k: n + t for t, k in enumerate(extra)}; m = n + len(extra)
     BIG = 2.0
     c = -np.r_[P.value.values + BIG + B["same_day_priority"] * P.same.values, np.array(cost)]
@@ -182,6 +196,8 @@ def plan(scores, df, today, now=None):
         for a in range(len(idx)):
             for b in range(a + 1, len(idx)):
                 if abs(P.at[idx[a], "min"] - P.at[idx[b], "min"]) < A["min_gap_minutes"]: add({idx[a]: 1, idx[b]: 1}, 0, 1)
+    for (a, b, mi) in route:   # leg is on when both appointments go to that rep: leg >= x_a + x_b - 1
+        add({eidx[("leg", a, b)]: 1, a: -1, b: -1}, -1, np.inf)
     for (r, wk), g in P.groupby(["rep", "week"]):
         lim = st[r]["limits"]; done = st[r]["this_week_so_far"] if wk == today - pd.Timedelta(days=today.dayofweek) else 0
         gi = [j for j in g.index if counted[j]]
@@ -199,7 +215,8 @@ def plan(scores, df, today, now=None):
     for k, co in enumerate(rows):
         for j, v in co.items(): M[k, j] = v
     ub = np.ones(m); ub[[eidx[e] for e in extra if e[0] == "floor"]] = 50
-    res = milp(c, constraints=LinearConstraint(M.tocsr(), lo, hi), integrality=np.ones(m), bounds=Bounds(0, ub), options=dict(time_limit=120))
+    integ = np.ones(m); integ[[eidx[e] for e in extra if e[0] == "leg"]] = 0
+    res = milp(c, constraints=LinearConstraint(M.tocsr(), lo, hi), integrality=integ, bounds=Bounds(0, ub), options=dict(time_limit=120))
     x = np.round(res.x[:n]).astype(int); P["pick"] = x == 1
     bday = {k[1:]: round(res.x[eidx[k]]) for k in extra if k[0] == "bday"}
     bweek = {k[1:]: round(res.x[eidx[k]]) for k in extra if k[0] == "bweek"}
@@ -241,7 +258,9 @@ def plan(scores, df, today, now=None):
             if s_["this_week_so_far"] + wk_used.get((r, wk0), 0) >= s_["limits"]["week_cap"]: continue
             o["sooner"] = dict(day=today.strftime("%Y-%m-%d"), rep=r, note="Lead came in today. Could be seen today at the same time."); break
     a = [o for o in out if o["rep"]]
+    legs = sum(mi for (aa, bb, mi) in route if P.at[aa, "pick"] and P.at[bb, "pick"])
     meta = dict(run=scores["meta"]["run"], appointments=len(out), assigned=len(a), nobody_free=len(out) - len(a),
+                route_miles=round(float(legs + chosen.leg0.sum()), 0),
                 bends=sum(1 for o in a if o["bends"]), expected_closes=round(float(sum(o["close"] for o in a)), 1),
                 expected_same_day=round(float(sum(o["same_day"] for o in a)), 1), solver=res.message)
     return dict(meta=meta, reps=st, plan=out)

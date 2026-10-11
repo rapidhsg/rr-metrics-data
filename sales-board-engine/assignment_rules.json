@@ -393,5 +393,11 @@
     ],
     "show": 60
   },
-  "_rules_are_evergreen": "No rule names a person. Who gets what comes only from data and settings: close odds learned from each rep's own results, rating from his close rate, hot status, lane, hours, days off and capacity. Any rep with the same numbers and settings is treated the same."
+  "_rules_are_evergreen": "No rule names a person. Who gets what comes only from data and settings: close odds learned from each rep's own results, rating from his close rate, hot status, lane, hours, days off and capacity. Any rep with the same numbers and settings is treated the same.",
+  "routing": {
+    "_read_me": "Smooth days without costing money. Every mile between back-to-back appointments (and half of each mile from where the rep starts) costs a small amount of close chance in the plan, so when two plans are about equal on dollars the one with less driving wins. close_points_per_10_miles = how many points of close chance 10 extra miles are worth; keep it small so routes never beat a real close-rate gap. Set 0 to turn routing off.",
+    "close_points_per_10_miles": 0.5,
+    "start_leg_share": 0.5,
+    "back_to_back_within_minutes": 300
+  }
 }
