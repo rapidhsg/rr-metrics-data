@@ -74,6 +74,19 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .av.off{background:var(--bad-bg);border-color:#F3B4AE;color:var(--bad);text-decoration:line-through}
 .av.sched{opacity:.55;cursor:default}
 .avail .hint{margin:0 0 0 4px;flex:1 1 220px}
+.ideas{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--yellow);border-radius:var(--r);padding:10px 14px;margin:0 0 12px}
+.ideas h3{margin:0 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--display);font-weight:800;font-size:18px;text-transform:uppercase}
+.ideas h3 small{font-family:var(--body);font-weight:500;font-size:12.5px;color:var(--muted);text-transform:none}
+.idea{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid #EEEFF1}
+.idea:first-of-type{border-top:0}
+.itag{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:2px;background:var(--black);color:var(--white);white-space:nowrap}
+.itag.move{background:var(--yellow);color:var(--black)}.itag.need{background:var(--red)}.itag.slot{background:var(--steel);color:var(--ink)}
+.itxt{font-size:13.5px;min-width:0}.itxt b{font-weight:700}.itxt span{color:var(--muted)}
+.iact{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.iact .gain{font-family:var(--display);font-weight:800;font-size:20px;color:var(--good);white-space:nowrap}
+.iact .btn{padding:4px 8px;font-size:12px}
+.ideas .more{border:0;background:none;color:var(--muted);font-weight:600;font-size:12.5px;cursor:pointer;padding:6px 0 0;text-decoration:underline}
+@media (max-width:640px){.idea{grid-template-columns:minmax(0,1fr) auto}.itag{grid-column:1/-1;justify-self:start}}
 .reset{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
 .reset .btn.red{white-space:normal}
 .sum small{display:block;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:12px;color:#B9BBC0;text-transform:uppercase}
@@ -288,6 +301,7 @@ details[open]>summary::after{content:"–"}
   <div class="banner" id="offline" hidden>Changes you make here won't save for the team in this view. Open the board from its link while signed in to save.</div>
 
   <section id="v-board">
+    <div class="ideas" id="ideas" aria-live="polite" hidden></div>
     <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
   </section>
@@ -472,6 +486,7 @@ function render() {
 
 /* ---------- board ---------- */
 function renderBoard() {
+  renderIdeas();
   const today = B.cards.filter(c => dkey(c.appt) === day);
   const reps = B.reps.filter(r => onDay(r, day) || today.some(c => repOf(c) === r.name));
   const wd = DAYN[parse(day).getDay()];
@@ -546,6 +561,91 @@ function card(c) {
     </details>
     <label class="setbox"><input type="checkbox" data-set="${c.id}"${m.set ? " checked" : ""}> Set in AccuLynx</label>
   </article>`;
+}
+
+/* ---------- ideas: ways to add revenue on the selected day ---------- */
+let dismissed = {}, ideasAll = false;
+const hm2m = t => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const m2t = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const LANE = /commercial|specialty|Meinardus/i;
+function driveMin(c, r) { const a = center(c.zip), b = center(r.home_zip); return a && b ? Math.round(miles(a, b) / 30 * 60) : 45; }
+function slotFor(c, r, k, nearMin) {   // a start time on day k this rep can take inside his hours, home-by, daily limit and the 2-hour gap
+  const s = r.week && r.week[DAYN[parse(k).getDay()]]; if (!s || isOffDay(r, k)) return null;
+  const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && repOf(o) === r.name);
+  if (mine.length >= r.limits.per_day) return null;
+  const lo = hm2m(s[0]) ?? 600, hi = hm2m(s[1]) ?? 1140, hb = hm2m(s[2]);
+  const len = B.appointment?.minutes || 90; let best = null;
+  for (let t = lo; t <= hi; t += 30) {
+    if (hb != null && t + len + driveMin(c, r) > hb) continue;
+    if (mine.some(o => Math.abs(mins(o.appt) - t) < GAP())) continue;
+    if (best == null || Math.abs(t - nearMin) < Math.abs(best - nearMin)) best = t;
+  }
+  return best;
+}
+function buildIdeas() {
+  const k = day, out = [], seen = new Set();
+  const minGain = 500;
+  const today = B.cards.filter(c => dkey(c.appt) === k);
+  // 1) call to reschedule today's customer into a better closer's open time, or rescue one nobody can take
+  for (const c of today) {
+    const cur = repOf(c); const base = val(c, cur); let best = null;
+    for (const r of B.reps) {
+      if (r.name === cur || LANE.test(c.blocked[r.name] || "")) continue;
+      const g = val(c, r.name) - base; if (g < minGain && cur) continue;
+      const t = slotFor(c, r, k, mins(c.appt)); if (t == null || t === mins(c.appt)) continue;
+      if (!best || g > best.g) best = { g, r, t };
+    }
+    if (best) out.push({ key: `rs-${c.id}-${best.r.name}-${best.t}`, kind: cur ? "move" : "need", tag: cur ? "Call to reschedule" : "Needs a call", c, g: best.g,
+      html: `Call <b>${esc(c.name || "the customer")}</b> (${esc(c.town || "")}) to move <b>${hm(c.appt)} → ${hm(k + "T" + m2t(best.t))}</b>. That fits ${esc(best.r.short)}${cur ? ` instead of ${esc(short(cur))}` : ""}: <span>${pct(c.odds[best.r.name]?.close)} vs ${cur ? pct(c.odds[cur]?.close) : "no rep"} to close.</span>` });
+  }
+  // 2) move a later appointment up into today with a stronger closer who has room (each card and each open slot used once)
+  const later = B.cards.filter(c => dkey(c.appt) > k && (parse(dkey(c.appt)) - parse(k)) / 864e5 <= 7);
+  const cand = [];
+  for (const r of B.reps) {
+    if (isOffDay(r, k) || r.rating === "Lane") continue;
+    for (const c of later) {
+      if (LANE.test(c.blocked[r.name] || "")) continue;
+      const cur = repOf(c);
+      const g = val(c, r.name) - val(c, cur) + (sdVal(c, r.name) - sdVal(c, cur)) * .2; if (g < minGain) continue;
+      const t = slotFor(c, r, k, mins(c.appt)); if (t != null) cand.push({ g, c, r, t, cur });
+    }
+  }
+  cand.sort((a, b) => b.g - a.g);
+  const usedC = new Set(), usedR = {};
+  for (const x of cand) {
+    if (usedC.has(x.c.id)) continue;
+    const room = x.r.limits.per_day - today.filter(c => repOf(c) === x.r.name).length;
+    if ((usedR[x.r.name] || 0) >= room) continue;
+    usedC.add(x.c.id); usedR[x.r.name] = (usedR[x.r.name] || 0) + 1;
+    const when = `${DAYN[parse(dkey(x.c.appt)).getDay()]} ${md(dkey(x.c.appt))} ${hm(x.c.appt)}`;
+    out.push({ key: `up-${x.c.id}-${x.r.name}-${k}`, kind: "up", tag: x.cur ? "Move up" : "Rescue", c: x.c, g: x.g,
+      html: `Call <b>${esc(x.c.name || "the customer")}</b> (${esc(x.c.town || "")}, booked ${when}${x.cur ? "" : ", nobody free then"}) to come in <b>${DAYN[parse(k).getDay()]} ${hm(k + "T" + m2t(x.t))}</b> with ${esc(x.r.short)}. <span>${pct(x.c.odds[x.r.name]?.close)} to close${x.cur ? ` vs ${pct(x.c.odds[x.cur]?.close)} with ${esc(short(x.cur))}` : ""}, and sooner sits close better.</span>` });
+  }
+  // 3) open slots for the strongest closers: book a fresh same-day lead into them
+  for (const r of B.reps) {
+    if (isOffDay(r, k) || !["Beast", "Tenured"].includes(r.rating)) continue;
+    const n = today.filter(c => repOf(c) === r.name).length, open = r.limits.per_day - n; if (open <= 0) continue;
+    const g = open * (r.close || .3) * (B.tickets?.all?.any || 0);
+    out.push({ key: `slot-${r.name}-${k}`, kind: "slot", tag: "Open slot", g,
+      html: `${esc(r.short)} (${esc(r.rating)}, ${pct(r.close)}) has <b>${open} open slot${open > 1 ? "s" : ""}</b> ${DAYN[parse(k).getDay()]}. CSRs: book a new or rehash lead into it. <span>Same-day appointments close best.</span>` });
+  }
+  return out.filter(i => !dismissed[i.key] && !seen.has(i.key) && seen.add(i.key)).sort((a, b) => b.g - a.g);
+}
+async function renderIdeas() {
+  if (!Z && !mapReady) loadZips().then(() => { if (tab === "board") renderIdeas(); });
+  const list = buildIdeas(); const el = $("#ideas");
+  el.hidden = !list.length; if (!list.length) return;
+  const show = ideasAll ? list : list.slice(0, 4);
+  el.innerHTML = `<h3>Ideas to add revenue · ${DAYN[parse(day).getDay()]} ${md(day)}<small>Worth a call. The engine keeps appointment times as booked, so these need the customer to agree.</small></h3>` +
+    show.map(i => `<div class="idea"><span class="itag ${i.kind}">${esc(i.tag)}</span><div class="itxt">${i.html}</div>
+      <div class="iact"><span class="gain">+${money(i.g)}</span>${i.c ? `<a class="btn dark" href="${esc(i.c.url)}" target="_blank" rel="noopener">AccuLynx</a>` : ""}<button class="btn ghost" data-dismiss="${esc(i.key)}">Done</button></div></div>`).join("") +
+    (list.length > 4 ? `<button class="more" id="ideas-more">${ideasAll ? "Show fewer" : `Show all ${list.length}`}</button>` : "");
+  $$("[data-dismiss]").forEach(b => b.onclick = () => dismissIdea(b.dataset.dismiss));
+  const m = $("#ideas-more"); if (m) m.onclick = () => { ideasAll = !ideasAll; renderIdeas(); };
+}
+async function dismissIdea(key) {
+  dismissed[key] = true; renderIdeas();
+  if (db) try { await db.doc("ideas/" + key.replace(/[^A-Za-z0-9_\-.~:@+]/g, "_").slice(0, 190)).set({ key, done: true, by: me?.id || null, at: new Date().toISOString() }); } catch (e) {}
 }
 
 let resetAsk = null;   // null, "day" or "all": waiting for the second click
@@ -907,6 +1007,7 @@ async function connect() {
   if (!db) { banner(); return; }
   try { me = userApi ? await userApi.me() : null; } catch (e) { me = null; }
   try { const c = userApi ? await userApi.can("data.write") : null; canWrite = c !== false; } catch (e) {}
+  db.collection("ideas").onSnapshot(snap => { const d = {}; snap.docs.forEach(x => { const v = x.data() || {}; if (v.key) d[v.key] = true; }); dismissed = d; if (tab === "board") renderIdeas(); }, () => {});
   db.collection("cards").onSnapshot(async snap => {
     const next = {}; const ids = new Set();
     snap.docs.forEach(d => { const v = d.data() || {}; next[d.id] = { set: !!v.set, by: v.by || null, at: v.at || null }; if (v.rep !== "__engine__") next[d.id].rep = v.rep ?? null; if (v.by) ids.add(v.by); });
