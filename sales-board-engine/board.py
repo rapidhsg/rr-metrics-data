@@ -162,7 +162,24 @@ def main(out, path, status=None):
     if st.exists():   # when AccuLynx ran the report and when GitHub pulled it (data branch status.json)
         j = json.loads(st.read_text()).get("job_export_raw", {})
         meta.update(acculynx_run=j.get("runDate"), acculynx_slot=j.get("schedule"), pulled_at=j.get("pulledAt"))
-    json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out,
+    # log what the board predicts for each upcoming day, so it can be checked against what actually happens
+    fc_show = str(FC.get("show", 60)); rows = []
+    for day in sorted({c["appt"][:10] for c in cards}):
+        cs = [c for c in cards if c["appt"][:10] == day and c["pick"]]
+        T = lambda c: tickets.get(c["ltype"], tickets["all"])
+        rows.append(dict(run_date=today.strftime("%Y-%m-%d"), run_at=P["meta"]["run"], appt_day=day,
+                         booked=sum(1 for c in cards if c["appt"][:10] == day),
+                         exp_sales=round(sum(c["close"] for c in cs), 3), exp_sales_usd=round(sum(c["close"] * T(c)["any"] for c in cs)),
+                         exp_same_day=round(sum(c["same_day"] for c in cs), 3), exp_same_day_usd=round(sum(c["same_day"] * T(c)["same_day"] for c in cs)),
+                         still_to_book=forecast.get(day, {}).get(fc_show, {}).get("more"), full_team_usd=round(full_by_day.get(day, 0))))
+    fpath = E.MEM / "forecasts.csv"; new = pd.DataFrame(rows)
+    if fpath.exists():
+        old = pd.read_csv(fpath, dtype=str); new = pd.concat([old[old.run_date != today.strftime("%Y-%m-%d")], new.astype(str)])
+    new.to_csv(fpath, index=False)
+    accuracy = []
+    ap = E.MEM / "accuracy_daily.csv"
+    if ap.exists(): accuracy = pd.read_csv(ap).tail(30).to_dict("records")
+    json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out, accuracy=accuracy,
                    cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60))),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")

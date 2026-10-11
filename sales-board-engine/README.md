@@ -102,6 +102,8 @@ Every plan is saved to `memory/plans.csv` so it can be checked against what actu
 | `memory/board_moves.csv` | Daily snapshot of manager moves and days off made on the board | `outcomes.py --save-board`, every run |
 | `memory/outcomes.csv` | Every finished appointment: engine pick, board pick, who actually ran it, predicted odds for each, sat, sold, same day | `outcomes.py`, every run |
 | `memory/hot.json` | Which reps are currently hot | The engine |
+| `memory/forecasts.csv` | What the board predicted for every upcoming day, each run (sales, $, same day, bookings still to come, full-team value) | `board.py`, every run |
+| `memory/accuracy_daily.csv` | Each finished day: predicted vs actual appointments, sales, $ and same-day signs | `outcomes.py`, every run |
 | `memory/note_tags.json` | AI tags for each lead's notes | Claude |
 
 The engine reads the certified rules and the data. It never changes them.

@@ -41,3 +41,7 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 
 ## 2026-10-11 note signal fix
 - "No leak" notes were also being counted as "leak" (259 of 274). The leak signal now skips "no leak", "not leaking" and "isn't leaking". Backtest, last 6 months: log loss 0.5756 -> 0.5745, ranking 0.634 -> 0.636 (better).
+
+## 2026-10-11 tracking predictions over time
+- Every run now logs what the board predicts for each upcoming day (memory/forecasts.csv): appointments booked, expected sales and $, same-day signs and $, bookings still to come, full-team value.
+- After each day finishes, outcomes.py scores it (memory/accuracy_daily.csv): predicted vs actual appointments, sales, $ and same-day signs, updated as late deals sign. The weekly self-test reports it and the Results tab shows it.

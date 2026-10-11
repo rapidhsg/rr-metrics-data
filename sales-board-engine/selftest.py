@@ -60,6 +60,15 @@ def followed_summary():
     return "; ".join([part(o[o.followed_engine == True], "engine's pick ran it"), part(o[o.followed_engine == False], "someone else ran it"),
                       part(o[o.manager_moved == True], "manager moved it")])
 
+def accuracy_summary():
+    p = E.MEM / "accuracy_daily.csv"
+    if not p.exists(): return "no finished days yet"
+    a = pd.read_csv(p).tail(28)
+    if len(a) < 5: return f"{len(a)} finished days so far, need 5+ to judge"
+    return (f"last {len(a)} days: predicted {a.exp_sales.sum():.1f} sales, {int(a.sold_actual.sum())} sold so far; "
+            f"predicted ${a.exp_sales_usd.sum():,.0f}, ${a.sold_usd_actual.sum():,.0f} sold; predicted {a.exp_same_day.sum():.1f} same-day, {int(a.same_day_actual.sum())} actual; "
+            f"bookings forecast {a.booked_then.sum() + a.still_to_book_pred.fillna(0).sum():.0f}, actual {int(a.appts_actual.sum())}")
+
 def main(path, today=None):
     today = pd.Timestamp(today or datetime.now()).normalize()
     df = E.load(path)
@@ -95,7 +104,8 @@ def main(path, today=None):
              f"- Settings: old sits fade by half every {pick[1]['half_life_days']} days, shrinkage strength {pick[1]['shrink_C']}." + (" CHANGED this week because it predicted better." if changed else " No change."),
              f"- Same-day sale worth ${sdv['same_day_value']:,} vs ${sdv['later_value']:,} for a later sale, so same-day close counts {sdw:.2f}x on top of close.",
              f"- Own predictions vs results: {own if own else 'no logged predictions yet'}.",
-             f"- What actually happened (memory/outcomes.csv): {followed_summary()}"]
+             f"- What actually happened (memory/outcomes.csv): {followed_summary()}",
+             f"- Board predictions vs results (memory/accuracy_daily.csv): {accuracy_summary()}"]
     with open(E.MEM / "learning_log.md", "a") as f: f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
 

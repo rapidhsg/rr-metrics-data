@@ -368,6 +368,7 @@ details[open]>summary::after{content:"–"}
         <p class="note" id="chart-note"></p></div>
       <div class="panel"><h2>Moves on the board</h2><div id="moves-sum"></div></div>
     </div>
+    <div class="panel" style="margin-bottom:14px"><h2>Board predictions vs what happened</h2><div id="acc"></div></div>
     <div class="panel" style="margin-bottom:24px"><h2>Rep scoreboard · rolling 90</h2><div class="score-wrap"><table class="score" id="score"></table></div></div>
   </section>
 </main>
@@ -533,7 +534,9 @@ function renderTop() {
   const full = B.full_by_day || {}; const in30 = k => parse(k) < end;
   const fullT = Object.entries(full).filter(([k]) => in30(k)).reduce((a, [, v]) => a + v, 0) || T.plan, fullD = full[day] ?? D.plan;
   // days off can only cost money (a quick re-plan landing a hair above the full plan is noise, not a gain)
-  const offT = Math.max(0, fullT - (T.rev + T.moveCost)), offD = Math.max(0, fullD - (D.rev + D.moveCost));
+  const dayKeys = [...new Set(B.cards.map(c => dkey(c.appt)))].filter(in30);
+  const offOf = k => { const X = sumUp(B.cards.filter(c => dkey(c.appt) === k)); return Math.max(0, (full[k] ?? X.plan) - (X.rev + X.moveCost)); };
+  const offT = dayKeys.reduce((a, k) => a + offOf(k), 0), offD = offOf(day);   // each day on its own, so one day can't hide another
   const cost = offT + T.moveCost, dcost = offD + D.moveCost;
   const sgn = v => Math.abs(v) < 50 ? "$0" : (v > 0 ? "−" : "+") + money(Math.abs(v));
   const dayName = `${DAYN[parse(day).getDay()]} ${md(day)}`;
@@ -1057,6 +1060,15 @@ function renderResults() {
     <div><small>Expected sales</small><b class="n${delta >= 0 ? " y" : ""}">${delta >= 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}</b><em>moves vs engine picks</em></div>
     <div><small>Set in AccuLynx</small><b class="n">${setN}</b><em>marked done</em></div></div>
     <p class="note">After moved appointments have sat, this will show how they closed compared with the engine's pick.</p>`;
+  const A = B.accuracy || [];
+  if (!A.length) $("#acc").innerHTML = `<p class="note">Fills in after each appointment day finishes: what the board predicted the morning before vs what actually sat, sold and signed the same day. Late sales keep updating each day's row.</p>`;
+  else {
+    const sum = k => A.reduce((a, r) => a + (+r[k] || 0), 0);
+    $("#acc").innerHTML = `<div class="score-wrap"><table class="others" style="min-width:560px"><thead><tr><th style="text-align:left">Day</th><th>Predicted sales</th><th>Sold so far</th><th>Predicted $</th><th>Sold $</th><th>Same day pred / actual</th><th>Bookings pred / actual</th></tr></thead><tbody>
+      ${A.slice().reverse().map(r => `<tr><td>${DAYN[parse(r.appt_day).getDay()]} ${md(r.appt_day)}</td><td class="p">${(+r.exp_sales).toFixed(1)}</td><td class="p">${r.sold_actual}</td><td class="p">${money(+r.exp_sales_usd)}</td><td class="p">${money(+r.sold_usd_actual)}</td><td class="p">${(+r.exp_same_day).toFixed(1)} / ${r.same_day_actual}</td><td class="p">${Math.round(+r.booked_then + (+r.still_to_book_pred || 0))} / ${r.appts_actual}</td></tr>`).join("")}
+      <tr><td><b>Total</b></td><td class="p">${sum("exp_sales").toFixed(1)}</td><td class="p">${sum("sold_actual")}</td><td class="p">${money(sum("exp_sales_usd"))}</td><td class="p">${money(sum("sold_usd_actual"))}</td><td class="p">${sum("exp_same_day").toFixed(1)} / ${sum("same_day_actual")}</td><td class="p">${Math.round(sum("booked_then") + sum("still_to_book_pred"))} / ${sum("appts_actual")}</td></tr></tbody></table></div>
+      <p class="note">Recent days look low on sold until late deals come in. The weekly self-test uses these to correct the engine if it runs high or low.</p>`;
+  }
   const rows = R.reps90.map(x => ({ ...x, r: repBy(x.name), c: x.sits ? x.sold / x.sits : null })).filter(x => x.sits).sort((a, b) => (b.c ?? 0) - (a.c ?? 0));
   $("#score").innerHTML = `<thead><tr><th>#</th><th>Rep</th><th>Rating</th><th>Sits</th><th>Sold</th><th>Sold $</th><th>Close</th></tr></thead><tbody>${rows.map((x, i) => `<tr style="--rc:${color(x.name)}">
     <td>${i + 1}</td><td class="nm">${esc(x.r?.display || x.name)}<small>${x.r ? `Rated on ${x.r.sits} sits, rolling ${x.r.window}` : ""}</small></td>
