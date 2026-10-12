@@ -4,6 +4,7 @@
 #   board export dir: one JSON file per board database doc (roster/<slug>.json, cards/<guid>.json), each the doc's data.
 #   weekly: also run the self-test and the assignment experiment review (learn.py).
 set -euo pipefail
+export TZ=America/New_York   # appointment times are Eastern; "now" and "today" must be too
 cd "$(dirname "$0")"
 DATA="$1"; EXPORT="$2"; OUT="$3"; WEEKLY="${4:-}"
 CSV="$DATA/job_export_raw_latest.csv"

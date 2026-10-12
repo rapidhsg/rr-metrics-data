@@ -76,6 +76,13 @@ def main(out, path, status=None):
             needs_ok=bool(p.get("needs_ok")), bends=p.get("bends") or [], note=p.get("note"),
             blocked=p.get("blocked") or {}, odds=odds,
             up=[label(u[0]) for u in why.get("up", [])][:3], down=[label(d[0]) for d in why.get("down", [])][:3]))
+    # nobody fits inside the rules, but the manager already gave it to a rep in AccuLynx: show it in his column, flagged with the rule it breaks
+    for c in cards:
+        if not c["pick"] and c["in_acculynx"] and c["in_acculynx"] in (P["reps"] or {}):
+            r = c["in_acculynx"]; why = (c["blocked"] or {}).get(r)
+            c["pick"] = r; c["close"] = (c["odds"].get(r) or {}).get("close"); c["same_day"] = (c["odds"].get(r) or {}).get("same_day")
+            c["needs_ok"] = True
+            c["note"] = f"Set to {r} in AccuLynx. Outside the rules ({why or 'his daily limit or the 2-hour gap'}), so check it."
     reps = []
     for name, st in P["reps"].items():
         ro = rules["roster"].get(name, {})

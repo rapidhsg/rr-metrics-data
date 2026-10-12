@@ -167,7 +167,12 @@ def plan(scores, df, today, now=None):
     R = roster(); st = rep_status(df, today); reps = list(R)
     leads = pd.DataFrame(scores["leads"])
     leads["when"] = pd.to_datetime(leads.appt); leads["day"] = leads.when.dt.normalize()
-    if now is not None: leads = leads[leads.when >= pd.Timestamp(now)].reset_index(drop=True)
+    started = set()   # today's appointments that already started stay on the board with the rep who has them in AccuLynx
+    if now is not None:
+        sp = df.dropna(subset=["guid"]).drop_duplicates("guid").set_index("guid")["Primary Salesperson"]
+        for g in leads.guid[leads.when < pd.Timestamp(now)]:
+            r = sp.get(g)
+            if isinstance(r, str) and r in R: started.add((g, r))
     S = pd.DataFrame(scores["scores"]); S = S[S.guid.isin(leads.guid)]; val = S.set_index(["guid", "rep"])
     w = scores["meta"]["same_day_weight"]
     avgp = pd.DataFrame(scores["scores"]).groupby("rep").close.mean().to_dict()
@@ -180,6 +185,7 @@ def plan(scores, df, today, now=None):
     leads["week"] = leads.day - pd.to_timedelta(leads.day.dt.dayofweek, unit="D")
     office = RULES["office"]
     held = board_holds()   # cards the manager moved or held on the board: keep them where he put them unless a rule says no
+    held.update({g: r for g, r in started})
     pairs, why_no = [], {}
     for i, l in leads.iterrows():
         dname = DAYS[l.day.dayofweek]
