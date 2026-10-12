@@ -17,3 +17,12 @@ tomorrow. Rep names are suggestions only: CSRs run every booking by the sales ma
 Copy plan (Board tab, next to Reset, and on the red "needs a rep" bar): copies the selected day's whole plan as text. Appointments with no
 rep come first, each with a fix that tries the top closer for it first: hand one of his appointments to another rep at the same time, or
 move the homeowner to a time he's free. Then every rep's appointments, who's off, and the call center guide for that day.
+
+Availability tab: one week at a time (this week by default, next week from Friday on). Each rep and day has a Working/Off switch and a
+6 PM switch (can he run evening appointments that day). Changes save to the rep's roster doc as days_off, days_on (works a day his weekly
+schedule doesn't cover, standard 10 to 7 hours), eve_off (no 6 PMs, last start 5 PM) and eve_on (6 PMs allowed, last start 7 PM, no
+home-by). The board re-plans right away and the engine reads them on its next run (assign.slot_for).
+Suggestions: weekends rotate among reps whose weekly schedule includes weekends, enough reps for the usual weekend volume (about 2.5
+appointments each), whoever worked the fewest weekend days in the last 4 weeks first, then the stronger closer. 6 PMs rotate the same way,
+sized to twice the usual evening share of appointments. Anyone with an appointment already booked that day (or that evening) keeps it.
+Each row shows days working out of the 2-week window (target 11 of 14), weekend days and 6 PMs run in the last 4 weeks.

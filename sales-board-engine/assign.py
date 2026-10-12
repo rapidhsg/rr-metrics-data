@@ -64,6 +64,22 @@ def dial(name, day):
     if ex.get("active") and ex.get("dial") == name and arm_for(day) == "challenger": return ex["challenger"]
     return d.get("value", 0)
 
+EVE_START = 18 * 60   # "6 PMs": appointments starting at 6 PM or later
+
+def slot_for(info, day):
+    """A rep's hours on one date: his weekly schedule, then the week's overrides from the board's Availability tab.
+    days_off: off that date. days_on: works a date his weekly schedule doesn't cover (standard hours).
+    eve_off: no 6 PMs that date (last start 5 PM). eve_on: can run 6 PMs that date (last start 7 PM, no home-by)."""
+    day = pd.Timestamp(day); ds = day.strftime("%Y-%m-%d")
+    if ds in info.get("days_off", []): return None
+    s = info["week"].get(DAYS[day.dayofweek])
+    if not s and ds in info.get("days_on", []): s = ["10:00", "19:00", None]
+    if not s: return None
+    s = list(s) + [None] * (3 - len(s))
+    if ds in info.get("eve_off", []): s[1] = min(s[1] or "19:00", "17:00")
+    elif ds in info.get("eve_on", []): s[1] = max(s[1] or "19:00", "19:00"); s[2] = None
+    return s
+
 HOT_FILE = E.MEM / "hot.json"
 HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
 
@@ -158,9 +174,9 @@ def plan(scores, df, today, now=None):
         dname = DAYS[l.day.dayofweek]
         for r in reps:
             info, s = R[r], st[r]; reason = None; adj = 0.0; tag = None
-            slot = info["week"].get(dname)
+            slot = slot_for(info, l.day)
             if s["limits"]["week_cap"] == 0: reason = s["note"] or "no leads this week"
-            elif not slot or l.day.strftime("%Y-%m-%d") in info.get("days_off", []): reason = "off that day"
+            elif not slot: reason = "off that day"
             elif l["min"] < hm(slot[0]): reason = "before his earliest appointment"
             elif l["min"] > hm(slot[1]): reason = "after his last appointment"
             elif slot[2] and info.get("home_zip") and l["min"] + A["minutes"] + miles(l.zip, info["home_zip"]) / A["drive_mph"] * 60 > hm(slot[2]):
@@ -277,8 +293,8 @@ def plan(scores, df, today, now=None):
         if pd.isna(l.days_lead_to_appt) or l.days_lead_to_appt < 1: continue
         if l.day - pd.Timedelta(days=int(l.days_lead_to_appt)) != today: continue
         for r in sorted(reps, key=lambda r: -(val.loc[(l.guid, r)].close if (l.guid, r) in val.index else 0)):
-            info, s_ = R[r], st[r]; slot = info["week"].get(dname)
-            if not slot or s_["limits"]["week_cap"] == 0 or today.strftime("%Y-%m-%d") in info.get("days_off", []): continue
+            info, s_ = R[r], st[r]; slot = slot_for(info, today)
+            if not slot or s_["limits"]["week_cap"] == 0: continue
             if l["min"] < hm(slot[0]) or l["min"] > hm(slot[1]) or (now is not None and pd.Timestamp(now).hour * 60 + pd.Timestamp(now).minute > l["min"] - 60): continue
             if (l.comm and info["lane"] != "commercial") or (l.spec and info["lane"] not in ("specialty", "commercial")) or (not l.comm and not l.spec and info["lane"] == "commercial"): continue
             day_list = taken.get((r, today), [])

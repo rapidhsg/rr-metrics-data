@@ -20,10 +20,9 @@ def main(path, out):
         r = p.get("rep")
         if not r: continue
         L = lead[p["guid"]]; when = pd.Timestamp(p["appt"]); day = when.strftime("%Y-%m-%d"); m = when.hour * 60 + when.minute
-        info = R[r]; slot = info["week"].get(A.DAYS[when.dayofweek])
+        info = R[r]; slot = A.slot_for(info, when.normalize())
         per_day[(r, day)].append(m)
-        if not slot: bad.append(f"{r} not scheduled {day}")
-        elif day in info.get("days_off", []): bad.append(f"{r} has {day} off")
+        if not slot: bad.append(f"{r} not working {day} (schedule, day off, or Availability tab)")
         elif not p.get("bends"):
             if m < hm(slot[0]) or m > hm(slot[1]): bad.append(f"{r} outside hours {p['appt']}")
         if L.get("comm") and info["lane"] != "commercial": bad.append(f"commercial to {r}")

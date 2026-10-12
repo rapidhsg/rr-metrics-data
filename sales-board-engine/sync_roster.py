@@ -4,7 +4,7 @@ Usage: python sync_roster.py <folder of roster/*.json docs exported from the boa
 import json, sys
 from pathlib import Path
 
-FIELDS = ("active", "lane", "start_date", "home_zip", "week", "days_off", "capacity", "display")
+FIELDS = ("active", "lane", "start_date", "home_zip", "week", "days_off", "days_on", "eve_off", "eve_on", "capacity", "display")
 
 
 def main(folder):

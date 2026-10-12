@@ -60,6 +60,7 @@ How it works, in words (rules as of Oct 11 2026). No rule names a person: who ge
    them into `assignment_rules.json` before each run.
 
 Inside those rules it picks the plan with the most expected closes (close chance + same-day weight x same-day chance).
+Each rep's hours on a date come from his weekly schedule plus the board's Availability tab (days off, extra days, 6 PMs on or off).
 When reps close about the same, it splits the day evenly: a rep's 2nd appointment that day has to be worth 3 close points more than
 giving it to someone else with room, his 3rd 6 points (`learning.dials.spread_points_per_extra_sit`). A clearly better closer still gets more.
 Every plan is saved to `memory/plans.csv` so it can be checked against what actually closed.

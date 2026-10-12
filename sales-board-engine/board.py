@@ -84,7 +84,8 @@ def main(out, path, status=None):
         reps.append(dict(name=name, display=disp, short=None, rating=st["rating"], close=st["close"], sits=st["sits"], window=st["window"],
                          day=st["day"], limits={k: v for k, v in st["limits"].items() if not k.startswith("_")},
                          note=st.get("note"), this_week=st["this_week_so_far"], promise=st.get("promise"), availability=st.get("availability"), promise_avg=st.get("promise_avg"), lane=ro.get("lane", "regular"),
-                         week=ro.get("week", {}), home_zip=ro.get("home_zip"), days_off=ro.get("days_off", [])))
+                         week=ro.get("week", {}), home_zip=ro.get("home_zip"), days_off=ro.get("days_off", []),
+                         days_on=ro.get("days_on", []), eve_off=ro.get("eve_off", []), eve_on=ro.get("eve_on", [])))
     # short names: first word of "Show as", or the last word when two reps share a first word
     firsts = [r["display"].split()[0] for r in reps]
     for r in reps:
@@ -95,6 +96,15 @@ def main(out, path, status=None):
             for full, sh in full2short.items(): c["note"] = c["note"].replace(full, sh)
     today = pd.Timestamp(P["meta"]["run"][:10])
     rr = E.rr
+    # Availability tab: who has been working weekends and 6 PMs lately (from appointments actually run), and how much demand is in the evening
+    h = df.reset_index(); ia_h = h["appt_time"].fillna(pd.to_datetime(h["Initial Appointment Date"], errors="coerce")); sp = h["Primary Salesperson"].astype(str)
+    last28 = (ia_h >= today - pd.Timedelta(days=28)) & (ia_h < today) & h["Primary Salesperson"].notna()
+    for r in reps:
+        mine = last28 & (sp == r["name"])
+        r["weekend_days_28"] = int(ia_h[mine & (ia_h.dt.dayofweek >= 5)].dt.normalize().nunique())
+        r["evenings_28"] = int((mine & (ia_h.dt.hour >= 18)).sum())
+    last90 = (ia_h >= today - pd.Timedelta(days=90)) & (ia_h < today) & ia_h.notna()
+    eve_share = round(float((last90 & (ia_h.dt.hour >= 18)).sum() / max(1, last90.sum())), 3)
     # zip heat: certified close rate per zip, last 12 months
     s0, e0 = rr.rolling(today, 365); m = rr.masks(df.reset_index(), s0, e0)
     d0 = df.reset_index(); z5 = d0["Job: Location Zip Code"].astype(str).str[:5]
@@ -180,7 +190,7 @@ def main(out, path, status=None):
     ap = E.MEM / "accuracy_daily.csv"
     if ap.exists(): accuracy = pd.read_csv(ap).tail(30).to_dict("records")
     json.dump(dict(meta=meta, office=rules["office"], appointment=rules["appointment"], reps=reps, roster=roster_out, accuracy=accuracy,
-                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60)), spread=rules.get('learning', {}).get('dials', {}).get('spread_points_per_extra_sit', {}).get('value', 0)),
+                   cards=sorted(cards, key=lambda c: c["appt"]), zips=zips, results=results, tickets=tickets, full_by_day=full_by_day, forecast=forecast, forecast_show=str(FC.get('show', 60)), eve_share=eve_share, spread=rules.get('learning', {}).get('dials', {}).get('spread_points_per_extra_sit', {}).get('value', 0)),
               open(out / "board.json", "w"), separators=(",", ":"), allow_nan=False)
     print(f"board.json: {len(cards)} cards, {len(reps)} reps")
 
