@@ -110,6 +110,8 @@ def main(out, path, status=None):
         mine = last28 & (sp == r["name"])
         r["weekend_days_28"] = int(ia_h[mine & (ia_h.dt.dayofweek >= 5)].dt.normalize().nunique())
         r["evenings_28"] = int((mine & (ia_h.dt.hour >= 18)).sum())
+        m35 = (ia_h >= today - pd.Timedelta(days=35)) & (ia_h < today) & (sp == r["name"])
+        r["worked_dates"] = sorted(ia_h[m35].dt.strftime("%Y-%m-%d").unique().tolist())   # days he actually ran appointments, for the Saturday count
     last90 = (ia_h >= today - pd.Timedelta(days=90)) & (ia_h < today) & ia_h.notna()
     eve_share = round(float((last90 & (ia_h.dt.hour >= 18)).sum() / max(1, last90.sum())), 3)
     # zip heat: certified close rate per zip, last 12 months

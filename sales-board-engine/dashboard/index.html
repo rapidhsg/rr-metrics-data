@@ -108,6 +108,18 @@ td.off .wbtn{background:var(--card);color:var(--faint);border-color:var(--line)}
 .ebtn.yes{border-color:var(--red);color:var(--red);text-decoration:none}
 .wbtn:disabled,.ebtn:disabled{opacity:.5;cursor:default}
 .hintx{display:block;margin-top:4px;font-size:11px;color:var(--warn);font-weight:600}
+.setx{display:block;margin-top:3px;font-size:10.5px;color:var(--faint)}
+.wbtn em{display:block;font-style:normal;color:var(--yellow);font-size:11.5px}
+td.past{opacity:.55}
+table.wk th.past{opacity:.6}
+table.wk small .hi,table.wk small.hi{color:var(--warn);font-weight:600}
+table.wk thead small.bad{color:var(--bad);font-weight:700}
+.btn.mini{padding:2px 8px;font-size:12px;margin-top:4px}
+.satset{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.satset .btn.mini{margin:0}
+ul.rules{margin:8px 0 0;padding-left:18px}
+ul.rules li{margin:2px 0}
+.tag6{background:var(--red);color:var(--white);border-radius:3px;padding:0 5px;font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:.04em;margin-left:6px}
 .needbar{background:var(--red);color:#fff;border-radius:var(--r);padding:10px 14px;margin:0 0 12px;display:grid;gap:6px}
 .needbar h3{margin:0;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.05em;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;align-items:center}
 .needbar p{margin:0;font-size:13.5px;line-height:1.45}
@@ -693,7 +705,7 @@ function renderBoard() {
 
     cols.push(`<section class="col" aria-label="${esc(r.name)}" style="--rc:${color(r.name)}"><div class="ch">
       <div class="ch-row"><h2 title="${esc(r.name)}">${esc(r.display || r.short)}</h2><span class="pct n" title="Close rate, rolling ${r.window} days">${pct(r.close)}</span></div>
-      <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today: <b>${mine.length}</b> of ${r.limits.per_day}</span>
+      <div class="load"><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span><span class="${mine.length > r.limits.per_day ? "over" : ""}">Today: <b>${mine.length}</b> of ${r.limits.per_day}</span>${eveOK(slotOf(r, day)) && r.lane !== "commercial" ? `<span class="tag6" title="On 6 PMs this day">6 PM</span>` : ""}
 </div>
       ${room ? `<div class="meterwrap" tabindex="0" aria-label="This week: ${wc} booked of ${room} spots">
         <div class="mlabel"><span>This week</span><span><b>${wc}</b> of ${room}</span></div>
@@ -1102,13 +1114,15 @@ function setEvening(r, k, on) {
   if (!on && base) addTo(r, "eve_off", k);
 }
 async function saveAvail(r) {
-  if (roster && roster[r.name]) Object.assign(roster[r.name], { days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [] });
+  if (roster && roster[r.name]) Object.assign(roster[r.name], { days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], avail_set: r.avail_set || [] });
   if (!db) return;
-  try { await db.doc("roster/" + slug(r.name)).update({ days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
+  try { await db.doc("roster/" + slug(r.name)).update({ days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], avail_set: r.avail_set || [], updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
   catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
 }
-let weekOff = null;   // weeks from this week shown on the Availability tab
+let weekOff = null;   // weeks from this week where the 2-week view starts
+let satReps = 2;      // how many reps work each Saturday (saved for everyone)
 const isWkend = k => [0, 6].includes(parse(k).getDay());
+const isSat = k => parse(k).getDay() === 6, isSun = k => parse(k).getDay() === 0;
 function typicalAppts(k) {
   const f = B.forecast && B.forecast[k] && B.forecast[k][B.forecast_show]; if (f) return f.typical;
   const same = Object.entries(B.forecast || {}).filter(([d]) => parse(d).getDay() === parse(k).getDay()).map(([, v]) => v[B.forecast_show]?.typical).filter(x => x != null);
@@ -1116,90 +1130,130 @@ function typicalAppts(k) {
 }
 const fixedOwner = c => moves[c.id] && moves[c.id].rep !== undefined ? moves[c.id].rep : c.pick;   // engine pick or manager move, not a quick re-plan
 const hasBooked = (r, k, pred = () => true) => B.cards.some(c => dkey(c.appt) === k && fixedOwner(c) === r.name && pred(c));
-function suggestWeek(ws) {
-  const days = [0, 1, 2, 3, 4, 5, 6].map(i => addDays(ws, i)), t0 = todayKey();
-  const sug = {};
-  for (const r of B.reps) { sug[r.name] = {}; for (const k of days) { const s = slotOf(r, k); sug[r.name][k] = { work: !!s, eve: eveOK(s) }; } }
-  const field = B.reps.filter(r => r.lane !== "commercial");
-  // weekends: everyone whose schedule includes weekends rotates; whoever worked the fewest weekend days lately goes first, then the stronger closer
-  const rot = field.filter(r => r.week && (r.week.Sat || r.week.Sun));
-  const wk = Object.fromEntries(rot.map(r => [r.name, r.weekend_days_28 || 0]));
-  for (const k of days.filter(isWkend)) {
-    if (k < t0) continue;
-    const booked = B.cards.filter(c => dkey(c.appt) === k).length;
-    const need = Math.min(rot.length, Math.max(1, Math.ceil(Math.max(booked, typicalAppts(k)) / 2.5)));
-    const must = rot.filter(r => hasBooked(r, k));
-    const rest = rot.filter(r => !must.includes(r)).sort((a, b) => (wk[a.name] - wk[b.name]) || (b.close - a.close));
-    const pick = new Set([...must, ...rest].slice(0, Math.max(need, must.length)).map(r => r.name));
-    for (const r of rot) { sug[r.name][k].work = pick.has(r.name); if (pick.has(r.name)) wk[r.name]++; sug[r.name][k].eve = sug[r.name][k].work && eveOK(baseSlot(r, k) || ["10:00", "19:00", null]); }
-    sug._need = sug._need || {}; sug._need[k] = need;
+const fieldReps = () => B.reps.filter(r => r.lane !== "commercial" && r.active !== false);
+const satAble = r => !!(r.week && r.week.Sat);   // Reps tab: Saturday is in his weekly schedule
+const eveAble = r => ["Mon", "Tue", "Wed", "Thu", "Fri"].some(d => r.week && r.week[d] && eveOK(r.week[d]));   // Reps tab hours allow a 6 PM
+const isSet = (r, k) => (r.avail_set || []).includes(k);   // the manager decided this day, so the rotation leaves it alone
+function eveGroups() {   // two 6 PM groups, alternating down the close ranking so both have strong closers
+  const g = fieldReps().filter(eveAble).sort((a, b) => (b.close - a.close) || a.name.localeCompare(b.name));
+  return Object.fromEntries(g.map((r, i) => [r.name, i % 2]));
+}
+const weekNo = k => Math.round((parse(monday(k)) - parse("2026-01-05")) / 6048e5);
+const eveWeekOn = (r, k, G) => G[r.name] !== undefined && weekNo(k) % 2 === G[r.name];
+const satsWorked = (r, m) => (r.worked_dates || []).filter(k => isSat(k) && k.startsWith(m) && k < todayKey()).length;
+function rotation(days) {   // what the rotation wants on each future day nobody has set by hand
+  const t0 = todayKey(), G = eveGroups(), out = {};
+  for (const r of B.reps) out[r.name] = {};
+  const plan = (r, k) => out[r.name][k] ? out[r.name][k].work : !!slotOf(r, k);
+  // Saturdays: a fixed number of reps; whoever has the fewest Saturdays this month goes first, then the stronger closer
+  const sats = days.filter(k => isSat(k) && k >= t0), cand = fieldReps().filter(satAble);
+  for (const k of sats) {
+    const m = k.slice(0, 7);
+    const count = r => satsWorked(r, m) + days.filter(d => isSat(d) && d !== k && d >= t0 && d.startsWith(m) && plan(r, d)).length;
+    const locked = cand.filter(r => isSet(r, k) && slotOf(r, k)), free = cand.filter(r => !isSet(r, k));
+    const must = free.filter(r => hasBooked(r, k));
+    const rest = free.filter(r => !must.includes(r)).sort((a, b) => (count(a) - count(b)) || (b.close - a.close));
+    const pick = new Set([...must, ...rest].slice(0, Math.max(must.length, satReps - locked.length)).map(r => r.name));
+    for (const r of free) out[r.name][k] = { work: pick.has(r.name) };
   }
-  // 6 PMs: enough reps for the usual evening demand, rotated the same way (anyone with a 6 PM already booked keeps it)
-  const ev = Object.fromEntries(field.map(r => [r.name, r.evenings_28 || 0]));
-  sug._eve = {};
+  // 6 PMs: one week on, one week off, by group; a rep who already has a 6 PM booked keeps that evening
   for (const k of days) {
-    if (k < t0) continue;
-    const working = field.filter(r => sug[r.name][k].work);
-    const booked = B.cards.filter(c => dkey(c.appt) === k).length;
-    const needE = Math.max(1, Math.ceil(Math.max(booked, typicalAppts(k)) * (B.eve_share || .1) * 2));   // double the usual evening demand, so CSRs have room
-    const able = working.filter(r => eveOK(baseSlot(r, k) || ["10:00", "19:00", null]));
-    const must = able.filter(r => hasBooked(r, k, c => mins(c.appt) >= 1080));
-    const rest = able.filter(r => !must.includes(r)).sort((a, b) => (ev[a.name] - ev[b.name]) || (b.close - a.close));
-    const pick = new Set([...must, ...rest].slice(0, Math.max(needE, must.length)).map(r => r.name));
-    for (const r of working) { sug[r.name][k].eve = pick.has(r.name); if (pick.has(r.name)) ev[r.name]++; }
-    sug._eve[k] = needE;
+    if (k < t0 || isSun(k)) continue;
+    for (const r of fieldReps().filter(eveAble)) {
+      if (isSet(r, k)) continue;
+      const o = out[r.name][k] || (out[r.name][k] = { work: !!slotOf(r, k) });
+      o.eve = o.work && eveOK(baseSlot(r, k) || ["10:00", "19:00", null]) && (eveWeekOn(r, k, G) || hasBooked(r, k, c => mins(c.appt) >= 1080));
+    }
   }
-  return sug;
+  return out;
+}
+function rotDiffs(days, rot) {
+  const L = [];
+  for (const r of B.reps) for (const k of days) {
+    const g = rot[r.name][k]; if (!g) continue;
+    const s = slotOf(r, k), ch = g.work !== !!s || (g.work && g.eve !== undefined && g.eve !== eveOK(s));
+    L.push({ r, k, g, ch });
+  }
+  return L;
+}
+function schedText(r, days) {
+  const t0 = todayKey(), L = [`${(r.display || r.short).toUpperCase()} · schedule ${DAYN[parse(days[0]).getDay()]} ${md(days[0])} to ${DAYN[parse(days[days.length - 1]).getDay()]} ${md(days[days.length - 1])}`];
+  for (let w = 0; w < days.length; w += 7) {
+    const wk = days.slice(w, w + 7).filter(k => k >= t0); if (!wk.length) continue;
+    const on = wk.filter(k => slotOf(r, k)).map(k => `${DAYN[parse(k).getDay()]}${eveOK(slotOf(r, k)) ? " (6 PM)" : ""}`);
+    const off = wk.filter(k => !slotOf(r, k)).map(k => `${DAYN[parse(k).getDay()]} ${md(k)}`);
+    L.push(`Week of ${md(days[w])}: ${on.length ? on.join(", ") : "off all week"}${off.length && on.length ? ` · Off: ${off.join(", ")}` : ""}`);
+  }
+  L.push("(6 PM) = you may get a 6 PM appointment that day.");
+  return L.join("\n");
+}
+function cycleDay(r, k) {   // Off -> Working -> Working with 6 PM -> Off
+  const s = slotOf(r, k);
+  if (!s) { setWorking(r, k, true); setEvening(r, k, false); }
+  else if (!eveOK(s)) setEvening(r, k, true);
+  else setWorking(r, k, false);
+  addTo(r, "avail_set", k);
 }
 function renderWeekPage() {
   const t0 = todayKey(), thisWk = monday(t0);
-  if (weekOff == null) weekOff = parse(t0).getDay() >= 5 || parse(t0).getDay() === 0 ? 1 : 0;   // from Friday on, plan next week
-  const ws = addDays(thisWk, 7 * weekOff), days = [0, 1, 2, 3, 4, 5, 6].map(i => addDays(ws, i));
-  const sug = suggestWeek(ws);
-  const two = [...Array(14)].map((_, i) => addDays(ws, i));
-  const diffs = [];
-  for (const r of B.reps) for (const k of days) {
-    if (k < t0) continue;
-    const s = slotOf(r, k), cur = { work: !!s, eve: eveOK(s) }, g = sug[r.name][k];
-    if (cur.work !== g.work || (g.work && cur.eve !== g.eve)) diffs.push([r, k, g]);
-  }
+  if (weekOff == null) weekOff = parse(t0).getDay() >= 5 || parse(t0).getDay() === 0 ? 1 : 0;   // from Friday on, start with next week
+  const ws = addDays(thisWk, 7 * weekOff), days = [...Array(14)].map((_, i) => addDays(ws, i));
+  const rot = rotation(days), all = rotDiffs(days, rot), diffs = all.filter(x => x.ch), G = eveGroups();
   const head = days.map(k => {
-    const booked = B.cards.filter(c => dkey(c.appt) === k).length, working = B.reps.filter(r => r.lane !== "commercial" && !isOffDay(r, k));
+    const booked = B.cards.filter(c => dkey(c.appt) === k).length, working = fieldReps().filter(r => !isOffDay(r, k));
     const eves = working.filter(r => eveOK(slotOf(r, k))).length;
-    return `<th class="${isWkend(k) ? "wkend" : ""}${k === t0 ? " today" : ""}"><b>${DAYN[parse(k).getDay()]} ${md(k)}</b><small>${booked} booked · usually ${Math.round(typicalAppts(k))}</small><small>${working.length} working · ${eves} on 6 PMs</small></th>`;
+    const warn = k >= t0 && ((isSat(k) && working.length !== satReps) || (!isSun(k) && !eves && working.length));
+    return `<th class="${isWkend(k) ? "wkend" : ""}${k === t0 ? " today" : ""}${k < t0 ? " past" : ""}"><b>${DAYN[parse(k).getDay()]} ${md(k)}</b><small>${booked} booked</small><small class="${warn ? "bad" : ""}">${working.length} working</small><small class="${warn ? "bad" : ""}">${eves} on 6 PM</small></th>`;
   }).join("");
+  const months = [...new Set(days.map(k => k.slice(0, 7)))];
+  const mName = m => new Date(+m.slice(0, 4), +m.slice(5) - 1, 1).toLocaleString([], { month: "short" });
   const rows = B.reps.map(r => {
-    const n14 = two.filter(k => !isOffDay(r, k)).length, wkNow = days.filter(k => isWkend(k) && !isOffDay(r, k)).length;
+    const n14 = days.filter(k => !isOffDay(r, k)).length, comm = r.lane === "commercial";
+    const satTxt = satAble(r) && !comm ? months.map(m => {
+      const n = satsWorked(r, m) + days.filter(k => isSat(k) && k >= t0 && k.startsWith(m) && slotOf(r, k)).length;
+      return `<span class="${n > 2 ? "hi" : ""}">${mName(m)} Sats: <b>${n}</b></span>`; }).join(" · ") + " (1 to 2)" : comm ? "Commercial, not rotated" : "No Saturdays (Reps tab)";
+    const eveTxt = G[r.name] === undefined ? (comm ? "" : "No 6 PMs (Reps tab)") : `6 PM weeks: ${days.filter((k, i) => i % 7 === 0 && eveWeekOn(r, k, G)).map(k => md(k)).join(", ") || "next week"}`;
     const cells = days.map(k => {
-      const s = slotOf(r, k), on = !!s, eve = eveOK(s), g = sug[r.name][k], past = k < t0, n = dayCards(r.name, k).length;
-      const dw = !past && g.work !== on, de = !past && on && g.work && g.eve !== eve;
-      return `<td class="${on ? "on" : "off"}${isWkend(k) ? " wkend" : ""}${dw || de ? " sug" : ""}">
-        <button class="wbtn" data-wk="${esc(r.name)}|${k}" ${past || !canWrite ? "disabled" : ""} aria-pressed="${on}" title="${on ? "Working. Click to mark off." : "Off. Click to mark working."}">${on ? "Working" : "Off"}${n ? ` <i>${n}</i>` : ""}</button>
-        ${on ? `<button class="ebtn${eve ? " yes" : ""}" data-ev="${esc(r.name)}|${k}" ${past || !canWrite ? "disabled" : ""} aria-pressed="${eve}" title="${eve ? "Can run 6 PMs. Click to turn off." : "No 6 PMs. Click to allow."}">6 PM</button>` : ""}
-        ${dw ? `<span class="hintx">Suggest ${g.work ? "working" : "off"}</span>` : de ? `<span class="hintx">Suggest 6 PM ${g.eve ? "on" : "off"}</span>` : ""}</td>`;
+      const s = slotOf(r, k), on = !!s, eve = eveOK(s), past = k < t0, n = dayCards(r.name, k).length, g = rot[r.name][k];
+      const d = all.find(x => x.r === r && x.k === k && x.ch);
+      const hint = d ? (d.g.work !== on ? (d.g.work ? "Rotation: work" : "Rotation: off") : d.g.eve ? "Rotation: 6 PM" : "Rotation: no 6 PM") : "";
+      return `<td class="${on ? "on" : "off"}${eve ? " ev" : ""}${isWkend(k) ? " wkend" : ""}${d ? " sug" : ""}${past ? " past" : ""}">
+        <button class="wbtn" data-cyc="${esc(r.name)}|${k}" ${past || !canWrite ? "disabled" : ""} title="Click: Off, Working, Working + 6 PM">${on ? "Work" : "Off"}${n ? ` <i>${n}</i>` : ""}${on && eve ? `<em>6 PM</em>` : ""}</button>
+        ${hint ? `<span class="hintx">${hint}</span>` : ""}</td>`;
     }).join("");
-    const exempt = !(r.week && (r.week.Sat || r.week.Sun));
-    return `<tr style="--rc:${color(r.name)}"><th class="rn"><b>${esc(r.short)}</b><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span>
-      <small class="${n14 > 11 ? "hi" : n14 < 11 && !exempt ? "lo" : ""}">${n14} of 14 days · target 11</small>
-      <small>Weekends: ${r.weekend_days_28 ?? 0} days last 4 wks${exempt ? " · weekdays only" : ""} · ${wkNow} this wk</small>
-      <small>6 PMs: ${r.evenings_28 ?? 0} last 4 wks</small></th>${cells}</tr>`;
+    return `<tr style="--rc:${color(r.name)}"><th class="rn"><b>${esc(r.display || r.short)}</b><span class="badge b-${esc(r.rating)}">${esc(r.rating)}</span>
+      <small class="${n14 > 11 ? "hi" : ""}">${n14} of 14 days${n14 > 11 ? " · over 11" : ""}</small>
+      <small>${satTxt}</small>${eveTxt ? `<small>${eveTxt}</small>` : ""}
+      <button class="btn ghost mini" data-copysched="${esc(r.name)}">Copy schedule</button></th>${cells}</tr>`;
   }).join("");
   $("#weekpage").innerHTML = `<div class="bpanel"><div class="ghead">
-      <button class="btn ghost" id="wk-prev" ${weekOff <= 0 ? "disabled" : ""} aria-label="Previous week">‹</button>
-      <h2 style="margin:0">Week of ${md(ws)}</h2>
-      <button class="btn ghost" id="wk-next" ${weekOff >= 3 ? "disabled" : ""} aria-label="Next week">›</button>
-      <p>Click a day to mark a rep working or off, and <b>6 PM</b> to say whether he can run evening appointments. The board re-plans right away and the engine uses it on its next run. Weekends rotate so everyone works about 11 of every 14 days; whoever worked the fewest weekends lately is suggested first. 6 PMs rotate the same way, sized to how many evening appointments we usually get.</p>
-      <button class="btn red" id="wk-apply" ${diffs.length && canWrite ? "" : "disabled"}>${diffs.length ? `Apply ${diffs.length} suggestion${diffs.length > 1 ? "s" : ""}` : "Matches suggestions"}</button></div>
+      <button class="btn ghost" id="wk-prev" ${weekOff <= 0 ? "disabled" : ""} aria-label="Earlier">‹</button>
+      <h2 style="margin:0">${md(days[0])} to ${md(days[13])}</h2>
+      <button class="btn ghost" id="wk-next" ${weekOff >= 4 ? "disabled" : ""} aria-label="Later">›</button>
+      <span class="satset">Reps per Saturday <button class="btn ghost mini" id="sat-minus" ${!canWrite || satReps <= 1 ? "disabled" : ""}>−</button><b>${satReps}</b><button class="btn ghost mini" id="sat-plus" ${!canWrite ? "disabled" : ""}>+</button></span>
+      <button class="btn red" id="wk-apply" ${all.length && canWrite ? "" : "disabled"}>${diffs.length ? `Apply rotation (${diffs.length} change${diffs.length > 1 ? "s" : ""})` : all.length ? "Lock in rotation" : "Schedule locked"}</button>
+      <button class="btn dark" id="wk-copyall">Copy all schedules</button></div>
+    <ul class="gnote rules">
+      <li><b>Reps tab first.</b> Only reps with Saturday in their hours rotate Saturdays. Only reps whose hours allow a 6 PM rotate 6 PMs.</li>
+      <li><b>Saturdays:</b> ${satReps} rep${satReps > 1 ? "s" : ""} each Saturday. Fewest Saturdays this month goes first. Target 1 to 2 a month.</li>
+      <li><b>6 PMs:</b> one week on, one week off, in two groups. A rep with a 6 PM already booked keeps it.</li>
+      <li><b>Sundays:</b> never rotated. Click a rep on if he wants to work.</li>
+      <li>Click any day to change it: Off, Work, Work + 6 PM. Your clicks are never changed by the rotation. Dashed yellow = the rotation would change this day. Applying locks the two weeks so the reps' schedule holds.</li></ul>
     <div class="wkwrap"><table class="wk"><thead><tr><th class="rn">Rep</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="gnote">Dashed yellow = differs from the suggestion. Numbers on a day = appointments already booked for that rep. Weekday-only reps on the Reps tab are never suggested for weekends. Suggestions never take a day from a rep who already has appointments that day.</p></div>`;
+    <p class="gnote">Number on a day = appointments booked for him. Red count = Saturday doesn't match ${satReps} reps, or no one on 6 PM. Saturday counts include Saturdays he ran appointments earlier this month.</p></div>`;
+  const copyNote = () => diffs.length ? ` ${diffs.length} rotation change${diffs.length > 1 ? "s are" : " is"} not applied yet.` : "";
   $("#wk-prev").onclick = () => { weekOff--; renderWeekPage(); };
   $("#wk-next").onclick = () => { weekOff++; renderWeekPage(); };
-  $$("[data-wk]").forEach(b => b.onclick = async () => { const [n, k] = b.dataset.wk.split("|"); const r = repBy(n); setWorking(r, k, isOffDay(r, k)); render(); await saveAvail(r); });
-  $$("[data-ev]").forEach(b => b.onclick = async () => { const [n, k] = b.dataset.ev.split("|"); const r = repBy(n); setEvening(r, k, !eveOK(slotOf(r, k))); render(); await saveAvail(r); });
+  $$("[data-cyc]").forEach(b => b.onclick = async () => { const [n, k] = b.dataset.cyc.split("|"); const r = repBy(n); cycleDay(r, k); render(); await saveAvail(r); });
+  $$("[data-copysched]").forEach(b => b.onclick = () => copyText(schedText(repBy(b.dataset.copysched), days), "Schedule copied." + copyNote()));
+  $("#wk-copyall").onclick = () => copyText(fieldReps().map(r => schedText(r, days)).join("\n\n"), "All schedules copied." + copyNote());
+  const setSat = async n => { satReps = Math.max(1, n); renderWeekPage(); if (db) try { await db.doc("roster/settings-availability").set({ sat_reps: satReps, updated_at: new Date().toISOString(), updated_by: me?.id || null }); } catch (e) { banner("That change didn't save. Try again."); } };
+  $("#sat-minus").onclick = () => setSat(satReps - 1);
+  $("#sat-plus").onclick = () => setSat(satReps + 1);
   $("#wk-apply").onclick = async () => {
     const touched = new Set();
-    for (const [r, k, g] of diffs) { setWorking(r, k, g.work); if (g.work) setEvening(r, k, g.eve); touched.add(r); }
-    render(); toast(`${diffs.length} change${diffs.length > 1 ? "s" : ""} applied for the week of ${md(ws)}`);
+    for (const { r, k, g } of all) { setWorking(r, k, g.work); if (g.work && g.eve !== undefined) setEvening(r, k, g.eve); addTo(r, "avail_set", k); touched.add(r); }
+    render(); toast(diffs.length ? `Rotation applied: ${diffs.length} change${diffs.length > 1 ? "s" : ""}, two weeks locked` : "Two weeks locked");
     for (const r of touched) await saveAvail(r);
   };
 }
@@ -1633,9 +1687,9 @@ async function connect() {
   }, () => banner("Lost the connection to saved moves. Refresh to try again."));
   db.collection("roster").onSnapshot(snap => {
     if (snap.empty) { roster = null; return; }
-    const r = {}; snap.docs.forEach(d => { const v = d.data() || {}; if (v.name) r[v.name] = v; });
+    const r = {}; snap.docs.forEach(d => { const v = d.data() || {}; if (d.id === "settings-availability") { if (v.sat_reps) satReps = v.sat_reps; } else if (v.name) r[v.name] = v; });
     roster = r;
-    for (const rep of B.reps) { const v = r[rep.name]; if (v) { rep.week = v.week || rep.week; rep.days_off = v.days_off || []; rep.days_on = v.days_on || []; rep.eve_off = v.eve_off || []; rep.eve_on = v.eve_on || []; if (v.display) rep.display = v.display; } }
+    for (const rep of B.reps) { const v = r[rep.name]; if (v) { rep.week = v.week || rep.week; rep.days_off = v.days_off || []; rep.days_on = v.days_on || []; rep.eve_off = v.eve_off || []; rep.eve_on = v.eve_on || []; rep.avail_set = v.avail_set || []; if (v.display) rep.display = v.display; } }
     render();
   }, () => {});
 }
