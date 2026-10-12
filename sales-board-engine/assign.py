@@ -211,6 +211,9 @@ def plan(scores, df, today, now=None):
     office = RULES["office"]
     held = board_holds()   # cards the manager moved or held on the board: keep them where he put them unless a rule says no
     held.update({g: r for g, r in started})
+    sp_all = df.dropna(subset=["guid"]).drop_duplicates("guid").set_index("guid")["Primary Salesperson"]
+    placed = {g: sp_all.get(g) for g in leads.guid[leads.comm] if sp_all.get(g) in reps}   # commercial jobs the manager already gave a rep in AccuLynx
+    held.update(placed)
     back = past_reps(df, list(leads.guid), reps)   # return customers: send the rep who sold or saw him before when we can
     RC = RULES.get("return_customer", {}).get("same_rep_points", 0) / 100
     pairs, why_no = [], {}
@@ -225,7 +228,7 @@ def plan(scores, df, today, now=None):
             elif l["min"] > hm(slot[1]): reason = "after his last appointment"
             elif slot[2] and info.get("home_zip") and l["min"] + A["minutes"] + miles(l.zip, info["home_zip"]) / A["drive_mph"] * 60 > hm(slot[2]):
                 reason = "needs to be home by " + slot[2]
-            elif l.comm: reason = "marked Commercial in AccuLynx, so the sales manager places it"
+            elif l.comm and placed.get(l.guid) != r: reason = "marked Commercial in AccuLynx, so the sales manager places it"
             elif l.spec and info["lane"] not in ("specialty", "commercial"): reason = "specialty only goes to specialty-lane reps"
             elif not l.comm and not l.spec and info["lane"] == "commercial": reason = "commercial-lane reps do not run regular appointments"
             elif l.spec and info["lane"] == "commercial": adj = -RULES["lanes"]["specialty_backup_penalty"]; tag = "Specialty backup"

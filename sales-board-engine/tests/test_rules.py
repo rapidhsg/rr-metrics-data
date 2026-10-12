@@ -16,6 +16,8 @@ def main(path, out):
     lead = {l["guid"]: l for l in scores["leads"]}
     R = A.roster(); st = plan["reps"]; gap = A.RULES["appointment"]["min_gap_minutes"]
     bad = []; per_day = defaultdict(list)
+    E = A.E; df = E.load(path)
+    sp = df.dropna(subset=["guid"]).drop_duplicates("guid").set_index("guid")["Primary Salesperson"]   # commercial is allowed to the rep the manager set in AccuLynx
     for p in plan["plan"]:
         r = p.get("rep")
         if not r: continue
@@ -25,7 +27,7 @@ def main(path, out):
         if not slot: bad.append(f"{r} not working {day} (schedule, day off, or Availability tab)")
         elif not p.get("bends"):
             if m < hm(slot[0]) or m > hm(slot[1]): bad.append(f"{r} outside hours {p['appt']}")
-        if L.get("comm") and info["lane"] != "commercial": bad.append(f"commercial to {r}")
+        if L.get("comm") and info["lane"] != "commercial" and sp.get(p["guid"]) != r: bad.append(f"commercial to {r}")
         if not L.get("comm") and not L.get("spec") and info["lane"] == "commercial": bad.append(f"regular appointment to {r}")
         if L.get("spec") and info["lane"] == "regular": bad.append(f"specialty to {r}")
     for (r, day), ms in per_day.items():
