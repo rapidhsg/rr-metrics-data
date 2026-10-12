@@ -55,3 +55,16 @@ Plain-English record of what the engine tested, learned and changed. Newest at t
 - Joe's rule: if reps are closing about the same, spread the appointments evenly. A rep's 2nd appointment in a day now has to be worth 3 close points more than giving it to someone else with room (3rd: 6 points). A clearly better closer still gets more.
 - Next two weeks: expected sales unchanged (9.6), same-day signs 3.3 -> 3.4, driving 592 -> 567 miles, rep-days with 3 appointments 4 -> 2. Tue 10/13 goes from Dietrich 3 / Franco 1 to 2 each.
 - Added as a learning dial (spread_points_per_extra_sit), queued for a live test at 1.5 and 5.
+
+## 2026-10-12 weekly self-test
+- Tested on 641 sits (2026-04, 2026-05, 2026-06, 2026-07, 2026-08), training only on sits before each month.
+- Close: top fifth predicted 46%, actually closed 44%. Bottom fifth predicted 18%, actually 17%. Ranking score (AUC) 0.647.
+- Same-day close: top fifth predicted 27%, actually 27%. Bottom fifth 7%, actually 5%. AUC 0.709.
+- Settings: old sits fade by half every 9999 days, shrinkage strength 0.1. No change.
+- Same-day sale worth $6,533 vs $5,548 for a later sale, so same-day close counts 0.18x on top of close.
+- Own predictions vs results: {'n': 0, 'note': 'not enough finished sits yet to judge'}.
+- What actually happened (memory/outcomes.csv): 9 finished sits so far, need 20+ to judge
+- Board predictions vs results (memory/accuracy_daily.csv): no finished days yet
+
+## 2026-10-12 assignment experiments
+- Experiment hot_boost_share 0.0 vs 0.5: 0 champion sits, 0 challenger sits. Waiting for 60 on each side.
