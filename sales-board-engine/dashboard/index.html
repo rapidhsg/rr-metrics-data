@@ -395,6 +395,7 @@ details[open]>summary::after{content:"–"}
     <div class="ideas" id="ideas" aria-live="polite" hidden></div>
     <div class="needbar" id="needbar" role="alert" hidden></div>
     <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
+    <div class="ideas sugbox" id="sugbox" hidden></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
   </section>
 
@@ -493,6 +494,7 @@ const t2m = t => { if (!t) return null; const [h, m] = t.split(":").map(Number);
 const eveOK = s => !!s && t2m(s[1] || "19:00") >= 1080 && (!s[2] || t2m(s[2]) - (B.appointment?.minutes || 90) - 30 >= 1080);
 const isOffDay = (r, k) => !slotOf(r, k);
 let ENGINE_AV = {};   // each rep's schedule and overrides as the engine saw them when it built the plan
+const dayLocked = k => B.cards.some(c => dkey(c.appt) === k && moves[c.id] && moves[c.id].rep !== undefined);
 function computeEff() {
   EFF = {};
   const days = [...new Set(B.cards.map(c => dkey(c.appt)))];
@@ -509,12 +511,24 @@ function computeEff() {
   const redo = {};
   for (const c of B.cards) {
     const m = moves[c.id];
-    if (m && m.rep !== undefined) { EFF[c.id] = { rep: m.rep, kind: "moved" }; continue; }
+    if (m && m.rep !== undefined) { EFF[c.id] = { rep: m.rep, kind: m.pin ? "pinned" : "moved", from: c.pick }; continue; }
     const k = dkey(c.appt);
-    if (!changed.has(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }
+    if (!changed.has(k) || dayLocked(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }   // a day the manager has started arranging is never reshuffled
     (redo[k] = redo[k] || []).push(c);   // who's working changed since the engine ran: re-plan this whole day
   }
-  for (const [k, all] of Object.entries(redo)) {
+  for (const [k, all] of Object.entries(redo)) replanDay(k, all, !gained.has(k));
+}
+function fits(c, r, k) {   // could rep r run card c at its time on day k, given everything else already placed in EFF
+  if (!r) return false;
+  const s = slotOf(r, k); if (!s) return false;
+  const m = mins(c.appt);
+  if (m < t2m(s[0]) || m > t2m(s[1]) || (s[2] && m + (B.appointment?.minutes || 90) + 30 > t2m(s[2]))) return false;
+  const why = c.blocked[r.name]; if (why && why !== "off that day" && !/home by|earliest|last appointment/.test(why)) return false;
+  const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name);
+  if (mine.length >= r.limits.per_day) return false;
+  return !mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP());
+}
+function replanDay(k, all, keepValid) {   // greedy re-plan of one day's appointments (uses and fills EFF)
     const can = (c, r) => {
       const s = slotOf(r, k); if (!s) return false;
       const m = mins(c.appt);
@@ -525,7 +539,7 @@ function computeEff() {
       return !mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP());
     };
     let left = all.slice();
-    if (!gained.has(k)) {   // nobody new is available: keep every engine pick that still fits, re-plan only the ones that don't
+    if (keepValid) {   // nobody new is available: keep every engine pick that still fits, re-plan only the ones that don't
       for (const c of all.sort((a, b) => (b.close || 0) - (a.close || 0))) if (c.pick && can(c, repBy(c.pick))) EFF[c.id] = { rep: c.pick, kind: "engine" };
       left = all.filter(c => !EFF[c.id]);
     }
@@ -540,7 +554,6 @@ function computeEff() {
       EFF[pickC.id] = { rep: pickR, kind: pickR === pickC.pick ? "engine" : "replan", from: pickC.pick };
       left = left.filter(c => c !== pickC);
     }
-  }
 }
 const repBy = n => B.reps.find(r => r.name === n);
 const short = n => n ? (repBy(n)?.short || n.split(" ")[0]) : "Nobody";
@@ -599,7 +612,7 @@ function renderTop() {
     for (const c of list) {
       const r = repOf(c); const v = val(c, r), p = planVal(c);
       o.sales += r && c.odds[r] ? c.odds[r].close : 0; o.rev += v; o.sd += r && c.odds[r] ? c.odds[r].same_day : 0; o.sdRev += sdVal(c, r); o.plan += p;
-      const k = EFF[c.id]?.kind; if (k === "replan") o.offCost += p - v; else if (k === "moved") o.moveCost += p - v;
+      const k = EFF[c.id]?.kind; if (k === "replan") o.offCost += p - v; else if (k === "moved" || k === "pinned") o.moveCost += p - v;
     }
     return o;
   };
@@ -660,8 +673,8 @@ function renderBoard() {
     const sched = !!baseSlot(r, day); const off = isOffDay(r, day);
     if (!sched && off) return `<label class="av sched" style="--rc:${color(r.name)}" title="Not on ${esc(r.short)}'s weekly schedule. Tick to add ${md(day)}."><input type="checkbox" data-avail="${esc(r.name)}"${canWrite ? "" : " disabled"}><i></i>${esc(r.short)} · not scheduled</label>`;
     return `<label class="av${off ? " off" : ""}" style="--rc:${color(r.name)}" title="Untick if ${esc(r.short)} can't work ${wd} ${md(day)}"><input type="checkbox" data-avail="${esc(r.name)}"${off ? "" : " checked"}${canWrite ? "" : " disabled"}><i></i>${esc(r.short)}</label>`;
-  }).join("") + `<span class="hint">Untick a rep for a one-off day off, tick him back on when he can work. The day re-plans either way.</span>` + `<button class="btn red" id="copy-plan" title="Copies the whole plan for this day, what needs a rep, and the call center guide">Copy plan</button>` + resetUi();
-  renderNeedBar();
+  }).join("") + `<span class="hint">Untick a rep for a one-off day off, tick him back on when he can work. The day re-plans either way.</span>` + `${dayLocked(day) ? `<button class="btn dark" id="suggest-day" title="This day is held as you arranged it. See what the engine would change.">Suggest changes</button>` : ""}<button class="btn red" id="copy-plan" title="Copies the whole plan for this day, what needs a rep, and the call center guide">Copy plan</button>` + resetUi();
+  renderNeedBar(); renderSugBox();
   const wk = monday(day);
   const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
@@ -696,7 +709,7 @@ function renderBoard() {
 
 function card(c) {
   const rep = repOf(c); const m = moves[c.id] || {};
-  const isMoved = m.rep !== undefined; const pr = problems(c); const ef = EFF[c.id] || {};
+  const isMoved = m.rep !== undefined && !m.pin; const pr = problems(c); const ef = EFF[c.id] || {};
   const o = rep && c.odds[rep] ? c.odds[rep] : null;
   const where = [c.town, c.zip].filter(Boolean).join(" · ") || "Location not set";
   const src = [c.parent, c.source].filter(Boolean).join(" · ");
@@ -711,6 +724,7 @@ function card(c) {
   const dtxt = Math.abs(dv) >= 50 ? ` (${dv < 0 ? "−" : "+"}${money(Math.abs(dv))})` : "";
   const notes = [];   // quiet one-line context
   if (isMoved && c.pick) notes.push(`Moved from ${esc(short(c.pick))}${m.byName ? " by " + esc(m.byName.split(" ")[0]) : ""}${dtxt}`);
+  if (ef.kind === "pinned" && c.pick !== rep) notes.push(`Held on ${esc(short(rep))}. The engine would now pick ${esc(short(c.pick))}, use Suggest to see changes.`);
   if (ef.kind === "replan") { const fr = ef.from && repBy(ef.from); const off = fr && isOffDay(fr, dkey(c.appt));
     notes.push(rep ? `${off ? `${esc(short(ef.from))} off, ` : "Re-planned, "}now ${esc(short(rep))}${dtxt}` : `${esc(short(ef.from))} off, nobody else free`); }
   if (c.bends.length) notes.push(`Rule bend: ${esc(c.bends.join(", "))}`);
@@ -1186,6 +1200,42 @@ function renderWeekPage() {
   };
 }
 
+
+/* ---------- suggest changes for a day the manager is arranging by hand ---------- */
+let sugDay = null;
+function suggestDay(k) {
+  const saved = EFF; EFF = { ...EFF };
+  const list = B.cards.filter(c => dkey(c.appt) === k);
+  const free = list.filter(c => !(moves[c.id] && moves[c.id].rep !== undefined && !moves[c.id].pin));   // the manager's own moves are never touched
+  // a rep who is working with nothing that day: re-plan the held cards fully so he gets work; otherwise only move what no longer fits
+  const idle = B.reps.some(r => !isOffDay(r, k) && r.lane !== "commercial" && !list.some(c => saved[c.id] && saved[c.id].rep === r.name));
+  const held = {}; for (const c of free) { held[c.id] = saved[c.id]; delete EFF[c.id]; }
+  if (!idle) {   // keep each held card where it is if it still fits
+    for (const c of free) { const r = held[c.id] && held[c.id].rep; EFF[c.id] = r ? { rep: r, kind: "pinned" } : undefined; }
+    const bad = free.filter(c => { const r = EFF[c.id] && EFF[c.id].rep; if (!r) return true; delete EFF[c.id]; const okay = fits(c, repBy(r), k); EFF[c.id] = { rep: r, kind: "pinned" }; return !okay; });
+    bad.forEach(c => delete EFF[c.id]);
+    replanDay(k, bad, false);
+  } else replanDay(k, free, false);
+  const out = list.map(c => ({ c, from: saved[c.id] ? saved[c.id].rep : c.pick, to: EFF[c.id] ? EFF[c.id].rep : null }))
+    .filter(x => x.from !== x.to).map(x => ({ ...x, gain: val(x.c, x.to) - val(x.c, x.from) })).sort((a, b) => a.c.appt.localeCompare(b.c.appt));
+  EFF = saved; return out;
+}
+function renderSugBox() {
+  const el = $("#sugbox"); if (!el) return;
+  if (sugDay !== day || !dayLocked(day)) { el.hidden = true; return; }
+  const list = suggestDay(day), tot = list.reduce((a, x) => a + x.gain, 0);
+  el.hidden = false;
+  el.innerHTML = `<h3>Suggested changes · ${dayLbl(day)}<small style="margin:0">This day is held as you arranged it. Nothing changes unless you apply it.</small></h3>` +
+    (list.length ? list.map((x, i) => `<div class="idea"><span class="itag move">Move</span><div class="itxt"><b>${hm(x.c.appt)} ${esc(x.c.name || "Homeowner")}</b>${x.c.town ? ` (${esc(x.c.town)})` : ""}: ${esc(short(x.from))} → <b>${esc(x.to ? short(x.to) : "Needs a call")}</b> <span>${pct(x.c.odds[x.to]?.close)} vs ${pct(x.c.odds[x.from]?.close)}</span></div>
+      <div class="iact"><span class="gain">${x.gain >= 0 ? "+" : "−"}${money(Math.abs(x.gain))}</span><button class="btn dark" data-sug="${i}">Apply</button></div></div>`).join("") +
+      `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><span class="gnote" style="margin:0 auto 0 0">Total ${tot >= 0 ? "+" : "−"}${money(Math.abs(tot))} expected</span><button class="btn red" id="sug-all">Apply all ${list.length}</button><button class="btn ghost" id="sug-close">Close</button></div>`
+    : `<p class="gnote">Nothing to change. The day as you arranged it is what the engine would do too.</p><div style="text-align:right"><button class="btn ghost" id="sug-close">Close</button></div>`);
+  const apply = x => save(x.c.id, { rep: x.to });
+  $$("[data-sug]").forEach(b => b.onclick = () => { apply(list[+b.dataset.sug]); toast("Applied"); });
+  const all = $("#sug-all"); if (all) all.onclick = () => { list.forEach(apply); toast(`${list.length} change${list.length > 1 ? "s" : ""} applied`); };
+  $("#sug-close").onclick = () => { sugDay = null; renderSugBox(); };
+}
+
 let resetAsk = null;   // null, "day" or "all": waiting for the second click
 const movedIds = scope => B.cards.filter(c => moves[c.id] && moves[c.id].rep !== undefined && (scope === "all" || dkey(c.appt) === day)).map(c => c.id);
 function resetUi() {
@@ -1221,6 +1271,7 @@ async function toggleOff(name, k, working) {
 }
 
 function wireBoard() {
+  const sd = $("#suggest-day"); if (sd) sd.onclick = () => { sugDay = sugDay === day ? null : day; renderSugBox(); };
   const cp = $("#copy-plan"); if (cp) cp.onclick = () => copyText(planText(day), "Plan copied. Paste it anywhere.");
   const cp2 = $("#needbar-copy"); if (cp2) cp2.onclick = () => copyText(planText(day), "Plan copied. Paste it anywhere.");
   $$(".meterwrap").forEach(el => el.onclick = e => { e.stopPropagation(); const o = el.classList.contains("open"); $$(".meterwrap.open").forEach(x => x.classList.remove("open")); if (!o) el.classList.add("open"); });
@@ -1239,6 +1290,11 @@ function wireBoard() {
 }
 function move(id, to, undo) {
   const c = B.cards.find(x => x.id === id); if (!c) return;
+  const k = dkey(c.appt);
+  if (!dayLocked(k)) {   // first manual move on this day: hold every other card where it is now, so nothing else gets rearranged
+    const hold = B.cards.filter(o => o.id !== id && dkey(o.appt) === k && !(moves[o.id] && moves[o.id].rep !== undefined));
+    hold.forEach(o => save(o.id, { rep: repOf(o), pin: true }));
+  }
   const target = undo ? c.pick : (to || null);
   save(id, target === c.pick ? { rep: undefined } : { rep: target });
   const p = problems(c);
@@ -1246,7 +1302,7 @@ function move(id, to, undo) {
 }
 async function save(id, patch) {
   const cur = { ...(moves[id] || {}) };
-  if ("rep" in patch) { if (patch.rep === undefined) delete cur.rep; else cur.rep = patch.rep; cur.by = me?.id || null; cur.byName = me?.name || null; cur.at = new Date().toISOString(); }
+  if ("rep" in patch) { if (patch.rep === undefined) delete cur.rep; else cur.rep = patch.rep; cur.pin = !!patch.pin; cur.by = me?.id || null; cur.byName = me?.name || null; cur.at = new Date().toISOString(); }
   if ("set" in patch) cur.set = patch.set;
   if (cur.rep === undefined && !cur.set) delete moves[id]; else moves[id] = cur;
   render();
@@ -1255,7 +1311,7 @@ async function save(id, patch) {
   try {
     const ref = db.doc("cards/" + id);
     if (!moves[id]) await ref.delete();
-    else await ref.set({ rep: cur.rep === undefined ? "__engine__" : cur.rep, set: !!cur.set, by: cur.by || null, at: cur.at || new Date().toISOString(), appt: c?.appt || null, pick: c?.pick || null, pick_close: c?.close ?? null });
+    else await ref.set({ rep: cur.rep === undefined ? "__engine__" : cur.rep, set: !!cur.set, pin: !!cur.pin, by: cur.by || null, at: cur.at || new Date().toISOString(), appt: c?.appt || null, pick: c?.pick || null, pick_close: c?.close ?? null });
   } catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
 }
 
@@ -1566,7 +1622,7 @@ async function connect() {
   db.collection("ideas").onSnapshot(snap => { const d = {}; snap.docs.forEach(x => { const v = x.data() || {}; if (v.key) d[v.key] = true; }); dismissed = d; if (tab === "board") renderIdeas(); }, () => {});
   db.collection("cards").onSnapshot(async snap => {
     const next = {}; const ids = new Set();
-    snap.docs.forEach(d => { const v = d.data() || {}; next[d.id] = { set: !!v.set, by: v.by || null, at: v.at || null }; if (v.rep !== "__engine__") next[d.id].rep = v.rep ?? null; if (v.by) ids.add(v.by); });
+    snap.docs.forEach(d => { const v = d.data() || {}; next[d.id] = { set: !!v.set, pin: !!v.pin, by: v.by || null, at: v.at || null }; if (v.rep !== "__engine__") next[d.id].rep = v.rep ?? null; if (v.by) ids.add(v.by); });
     if (userApi && ids.size) { try { const ps = await userApi.profiles([...ids]); for (const k in next) if (next[k].by && ps[next[k].by]) next[k].byName = ps[next[k].by].name || ""; } catch (e) {} }
     moves = next; if (tab !== "reps") render();
   }, () => banner("Lost the connection to saved moves. Refresh to try again."));

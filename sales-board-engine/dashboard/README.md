@@ -26,3 +26,9 @@ Suggestions: weekends rotate among reps whose weekly schedule includes weekends,
 appointments each), whoever worked the fewest weekend days in the last 4 weeks first, then the stronger closer. 6 PMs rotate the same way,
 sized to twice the usual evening share of appointments. Anyone with an appointment already booked that day (or that evening) keeps it.
 Each row shows days working out of the 2-week window (target 11 of 14), weekend days and 6 PMs run in the last 4 weeks.
+
+Held days: the first time the manager moves a card on a day, every other card on that day is held where it is (cards/<id> with pin: true).
+After that nothing on that day is rearranged automatically: not by days off, 6 PM switches, or engine refreshes (assign.board_holds gives
+held and moved cards a strong preference, so the engine plans new appointments around them). "Suggest changes" (Board tab, on a held day)
+lists what should move, keeping the manager's own moves: only cards that no longer fit, or a full re-plan of the held cards when a working
+rep has nothing that day. Each suggestion can be applied on its own or all at once. Reset this day releases the hold.

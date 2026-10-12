@@ -80,6 +80,16 @@ def slot_for(info, day):
     elif ds in info.get("eve_on", []): s[1] = max(s[1] or "19:00", "19:00"); s[2] = None
     return s
 
+def board_holds():
+    """{appointment guid: rep} from the board's latest snapshot (memory/board_moves.csv): the manager's moves, plus every other card on a day
+    he started arranging by hand. The plan keeps these unless a hard rule breaks; he sees other options with Suggest changes on the board."""
+    p = E.MEM / "board_moves.csv"
+    if not p.exists(): return {}
+    b = pd.read_csv(p, dtype=str).fillna("")
+    if b.empty: return {}
+    b = b[b.snap_date == b.snap_date.max()]
+    return {r.guid: r.board_rep for r in b.itertuples() if r.moved == "True" and r.board_rep}
+
 HOT_FILE = E.MEM / "hot.json"
 HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
 
@@ -169,6 +179,7 @@ def plan(scores, df, today, now=None):
     leads["same_day"] = leads.days_lead_to_appt.eq(0)
     leads["week"] = leads.day - pd.to_timedelta(leads.day.dt.dayofweek, unit="D")
     office = RULES["office"]
+    held = board_holds()   # cards the manager moved or held on the board: keep them where he put them unless a rule says no
     pairs, why_no = [], {}
     for i, l in leads.iterrows():
         dname = DAYS[l.day.dayofweek]
@@ -192,7 +203,7 @@ def plan(scores, df, today, now=None):
             start_zip = office["zip"] if dname in office.get("days", []) else info.get("home_zip")
             leg0 = miles(start_zip, l.zip) if start_zip and isinstance(l.zip, str) else 15.0
             pairs.append(dict(i=i, guid=l.guid, rep=r, day=l.day, week=l.week, min=l["min"], spec=bool(l.spec), same=bool(l.same_day), zip=l.zip,
-                              value=v.close + boost + wd * v.same_day + adj - rw * RT_["start_leg_share"] * leg0, close=v.close, rw=rw, arm=arm_for(l.day), sd=v.same_day, tag=tag, leg0=leg0))
+                              value=v.close + boost + wd * v.same_day + adj - rw * RT_["start_leg_share"] * leg0 + (1.0 if held.get(l.guid) == r else 0.0), close=v.close, rw=rw, arm=arm_for(l.day), sd=v.same_day, tag=tag, leg0=leg0))
     P = pd.DataFrame(pairs)
     # routing: drive between back-to-back appointments for the same rep costs a little (never more than a small close gap)
     blank = lambda: [dict(guid=l.guid, appt=l.appt, rep=None, options=[], blocked={r: why_no.get((l.guid, r)) for r in reps},
