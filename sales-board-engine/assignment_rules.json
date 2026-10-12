@@ -75,7 +75,9 @@
           "16:30"
         ]
       },
-      "days_off": [],
+      "days_off": [
+        "2026-10-12"
+      ],
       "capacity": {},
       "display": "Francesco"
     },
