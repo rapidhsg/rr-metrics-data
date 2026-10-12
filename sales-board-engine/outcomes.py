@@ -19,10 +19,13 @@ MEM = E.MEM
 
 def save_board(folder, today):
     rows = []
-    for f in sorted(Path(folder).glob("*.json")):
-        doc = json.loads(f.read_text()); d = doc.get("data", doc)
-        rows.append(dict(snap_date=today, guid=f.stem, board_rep="" if d.get("rep") in (None, "__engine__") else d["rep"],
-                         moved=d.get("rep") not in (None, "__engine__"), held_only=bool(d.get("pin")), set_in_acculynx=bool(d.get("set")), moved_at=d.get("at") or ""))
+    docs = [(f.stem, (lambda x: x.get("data", x))(json.loads(f.read_text()))) for f in sorted(Path(folder).glob("*.json"))]
+    real = lambda d: d.get("rep") not in (None, "__engine__") and not d.get("pin")
+    arranged = {(d.get("appt") or "")[:10] for _, d in docs if real(d)}   # days the manager actually moved a card on
+    for guid, d in docs:
+        held = d.get("rep") not in (None, "__engine__") and (real(d) or (d.get("appt") or "")[:10] in arranged)   # a hold only counts on a day he arranged
+        rows.append(dict(snap_date=today, guid=guid, board_rep=d["rep"] if held else "",
+                         moved=held, held_only=bool(d.get("pin")), set_in_acculynx=bool(d.get("set")), moved_at=d.get("at") or ""))
     p = MEM / "board_moves.csv"; new = pd.DataFrame(rows, columns=["snap_date", "guid", "board_rep", "moved", "held_only", "set_in_acculynx", "moved_at"])
     if p.exists():
         old = pd.read_csv(p, dtype=str); new = pd.concat([old[old.snap_date != today], new.astype(str)])

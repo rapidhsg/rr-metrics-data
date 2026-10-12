@@ -509,7 +509,8 @@ const t2m = t => { if (!t) return null; const [h, m] = t.split(":").map(Number);
 const eveOK = s => !!s && t2m(s[1] || "19:00") >= 1080 && (!s[2] || t2m(s[2]) - (B.appointment?.minutes || 90) - 30 >= 1080);
 const isOffDay = (r, k) => !slotOf(r, k);
 let ENGINE_AV = {};   // each rep's schedule and overrides as the engine saw them when it built the plan
-const dayLocked = k => B.cards.some(c => dkey(c.appt) === k && moves[c.id] && moves[c.id].rep !== undefined);
+const realMove = id => moves[id] && moves[id].rep !== undefined && !moves[id].pin;   // a card the manager actually moved (not one held in place)
+const dayLocked = k => B.cards.some(c => dkey(c.appt) === k && realMove(c.id));
 function computeEff() {
   EFF = {};
   const days = [...new Set(B.cards.map(c => dkey(c.appt)))];
@@ -526,7 +527,7 @@ function computeEff() {
   const redo = {};
   for (const c of B.cards) {
     const m = moves[c.id];
-    if (m && m.rep !== undefined) { EFF[c.id] = { rep: m.rep, kind: m.pin ? "pinned" : "moved", from: c.pick }; continue; }
+    if (m && m.rep !== undefined && (!m.pin || dayLocked(dkey(c.appt)))) { EFF[c.id] = { rep: m.rep, kind: m.pin ? "pinned" : "moved", from: c.pick }; continue; }   // holds only count while the day has a real move
     const k = dkey(c.appt);
     if (!changed.has(k) || dayLocked(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }   // a day the manager has started arranging is never reshuffled
     (redo[k] = redo[k] || []).push(c);   // who's working changed since the engine ran: re-plan this whole day
@@ -1295,18 +1296,19 @@ function renderSugBox() {
 }
 
 let resetAsk = null;   // null, "day" or "all": waiting for the second click
-const movedIds = scope => B.cards.filter(c => moves[c.id] && moves[c.id].rep !== undefined && (scope === "all" || dkey(c.appt) === day)).map(c => c.id);
+const movedIds = scope => B.cards.filter(c => moves[c.id] && moves[c.id].rep !== undefined && (scope === "all" || dkey(c.appt) === day)).map(c => c.id);   // everything a reset clears, holds included
+const realIds = scope => B.cards.filter(c => realMove(c.id) && (scope === "all" || dkey(c.appt) === day)).map(c => c.id);   // what the counts show
 function resetUi() {
-  const nd = movedIds("day").length, na = movedIds("all").length;
+  const nd = realIds("day").length, na = realIds("all").length;
   if (!na) return `<span class="reset"><button class="btn ghost" disabled title="No manual moves to undo">Reset to recommended</button></span>`;
-  if (resetAsk) { const n = movedIds(resetAsk).length;
+  if (resetAsk) { const n = realIds(resetAsk).length;
     return `<span class="reset"><button class="btn red" data-reset-go="${resetAsk}">Put back ${n} card${n > 1 ? "s" : ""} ${resetAsk === "day" ? "on " + DAYN[parse(day).getDay()] + " " + md(day) : "on every day"}</button><button class="btn ghost" data-reset-cancel="1">Cancel</button></span>`; }
   return `<span class="reset">${nd ? `<button class="btn dark" data-reset="day">Reset this day (${nd})</button>` : ""}<button class="btn${nd ? " ghost" : " dark"}" data-reset="all">Reset all days (${na})</button></span>`;
 }
 async function resetMoves(scope) {
-  const ids = movedIds(scope); resetAsk = null;
+  const ids = movedIds(scope), n = realIds(scope).length; resetAsk = null;
   for (const id of ids) { const m = moves[id]; if (m.set) { delete m.rep; m.by = me?.id || null; m.at = new Date().toISOString(); } else delete moves[id]; }
-  render(); toast(`${ids.length} card${ids.length > 1 ? "s" : ""} back to the engine's picks`);
+  render(); toast(`${n} card${n === 1 ? "" : "s"} back to the engine's picks`);
   if (!db) return;
   try { for (const id of ids) { const ref = db.doc("cards/" + id); const m = moves[id]; if (!m) await ref.delete(); else await ref.update({ rep: "__engine__", by: m.by, at: m.at }); } }
   catch (e) { banner("The reset didn't fully save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
@@ -1355,6 +1357,7 @@ function move(id, to, undo) {
     hold.forEach(o => save(o.id, { rep: repOf(o), pin: true }));
   }
   const target = undo ? c.pick : (to || null);
+  if (!undo && target === repOf(c)) { render(); return; }   // dropped back where it was: nothing changed, so nothing gets held
   save(id, target === c.pick ? { rep: undefined } : { rep: target });
   const p = problems(c);
   toast(undo ? `Back to ${short(c.pick)}` : `Moved to ${target ? short(target) : "Needs a call"}${p.length ? ". It breaks a rule, see the card." : ""}`);
