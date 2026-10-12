@@ -22,8 +22,8 @@ def save_board(folder, today):
     for f in sorted(Path(folder).glob("*.json")):
         doc = json.loads(f.read_text()); d = doc.get("data", doc)
         rows.append(dict(snap_date=today, guid=f.stem, board_rep="" if d.get("rep") in (None, "__engine__") else d["rep"],
-                         moved=d.get("rep") not in (None, "__engine__"), set_in_acculynx=bool(d.get("set")), moved_at=d.get("at") or ""))
-    p = MEM / "board_moves.csv"; new = pd.DataFrame(rows, columns=["snap_date", "guid", "board_rep", "moved", "set_in_acculynx", "moved_at"])
+                         moved=d.get("rep") not in (None, "__engine__"), held_only=bool(d.get("pin")), set_in_acculynx=bool(d.get("set")), moved_at=d.get("at") or ""))
+    p = MEM / "board_moves.csv"; new = pd.DataFrame(rows, columns=["snap_date", "guid", "board_rep", "moved", "held_only", "set_in_acculynx", "moved_at"])
     if p.exists():
         old = pd.read_csv(p, dtype=str); new = pd.concat([old[old.snap_date != today], new.astype(str)])
     new.to_csv(p, index=False)
