@@ -475,5 +475,9 @@
     },
     "proposals": [],
     "read_me": "auto_promote false: a winning value is only proposed (learning.proposals, weekly message to Joe) and changes nothing until Joe approves (python learn.py --approve <dial>)."
+  },
+  "return_customer": {
+    "about": "A customer we've been to before (same name and zip) goes back to the rep who sold him last, or saw him last, when that rep is free inside the rules. Same rep closed 49% vs 40% with a new rep on about 320 repeat appointments (Oct 2026).",
+    "same_rep_points": 25
   }
 }

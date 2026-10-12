@@ -90,6 +90,24 @@ def board_holds():
     b = b[b.snap_date == b.snap_date.max()]
     return {r.guid: r.board_rep for r in b.itertuples() if r.moved == "True" and r.board_rep}
 
+def past_reps(df, guids, reps):
+    """{guid: (rep, job number, sold)} for customers we've been to before: same name and zip, an earlier appointment,
+    with a rep who is still on the board. The rep who sold him last wins, else the rep who saw him last."""
+    nm = df["Primary Contact: Name"].fillna("").str.lower().str.replace(r"[^a-z ]", "", regex=True).str.split().str.join(" ")
+    key = nm + "|" + df["Job: Location Zip Code"].fillna("").astype(str).str[:5]
+    d = df.assign(_k=key, _ok=nm.ne("") & df["Initial Appointment Date"].notna())
+    out = {}
+    for g in guids:
+        me = d[d.guid == g]
+        if me.empty or not me._ok.iloc[0]: continue
+        k, when = me._k.iloc[0], me["Initial Appointment Date"].iloc[0]
+        prev = d[(d._k == k) & (d.guid != g) & d._ok & (d["Initial Appointment Date"] < when) & d["Primary Salesperson"].isin(reps)]
+        if prev.empty: continue
+        sold = prev[prev["Approved Milestone Date"].notna()]
+        best = (sold if len(sold) else prev).sort_values("Initial Appointment Date").iloc[-1]
+        out[g] = (best["Primary Salesperson"], best.get("Job Number") if isinstance(best.get("Job Number"), str) else None, len(sold) > 0)
+    return out
+
 HOT_FILE = E.MEM / "hot.json"
 HOT = json.loads(HOT_FILE.read_text()) if HOT_FILE.exists() else {}
 
@@ -160,11 +178,16 @@ def bend_cost(rating):
     B = RULES["bends"]
     return B["penalty"][rating] if rating in B["penalty"] else B["last_resort"]["penalty"]
 
+def back_info(rc):
+    return dict(rep=rc[0], job=rc[1], sold=rc[2]) if rc else None
+
 def plan(scores, df, today, now=None):
     RT_ = RULES.get("routing", {"close_points_per_10_miles": 0, "start_leg_share": 0, "back_to_back_within_minutes": 0})
     RW = RT_["close_points_per_10_miles"] / 100 / 10   # close-chance points given up per mile driven
     today = pd.Timestamp(today).normalize(); A = RULES["appointment"]; B = RULES["bends"]; WO = RULES["weekly_order"]
-    R = roster(); st = rep_status(df, today); reps = list(R)
+    R = roster(); st = rep_status(df, today)
+    reps = [r for r in R if R[r].get("lane") != "commercial"]   # commercial-lane reps are not on the board; commercial jobs go to Needs a call
+    st = {r: v for r, v in st.items() if r in reps}
     leads = pd.DataFrame(scores["leads"])
     leads["when"] = pd.to_datetime(leads.appt); leads["day"] = leads.when.dt.normalize()
     started = set()   # today's appointments that already started stay on the board with the rep who has them in AccuLynx
@@ -181,11 +204,15 @@ def plan(scores, df, today, now=None):
     leads.loc[leads.appt.str.len() <= 10, "min"] = 12 * 60
     zips = df.dropna(subset=["guid"]).set_index("guid")["Job: Location Zip Code"].astype(str).str[:5]
     leads["zip"] = leads.guid.map(zips)
+    nts = df.dropna(subset=["guid"]).drop_duplicates("guid").set_index("guid")[["INITIAL LEAD NOTES", "ADDITIONAL LEAD NOTES"]].fillna("").agg(" ".join, axis=1).str.lower()
+    leads["homey"] = leads.guid.map(nts).fillna("").str.contains(r"\b(?:house|home|homeowner|parents?|residential)\b")
     leads["same_day"] = leads.days_lead_to_appt.eq(0)
     leads["week"] = leads.day - pd.to_timedelta(leads.day.dt.dayofweek, unit="D")
     office = RULES["office"]
     held = board_holds()   # cards the manager moved or held on the board: keep them where he put them unless a rule says no
     held.update({g: r for g, r in started})
+    back = past_reps(df, list(leads.guid), reps)   # return customers: send the rep who sold or saw him before when we can
+    RC = RULES.get("return_customer", {}).get("same_rep_points", 0) / 100
     pairs, why_no = [], {}
     for i, l in leads.iterrows():
         dname = DAYS[l.day.dayofweek]
@@ -198,7 +225,7 @@ def plan(scores, df, today, now=None):
             elif l["min"] > hm(slot[1]): reason = "after his last appointment"
             elif slot[2] and info.get("home_zip") and l["min"] + A["minutes"] + miles(l.zip, info["home_zip"]) / A["drive_mph"] * 60 > hm(slot[2]):
                 reason = "needs to be home by " + slot[2]
-            elif l.comm and info["lane"] != "commercial": reason = "commercial only goes to commercial-lane reps"
+            elif l.comm: reason = "marked Commercial in AccuLynx, so the sales manager places it"
             elif l.spec and info["lane"] not in ("specialty", "commercial"): reason = "specialty only goes to specialty-lane reps"
             elif not l.comm and not l.spec and info["lane"] == "commercial": reason = "commercial-lane reps do not run regular appointments"
             elif l.spec and info["lane"] == "commercial": adj = -RULES["lanes"]["specialty_backup_penalty"]; tag = "Specialty backup"
@@ -209,7 +236,7 @@ def plan(scores, df, today, now=None):
             start_zip = office["zip"] if dname in office.get("days", []) else info.get("home_zip")
             leg0 = miles(start_zip, l.zip) if start_zip and isinstance(l.zip, str) else 15.0
             pairs.append(dict(i=i, guid=l.guid, rep=r, day=l.day, week=l.week, min=l["min"], spec=bool(l.spec), same=bool(l.same_day), zip=l.zip,
-                              value=v.close + boost + wd * v.same_day + adj - rw * RT_["start_leg_share"] * leg0 + (1.0 if held.get(l.guid) == r else 0.0), close=v.close, rw=rw, arm=arm_for(l.day), sd=v.same_day, tag=tag, leg0=leg0))
+                              value=v.close + boost + wd * v.same_day + adj - rw * RT_["start_leg_share"] * leg0 + (1.0 if held.get(l.guid) == r else 0.0) + (RC if back.get(l.guid, (None,))[0] == r else 0.0), close=v.close, rw=rw, arm=arm_for(l.day), sd=v.same_day, tag=tag, leg0=leg0))
     P = pd.DataFrame(pairs)
     # routing: drive between back-to-back appointments for the same rep costs a little (never more than a small close gap)
     blank = lambda: [dict(guid=l.guid, appt=l.appt, rep=None, options=[], blocked={r: why_no.get((l.guid, r)) for r in reps},
@@ -297,11 +324,19 @@ def plan(scores, df, today, now=None):
             best = opts.iloc[0]
             boosted = dial("hot_boost_share", p.day) > 0 and hot_gap.get(p.rep, 0) > 0
             note = None if best.rep == p.rep else f"{best.rep} rates higher ({best.close:.0%}), but {p.rep} is on a hot streak and hot streaks count extra today (test day)" if boosted else f"{best.rep} rates only a little higher ({best.close:.0%}), so the day is split evenly" if best.close - p.close < dial("spread_points_per_extra_sit", p.day) / 100 * st[best.rep]["limits"]["per_day"] and P[(P.pick) & (P.rep == best.rep) & (P.day == p.day)].shape[0] > 0 and P[(P.pick) & (P.rep == best.rep) & (P.day == p.day) & ((P["min"] - p["min"]).abs() < A["min_gap_minutes"])].empty else f"{best.rep} rates higher ({best.close:.0%}) but has no room or does more for the plan on other appointments"
+            rc = back.get(l.guid)
+            if rc and rc[0] == p.rep: note = None
+            elif rc:
+                busy = P[(P.pick) & (P.rep == rc[0]) & (P.day == p.day) & ((P["min"] - p["min"]).abs() < A["min_gap_minutes"])]
+                why = blocked.get(rc[0]) or ("he's already booked at that time" if len(busy) else "he's full that day")
+                note = f"Return customer: {rc[0]} {'sold' if rc[2] else 'saw'} this customer before, but {why}. Move the time to send him back."
             out.append(dict(guid=l.guid, appt=l.appt, arm=arm_for(l.day), rep=p.rep, rating=st[p.rep]["rating"], close=round(p.close, 3), same_day=round(p.sd, 3),
-                            bends=bends, needs_ok=bool(bends), note=note, options=alts, blocked=blocked))
+                            bends=bends, needs_ok=bool(bends), note=note, options=alts, blocked=blocked, back=back_info(rc)))
         else:
-            out.append(dict(guid=l.guid, appt=l.appt, rep=None, options=alts, blocked=blocked,
-                            note="Nobody free within the rules. Needs a call: move the time or day."))
+            rc = back.get(l.guid)
+            note = ("Marked Commercial in AccuLynx. Commercial jobs aren't auto-assigned: the sales manager places it." + (" The notes sound like a home, so check the category." if l.get("homey") else "")) if l.comm \
+                else "Nobody free within the rules. Needs a call: move the time or day."
+            out.append(dict(guid=l.guid, appt=l.appt, rep=None, options=alts, blocked=blocked, note=note, back=back_info(rc)))
     # speed: a lead that came in today but is booked for a later day. Is a fitting rep free today at that time?
     taken = chosen.groupby(["rep", "day"]).apply(lambda g: list(g["min"]), include_groups=False).to_dict()
     wk_used = chosen[counted[chosen.index]].groupby(["rep", "week"]).size().to_dict()

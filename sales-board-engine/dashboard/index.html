@@ -245,6 +245,8 @@ ul.rules li{margin:2px 0}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .chip{font-size:11.5px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--steel);color:var(--ink);white-space:nowrap}
 .chip.hot{background:#FFE0DC;color:var(--bad)}
+.chip.ret{background:#DDF3E4;color:#14612F}
+.chip.retx{background:#FFF1C2;color:#7A5A00}
 .chip.red{background:var(--red);color:var(--white)}
 .chip.blk{background:var(--black);color:var(--white)}
 .chip.y{background:#FFF6C2;color:var(--warn)}
@@ -695,7 +697,7 @@ function renderBoard() {
   const wk = monday(day);
   const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
-    <div class="load"><span>${na.length ? "Nobody free inside the rules. Move the time, or drag to a rep." : "Every appointment has a rep."}</span></div></div>
+    <div class="load"><span>${na.length ? "Nobody free, marked commercial, or anything odd. The sales manager places these." : "Every appointment has a rep."}</span></div></div>
     <div class="list" data-rep="">${na.map(card).join("")}</div></section>`];
   for (const r of reps) {
     const mine = dayCards(r.name, day);
@@ -737,6 +739,7 @@ function card(c) {
   if (c.lane === "specialty") tags.push('<span class="chip blk">Specialty</span>');
   if (c.booked_today) tags.push('<span class="chip y">Booked same day</span>');
   if (c.hot && /hot/i.test(c.hot)) tags.push('<span class="chip hot">Hot lead</span>');
+  if (c.back) tags.push(`<span class="chip ${repOf(c) === c.back.rep ? "ret" : "retx"}" title="${c.back.sold ? "Sold" : "Saw"} this customer before${c.back.job ? " (" + esc(c.back.job) + ")" : ""}">Return: ${esc(short(c.back.rep))}</span>`);
   const dv = c.pick ? val(c, rep) - planVal(c) : 0;
   const dtxt = Math.abs(dv) >= 50 ? ` (${dv < 0 ? "−" : "+"}${money(Math.abs(dv))})` : "";
   const notes = [];   // quiet one-line context
