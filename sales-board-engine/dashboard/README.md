@@ -13,3 +13,7 @@ tomorrow. Rep names are suggestions only: CSRs run every booking by the sales ma
 - Shared state lives in the artifact's database: `cards/<job id>` (manager moves and "Set in AccuLynx"), `roster/<rep slug>` (the Reps tab).
   The roster docs mirror the `roster` section of `assignment_rules.json`.
 - Republishing to a new account: publish `index.html` with those two files, then load the roster docs from `assignment_rules.json`.
+
+Copy plan (Board tab, next to Reset, and on the red "needs a rep" bar): copies the selected day's whole plan as text. Appointments with no
+rep come first, each with a fix that tries the top closer for it first: hand one of his appointments to another rep at the same time, or
+move the homeowner to a time he's free. Then every rep's appointments, who's off, and the call center guide for that day.

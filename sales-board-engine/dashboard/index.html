@@ -84,6 +84,11 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6v
 .fold.ideasf{border-left-color:var(--yellow)}
 .fold.guidef{border-left-color:var(--red)}
 .ideas.guide{border-left-color:var(--red)}
+.needbar{background:var(--red);color:#fff;border-radius:var(--r);padding:10px 14px;margin:0 0 12px;display:grid;gap:6px}
+.needbar h3{margin:0;font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.05em;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.needbar p{margin:0;font-size:13.5px;line-height:1.45}
+.needbar p b{font-weight:700}
+.needbar .btn{background:#fff;color:var(--red);border-color:#fff}
 .ghead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:2px 0 6px}
 .ghead p{margin:0;flex:1;min-width:220px;font-size:13px;color:var(--muted)}
 .gday{padding:8px 0;border-top:1px solid #EEEFF1}
@@ -366,6 +371,7 @@ details[open]>summary::after{content:"–"}
     <div class="ideas guide" id="guide" aria-live="polite" hidden></div>
     <button class="fold ideasf" id="ideasfold" aria-expanded="false" aria-controls="ideas" hidden><b>Ideas to add revenue</b><span class="fline" id="ideasline"></span><i class="chev" aria-hidden="true">▾</i></button>
     <div class="ideas" id="ideas" aria-live="polite" hidden></div>
+    <div class="needbar" id="needbar" role="alert" hidden></div>
     <div class="avail" id="avail" role="group" aria-label="Who is working this day"></div>
     <div class="board" id="board"><div class="loading">Loading the engine's plan…</div></div>
   </section>
@@ -608,7 +614,8 @@ function renderBoard() {
     const sched = !!(r.week && r.week[wd]); const off = (r.days_off || []).includes(day);
     if (!sched) return `<span class="av sched" style="--rc:${color(r.name)}" title="Not on ${r.short}'s weekly schedule. Change it on the Reps tab."><i></i>${esc(r.short)} · not scheduled</span>`;
     return `<label class="av${off ? " off" : ""}" style="--rc:${color(r.name)}" title="Untick if ${esc(r.short)} can't work ${wd} ${md(day)}"><input type="checkbox" data-avail="${esc(r.name)}"${off ? "" : " checked"}${canWrite ? "" : " disabled"}><i></i>${esc(r.short)}</label>`;
-  }).join("") + `<span class="hint">Untick a rep for a one-off day off, tick him back on when he can work. The day re-plans either way.</span>` + resetUi();
+  }).join("") + `<span class="hint">Untick a rep for a one-off day off, tick him back on when he can work. The day re-plans either way.</span>` + `<button class="btn red" id="copy-plan" title="Copies the whole plan for this day, what needs a rep, and the call center guide">Copy plan</button>` + resetUi();
+  renderNeedBar();
   const wk = monday(day);
   const na = today.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const cols = [`<section class="col na${na.length ? "" : " slim"}" aria-label="Needs a call"><div class="ch"><div class="ch-row"><h2>Needs a call</h2></div>
@@ -894,11 +901,11 @@ function guideText(G, dayOnly) {
   L.push(""); L.push("Offer the earliest open time first. Same day beats any other day. Aim for leads near where a rep is already working. The sales manager makes the final call on who runs it.");
   return L.join("\n");
 }
-async function copyText(t) {
+async function copyText(t, msg) {
   let ok = false;
   try { await navigator.clipboard.writeText(t); ok = true; } catch (e) {}
   if (!ok) { const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); try { ok = document.execCommand("copy"); } catch (e) {} ta.remove(); }
-  toast(ok ? "Copied. Paste it to the CSRs." : "Couldn't copy here. Open the CSR Guide tab and select the text.");
+  toast(ok ? (msg || "Copied. Paste it to the CSRs.") : "Couldn't copy here. Open the CSR Guide tab and select the text.");
 }
 function guideBody(G, detail) {
   const head = G.days[0];
@@ -951,6 +958,69 @@ function renderBookPage() {
   $("#book-copy").onclick = () => copyText(guideText(guideData()));
 }
 
+
+/* ---------- needs a rep: always try the top closer first, and say what to move to fit it ---------- */
+const HOURS = /home by|earliest|last appointment/i;
+function canTake(o, r, k, skip) {   // could rep r run appointment o at its booked time on day k (ignoring card skip)?
+  if (isOffDay(r, k)) return false;
+  const why = o.blocked[r.name]; if (why && why !== "off that day") return false;
+  const mine = dayCards(r.name, k).filter(x => x.id !== o.id && x.id !== skip);
+  if (mine.length >= r.limits.per_day) return false;
+  return !mine.some(x => Math.abs(mins(x.appt) - mins(o.appt)) < GAP());
+}
+function fixFor(c, k) {
+  const who = B.reps.filter(r => !isOffDay(r, k) && !LANE.test(c.blocked[r.name] || "") && c.odds[r.name]).sort((a, b) => c.odds[b.name].close - c.odds[a.name].close);
+  for (const r of who.slice(0, 3)) {
+    const odds = pct(c.odds[r.name].close), top = r === who[0] ? "top closer for it" : "next best";
+    const hoursOk = !HOURS.test(c.blocked[r.name] || "");
+    if (hoursOk) {   // keep the homeowner's time: hand one of his appointments to someone else
+      const mine = dayCards(r.name, k);
+      const clash = mine.filter(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP());
+      const pool = clash.length ? clash : (mine.length >= r.limits.per_day ? mine : []);
+      if (pool.length && clash.length <= 1) {
+        const opts = [];
+        for (const o of pool) for (const r2 of B.reps) if (r2 !== r && canTake(o, r2, k)) opts.push({ o, r2, loss: val(o, r.name) - val(o, r2.name) });
+        opts.sort((a, b) => a.loss - b.loss);
+        if (opts[0]) { const { o, r2 } = opts[0];
+          return { r, text: `Give it to ${r.short} (${top}, ${odds} to close) at ${hm(c.appt)}. To fit it, move ${o.name || "his"} ${hm(o.appt)} (${o.town || ""}) to ${r2.short}, same time.` }; }
+      }
+    }
+    const t = slotFor(c, r, k, mins(c.appt));   // or move the homeowner to a time he's free
+    if (t != null && t !== mins(c.appt)) return { r, text: `Call ${c.name || "the homeowner"} to move to ${t2s(t)} with ${r.short} (${top}, ${odds} to close).` };
+  }
+  return { r: who[0], text: who[0] ? `${who[0].short} is the top closer for it but has no room this day. Call to offer another day.` : "Nobody working this day can run it. Call to offer another day." };
+}
+function renderNeedBar() {
+  const el = $("#needbar"); const list = B.cards.filter(c => dkey(c.appt) === day && !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
+  el.hidden = !list.length; if (!list.length) return;
+  el.innerHTML = `<h3><span>${list.length} appointment${list.length > 1 ? "s" : ""} need${list.length > 1 ? "" : "s"} a rep · ${dayLbl(day)}</span><button class="btn" id="needbar-copy">Copy plan</button></h3>` +
+    list.map(c => `<p><b>${hm(c.appt)} · ${esc(c.name || "Homeowner")}${c.town ? ` · ${esc(c.town)}` : ""}</b>. ${esc(fixFor(c, day).text)}</p>`).join("");
+}
+function planText(k) {
+  const L = [], clock = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const list = B.cards.filter(c => dkey(c.appt) === k);
+  const need = list.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
+  const exp = list.reduce((a, c) => a + val(c, repOf(c)), 0), sd = list.reduce((a, c) => a + sdVal(c, repOf(c)), 0);
+  L.push(`SALES PLAN · ${dayLbl(k)} · updated ${clock}`);
+  L.push(`${list.length} appointment${list.length === 1 ? "" : "s"} · about ${money(exp)} expected · ${money(sd)} signed same day`);
+  if (need.length) {
+    L.push(""); L.push(`NEEDS A REP (${need.length})`);
+    need.forEach(c => L.push(`- ${hm(c.appt)} ${c.name || "Homeowner"}${c.town ? ", " + c.town : ""}: ${fixFor(c, k).text}`));
+  }
+  for (const r of B.reps) {
+    const mine = dayCards(r.name, k);
+    if (!mine.length && isOffDay(r, k)) continue;
+    L.push(""); L.push(`${r.short.toUpperCase()} (${r.rating}, ${pct(r.close)} close)${isOffDay(r, k) ? " · OFF" : ""}`);
+    if (!mine.length) L.push("- Nothing booked");
+    mine.forEach(c => { const pr = problems(c); L.push(`- ${hm(c.appt)} ${c.name || "Homeowner"}${c.town ? ", " + c.town : ""} · ${pct(c.odds[r.name]?.close)}${EFF[c.id]?.kind === "moved" ? " · moved by manager" : ""}${pr.length ? " · CHECK: " + pr.join("; ") : ""}`); });
+  }
+  const off = B.reps.filter(r => isOffDay(r, k)).map(r => r.short);
+  if (off.length) { L.push(""); L.push(`Off: ${off.join(", ")}`); }
+  L.push(""); L.push("------------------------------"); L.push("");
+  L.push(dayText(guideData(k)));
+  return L.join("\n");
+}
+
 let resetAsk = null;   // null, "day" or "all": waiting for the second click
 const movedIds = scope => B.cards.filter(c => moves[c.id] && moves[c.id].rep !== undefined && (scope === "all" || dkey(c.appt) === day)).map(c => c.id);
 function resetUi() {
@@ -989,6 +1059,8 @@ async function toggleOff(name, k, working) {
 }
 
 function wireBoard() {
+  const cp = $("#copy-plan"); if (cp) cp.onclick = () => copyText(planText(day), "Plan copied. Paste it anywhere.");
+  const cp2 = $("#needbar-copy"); if (cp2) cp2.onclick = () => copyText(planText(day), "Plan copied. Paste it anywhere.");
   $$(".meterwrap").forEach(el => el.onclick = e => { e.stopPropagation(); const o = el.classList.contains("open"); $$(".meterwrap.open").forEach(x => x.classList.remove("open")); if (!o) el.classList.add("open"); });
   $$("[data-avail]").forEach(el => el.onchange = () => toggleOff(el.dataset.avail, day, el.checked));
   $$("[data-reset]").forEach(el => el.onclick = () => { resetAsk = el.dataset.reset; render(); });
