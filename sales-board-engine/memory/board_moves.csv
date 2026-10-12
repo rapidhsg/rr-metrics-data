@@ -1,11 +1,13 @@
 snap_date,guid,board_rep,moved,set_in_acculynx,moved_at,held_only
 2026-10-11,fbca86b2-89a4-4c77-b483-2d8a0e921869,,False,False,2026-10-11T13:55:04.435Z,
-2026-10-12,0457cb6d-1336-413f-b017-036643c7d132,,False,False,2026-10-12T14:19:47.149Z,True
+2026-10-12,14bcc08e-92f6-46b6-ae45-90cb5a378a3c,,False,False,2026-10-12T20:26:49.097Z,True
 2026-10-12,16999fcc-2cca-431f-8d2a-3a5fa1cc664b,,False,False,2026-10-12T14:19:47.195Z,True
 2026-10-12,1d182b73-6291-414e-9f44-caa8b14e5d9c,Michael Meinardus,True,True,2026-10-12T12:12:41.648Z,False
 2026-10-12,20858a5a-528b-4a34-bb3a-c8f03cbdb3d4,,False,False,2026-10-12T14:19:47.188Z,True
 2026-10-12,24b3f3bf-b622-4ca1-b921-ab4819c967ba,,False,False,2026-10-12T14:19:47.159Z,True
+2026-10-12,264b03f6-5cd1-4d31-9c10-334ec4310a34,,False,False,2026-10-12T20:26:49.103Z,True
 2026-10-12,32028d77-0218-48f9-9a92-d1270fec2451,,False,False,2026-10-12T14:19:47.181Z,True
+2026-10-12,418708f5-6994-4877-a1e0-090dbe5a99ed,,False,False,2026-10-12T20:26:49.081Z,True
 2026-10-12,4321b426-c6b7-4a63-852c-0333066877f3,,False,False,2026-10-12T14:19:47.154Z,True
 2026-10-12,49260cce-ff96-4a8f-b5f5-667d2c8fd22e,Querlim Franco,True,True,2026-10-12T12:09:58.828Z,True
 2026-10-12,71dcde14-8fcd-4672-8eb6-4ef62587ade1,,False,False,2026-10-12T14:19:47.165Z,True
@@ -16,6 +18,8 @@ snap_date,guid,board_rep,moved,set_in_acculynx,moved_at,held_only
 2026-10-12,908d52c1-e958-41b5-be97-8fcf51fbb64b,,False,False,2026-10-12T14:19:47.138Z,True
 2026-10-12,9ca7dca3-7b00-4544-a602-077a5bd48500,Michael Dietrich,True,True,2026-10-12T12:09:58.800Z,True
 2026-10-12,9f11110b-eea1-4112-ac59-08a3eeefc629,,False,False,2026-10-12T14:19:47.174Z,True
+2026-10-12,a5b62da3-9e5b-4971-baab-971dcc67ec06,,False,False,2026-10-12T20:26:49.090Z,True
+2026-10-12,a6c2d31c-f8fe-4e83-9d7a-510846b80522,,False,False,2026-10-12T20:26:49.109Z,True
 2026-10-12,c30ef459-377d-40f8-ab09-e3ce268dde5b,Michael Dietrich,True,True,2026-10-12T12:09:58.818Z,True
 2026-10-12,ce2996dc-3048-4a43-8ce1-88878b548364,,False,True,2026-10-12T12:24:35.443Z,False
 2026-10-12,cfb7f6ae-6c8c-4f30-9e84-a904977ab18f,Michael Dietrich,True,True,2026-10-12T12:09:58.836Z,True
