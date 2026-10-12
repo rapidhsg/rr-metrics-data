@@ -245,6 +245,7 @@ ul.rules li{margin:2px 0}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .chip{font-size:11.5px;font-weight:600;padding:2px 6px;border-radius:3px;background:var(--steel);color:var(--ink);white-space:nowrap}
 .chip.hot{background:#FFE0DC;color:var(--bad)}
+.chip.sold{background:#14612F;color:#fff}
 .chip.ret{background:#DDF3E4;color:#14612F}
 .chip.retx{background:#FFF1C2;color:#7A5A00}
 .chip.red{background:var(--red);color:var(--white)}
@@ -492,8 +493,8 @@ let EFF = {};   // card id -> {rep, kind: engine | moved | timeoff, from}
 const repOf = c => EFF[c.id] ? EFF[c.id].rep : c.pick;
 const GAP = () => B.appointment?.min_gap_minutes || 120;
 const ticket = c => (B.tickets && (B.tickets[c.ltype] || B.tickets.all)) || { any: 0, same_day: 0 };
-const val = (c, rep) => rep && c.odds[rep] ? c.odds[rep].close * ticket(c).any : 0;
-const sdVal = (c, rep) => rep && c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
+const val = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : rep && c.odds[rep] ? c.odds[rep].close * ticket(c).any : 0;   // sold today: the real contract
+const sdVal = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : rep && c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
 const planVal = c => c.pick ? c.close * ticket(c).any : 0;
 function baseSlot(r, k) {   // weekly schedule, or standard hours on a day added on the Availability tab
   const s = r.week && r.week[DAYN[parse(k).getDay()]];
@@ -738,6 +739,7 @@ function card(c) {
   if (c.lane === "commercial") tags.push('<span class="chip blk">Commercial</span>');
   if (c.lane === "specialty") tags.push('<span class="chip blk">Specialty</span>');
   if (c.booked_today) tags.push('<span class="chip y">Booked same day</span>');
+  if (c.sold != null) tags.push(`<span class="chip sold">Sold ${money(c.sold)}</span>`);
   if (c.hot && /hot/i.test(c.hot)) tags.push('<span class="chip hot">Hot lead</span>');
   if (c.back) tags.push(`<span class="chip ${repOf(c) === c.back.rep ? "ret" : "retx"}" title="${c.back.sold ? "Sold" : "Saw"} this customer before${c.back.job ? " (" + esc(c.back.job) + ")" : ""}">Return: ${esc(short(c.back.rep))}</span>`);
   const dv = c.pick ? val(c, rep) - planVal(c) : 0;

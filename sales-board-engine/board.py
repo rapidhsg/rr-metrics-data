@@ -69,6 +69,7 @@ def main(out, path, status=None):
             in_acculynx=(lambda v: v if v in rules["roster"] else None)(txt(r["Primary Salesperson"])) if r is not None else None,
             notes=clean(r["INITIAL LEAD NOTES"]) if r is not None else None,
             more_notes=clean(r["ADDITIONAL LEAD NOTES"]) if r is not None else None,
+            sold=(float(str(r["Contract Amount"]).replace(",", "")) if r is not None and pd.notna(r["Approved Milestone Date"]) and txt(r["Contract Amount"]) else None),
             lane=tag, ltype=L.get("ltype"), booked_today=L.get("days_lead_to_appt") == 0, days_out=L.get("days_lead_to_appt"),
             lead_close=L.get("lead_close"),
             pick=pick, close=p.get("close"), same_day=p.get("same_day"),

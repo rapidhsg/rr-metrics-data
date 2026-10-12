@@ -19,7 +19,8 @@ def main(path, out, today=None):
     w = t.get("same_day_weight")
     if w is None: w = E.same_day_value(S)["weight"]
     corr = t.get("correction", {}) or {}
-    F = df[(df["Initial Appointment Date"] >= today) & (df["Current Milestone"] == "Prospect")]
+    sold_today = (df["Initial Appointment Date"].dt.normalize() == today) & df["Approved Milestone Date"].notna()   # sold today: stays on the board, marked sold
+    F = df[(df["Initial Appointment Date"] >= today) & ((df["Current Milestone"] == "Prospect") | sold_today)]
     xf = E.features(F)
     hist, n = E.rep_experience(df)
     sits_so_far = hist.groupby("Primary Salesperson").size()
