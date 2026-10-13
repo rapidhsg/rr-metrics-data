@@ -43,9 +43,21 @@ jobs:
           DATA_DIR: databranch/data
         run: node scripts/pull.mjs
 
+      # Setter call transcripts from GoHighLevel, matched to AccuLynx jobs (data/calls/). Needs repo secret GHL_API_KEY;
+      # without it this step just skips. A problem here never blocks the AccuLynx data from saving.
+      - name: Match setter calls to AccuLynx jobs
+        id: calls
+        if: always()
+        continue-on-error: true
+        env:
+          ACCULYNX_API_KEY: ${{ secrets.ACCULYNX_API_KEY }}
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          DATA_DIR: databranch/data
+        run: node scripts/calls.mjs
+
       # Keep only the latest copy on the data branch: one fresh commit each time, so it never grows.
       - name: Save to data branch (latest copy only)
-        if: always() && steps.pull.outputs.changed == 'true'
+        if: always() && (steps.pull.outputs.changed == 'true' || steps.calls.outputs.calls_changed == 'true')
         working-directory: databranch
         run: |
           [ -d .git ] || git init -q

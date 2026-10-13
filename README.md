@@ -27,6 +27,16 @@ Every 15 minutes, `pull-acculynx-reports` checks the 5 daily AccuLynx schedules 
 
 Needs the repo secret `ACCULYNX_API_KEY`.
 
+## Setter call transcripts (data branch, data/calls/)
+
+Every pull also matches the CSRs' calls in GoHighLevel to AccuLynx jobs, so every booked appointment can be read next to how it was set.
+- `data/calls/jobs/<RR number>.json`: one file per job with an appointment. How it was matched, the setter, every call with the customer from the lead up to the appointment, which call booked it, and the transcripts. Jobs without an RR number yet use their AccuLynx job id; the file is renamed when the job gets one.
+- `data/calls/index.csv`: one row per job, matched or not. `data/calls/unmatched.csv`: jobs with no match and what was tried.
+- Matching uses every field: RR number in GHL custom fields, phone, email, then name near the lead date. The first run goes back 120 days and fills in over a few runs.
+- Customer phone numbers and emails are only used to match and are kept as one-way hashes. They are removed from the transcript text, along with street addresses.
+
+Needs the repo secret `GHL_API_KEY`: a GoHighLevel Private Integration token for the Rapid Roofing & Gutters location with read access to contacts, conversations, conversation messages and users. Without it the step skips.
+
 ## Tools that read from this repo
 
 This repo holds only the data and the rules. Tools live in their own repos and only read from here:
