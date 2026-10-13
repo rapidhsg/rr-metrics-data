@@ -1,0 +1,2 @@
+appt_day,predicted_on,booked_then,still_to_book_pred,appts_actual,sits_actual,exp_sales,sold_actual,exp_sales_usd,sold_usd_actual,exp_same_day,same_day_actual,checked
+2026-10-12,2026-10-11,10,0.9,10,9,3.097,2,67573,19488,1.125,2,2026-10-13
