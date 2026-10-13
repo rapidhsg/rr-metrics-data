@@ -20,7 +20,7 @@ def main(path, out, today=None):
     if w is None: w = E.same_day_value(S)["weight"]
     corr = t.get("correction", {}) or {}
     sold_today = (df["Initial Appointment Date"].dt.normalize() == today) & df["Approved Milestone Date"].notna()   # sold today: stays on the board, marked sold
-    F = df[(df["Initial Appointment Date"] >= today) & ((df["Current Milestone"] == "Prospect") | sold_today)]
+    F = df[(df["Initial Appointment Date"] >= today) & (df["Current Milestone"].isin(["Prospect", "Assigned Lead", "Unassigned Lead"]) | sold_today)]   # a lead with an appointment set counts even before it moves to Prospect
     xf = E.features(F)
     hist, n = E.rep_experience(df)
     sits_so_far = hist.groupby("Primary Salesperson").size()

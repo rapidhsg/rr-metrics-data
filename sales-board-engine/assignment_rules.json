@@ -265,7 +265,8 @@
   "appointment": {
     "minutes": 90,
     "min_gap_minutes": 120,
-    "drive_mph": 30
+    "drive_mph": 30,
+    "drive_rule": "Hard rule: two appointments for the same rep need the appointment length plus the drive between them (miles / drive_mph). Also applies to fixed appointments (already started, not a sale, or placed in AccuLynx)."
   },
   "ratings": {
     "_read_me": "Ratings update every run from the certified close rate on the rolling 30 (rolling 90 if the rep has fewer than 10 sits in the last 30). Reps in their first 90 days are New no matter what.",
@@ -477,7 +478,10 @@
     "read_me": "auto_promote false: a winning value is only proposed (learning.proposals, weekly message to Joe) and changes nothing until Joe approves (python learn.py --approve <dial>)."
   },
   "return_customer": {
-    "about": "A customer we've been to before (same name and zip) goes back to the rep who sold him last, or saw him last, when that rep is free inside the rules. Same rep closed 49% vs 40% with a new rep on about 320 repeat appointments (Oct 2026).",
+    "about": "A customer a board rep has met in person before (same name, and same zip when the job has one; a real sit before today) goes back to the rep who sold him last, or sat with him last, when that rep is free inside the rules. Property-management contacts are skipped. Same rep closed 49% vs 40% with a new rep on about 320 repeat appointments (Oct 2026); kept high on purpose.",
     "same_rep_points": 25
+  },
+  "non_sale_visits": {
+    "about": "Call backs, Service, Upsell / Change Order and Warranty work types, and testimonial or video shoots in the notes, are not sales sits. They stay with the rep AccuLynx has, block his time, are worth $0 and don't count toward his daily or weekly sits."
   }
 }

@@ -15,18 +15,23 @@ def main(path, out):
     scores = json.loads((Path(out) / "scores.json").read_text())
     lead = {l["guid"]: l for l in scores["leads"]}
     R = A.roster(); st = plan["reps"]; gap = A.RULES["appointment"]["min_gap_minutes"]
-    bad = []; per_day = defaultdict(list)
+    bad = []; per_day = defaultdict(list); fixed_at = defaultdict(list)
     E = A.E; df = E.load(path)
     sp = df.dropna(subset=["guid"]).drop_duplicates("guid").set_index("guid")["Primary Salesperson"]   # commercial is allowed to the rep the manager set in AccuLynx
     for p in plan["plan"]:
         r = p.get("rep")
         if not r: continue
+        if p.get("fixed"):   # started, not-a-sale or placed: must stay with the rep AccuLynx has, and isn't the engine's choice
+            if sp.get(p["guid"]) != r: bad.append(f"fixed card moved off its AccuLynx rep {p['appt']}")
+            w = pd.Timestamp(p["appt"]); fixed_at[(r, w.strftime("%Y-%m-%d"))].append(w.hour * 60 + w.minute)
+            continue
         L = lead[p["guid"]]; when = pd.Timestamp(p["appt"]); day = when.strftime("%Y-%m-%d"); m = when.hour * 60 + when.minute
         info = R[r]; slot = A.slot_for(info, when.normalize())
         per_day[(r, day)].append(m)
         if not slot: bad.append(f"{r} not working {day} (schedule, day off, or Availability tab)")
         elif not p.get("bends"):
             if m < hm(slot[0]) or m > hm(slot[1]): bad.append(f"{r} outside hours {p['appt']}")
+            if slot[2] and m + A.RULES["appointment"]["minutes"] > hm(slot[2]): bad.append(f"{r} past his home-by {slot[2]} on {p['appt']}")
         if L.get("comm") and info["lane"] != "commercial" and sp.get(p["guid"]) != r: bad.append(f"commercial to {r}")
         if not L.get("comm") and not L.get("spec") and info["lane"] == "commercial": bad.append(f"regular appointment to {r}")
         if L.get("spec") and info["lane"] == "regular": bad.append(f"specialty to {r}")
@@ -37,6 +42,9 @@ def main(path, out):
         ms = sorted(ms)
         for a, b in zip(ms, ms[1:]):
             if b - a < gap: bad.append(f"{r} two appointments under {gap} min apart on {day}")
+    for (r, day), fs in fixed_at.items():   # nothing the engine picks may sit on top of a fixed appointment
+        for m in per_day.get((r, day), []):
+            if any(abs(m - f) < gap for f in fs): bad.append(f"{r} booked on top of a fixed appointment on {day}")
     hot = A.RULES.get("hot", {})
     for r, s in st.items():
         if s.get("note", "") and s["note"].startswith("Hot streak") and s["rating"] != hot.get("rated_as"): bad.append(f"{r} hot but rated {s['rating']}")

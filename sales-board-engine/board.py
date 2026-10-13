@@ -51,7 +51,7 @@ def main(out, path, status=None):
     for p in P["plan"]:
         g = p["guid"]; r = df.loc[g] if g in df.index else None
         if isinstance(r, pd.DataFrame): r = r.iloc[0]
-        L = lead.get(g, {}); sc = by.get(g, {}); pick = p.get("rep")
+        L = lead.get(g, {}); sc = {k: v for k, v in by.get(g, {}).items() if k in (P["reps"] or {})}; pick = p.get("rep")   # only reps on the board
         odds = {k: dict(close=v["close"], same_day=v["same_day"]) for k, v in sc.items()}
         free = [v["close"] for k, v in sc.items() if k != pick and k not in (p.get("blocked") or {})]
         why = sc.get(pick, {}) if pick else {}
@@ -75,11 +75,12 @@ def main(out, path, status=None):
             pick=pick, close=p.get("close"), same_day=p.get("same_day"),
             lift=round(p["close"] - max(free), 4) if pick and free else None,
             needs_ok=bool(p.get("needs_ok")), bends=p.get("bends") or [], note=p.get("note"), back=p.get("back"),
+            fixed=p.get("fixed"), visit=p.get("fixed") == "visit", offboard=p.get("offboard"), pulled=bool(p.get("pulled")),
             blocked=p.get("blocked") or {}, odds=odds,
             up=[label(u[0]) for u in why.get("up", [])][:3], down=[label(d[0]) for d in why.get("down", [])][:3]))
     # nobody fits inside the rules, but the manager already gave it to a rep in AccuLynx: show it in his column, flagged with the rule it breaks
     for c in cards:
-        if not c["pick"] and c["in_acculynx"] and c["in_acculynx"] in (P["reps"] or {}):
+        if not c["pick"] and not c["pulled"] and not c["offboard"] and not c["visit"] and c["in_acculynx"] and c["in_acculynx"] in (P["reps"] or {}):
             r = c["in_acculynx"]; why = (c["blocked"] or {}).get(r)
             c["pick"] = r; c["close"] = (c["odds"].get(r) or {}).get("close"); c["same_day"] = (c["odds"].get(r) or {}).get("same_day")
             c["needs_ok"] = True

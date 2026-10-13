@@ -493,8 +493,9 @@ let EFF = {};   // card id -> {rep, kind: engine | moved | timeoff, from}
 const repOf = c => EFF[c.id] ? EFF[c.id].rep : c.pick;
 const GAP = () => B.appointment?.min_gap_minutes || 120;
 const ticket = c => (B.tickets && (B.tickets[c.ltype] || B.tickets.all)) || { any: 0, same_day: 0 };
-const val = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : rep && c.odds[rep] ? c.odds[rep].close * ticket(c).any : 0;   // sold today: the real contract
-const sdVal = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : rep && c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
+const zeroVal = (c, rep) => !rep || c.visit || (repBy(rep) && isOffDay(repBy(rep), dkey(c.appt)));   // not a sale, or his rep is off
+const val = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : zeroVal(c, rep) ? 0 : c.odds[rep] ? c.odds[rep].close * ticket(c).any : 0;   // sold today: the real contract
+const sdVal = (c, rep) => c.sold != null ? (rep ? c.sold : 0) : zeroVal(c, rep) ? 0 : c.odds[rep] ? c.odds[rep].same_day * ticket(c).same_day : 0;
 const planVal = c => c.pick ? c.close * ticket(c).any : 0;
 function baseSlot(r, k) {   // weekly schedule, or standard hours on a day added on the Availability tab
   const s = r.week && r.week[DAYN[parse(k).getDay()]];
@@ -517,14 +518,14 @@ const dayLocked = k => B.cards.some(c => dkey(c.appt) === k && realMove(c.id));
 function computeEff() {
   EFF = {};
   const days = [...new Set(B.cards.map(c => dkey(c.appt)))];
-  const changed = new Set(), gained = new Set();
+  const changed = new Set(), gained = {};
   for (const r of B.reps) {
     const was = ENGINE_AV[r.name]; if (!was) continue;
     for (const k of days) {   // only the days whose hours or day-off status actually changed
       const a = slotOf(was, k), b = slotOf(r, k);
       if (JSON.stringify(a) === JSON.stringify(b)) continue;
       changed.add(k);
-      if ((!a && b) || (b && eveOK(b) && !eveOK(a))) gained.add(k);   // someone became available: re-plan the whole day so he gets work
+      if ((!a && b) || (b && eveOK(b) && !eveOK(a))) (gained[k] = gained[k] || new Set()).add(r.name);   // someone became available
     }
   }
   const redo = {};
@@ -532,10 +533,15 @@ function computeEff() {
     const m = moves[c.id];
     if (m && m.rep !== undefined && (!m.pin || dayLocked(dkey(c.appt)))) { EFF[c.id] = { rep: m.rep, kind: m.pin ? "pinned" : "moved", from: c.pick }; continue; }   // holds only count while the day has a real move
     const k = dkey(c.appt);
-    if (!changed.has(k) || dayLocked(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }   // a day the manager has started arranging is never reshuffled
+    if (c.fixed || !changed.has(k) || dayLocked(k)) { EFF[c.id] = { rep: c.pick, kind: "engine" }; continue; }   // fixed = already happened, not a sale, or placed in AccuLynx   // a day the manager has started arranging is never reshuffled
     (redo[k] = redo[k] || []).push(c);   // who's working changed since the engine ran: re-plan this whole day
   }
-  for (const [k, all] of Object.entries(redo)) replanDay(k, all, !gained.has(k));
+  for (const [k, all] of Object.entries(redo)) {
+    if (!gained[k]) { replanDay(k, all, true); continue; }
+    const before = { ...EFF };
+    replanDay(k, all, false);   // try the whole day so the newly available rep can get work
+    if (!all.some(c => EFF[c.id] && gained[k].has(EFF[c.id].rep))) { EFF = before; replanDay(k, all, true); }   // he got nothing: don't reshuffle the day for no reason
+  }
 }
 function fits(c, r, k) {   // could rep r run card c at its time on day k, given everything else already placed in EFF
   if (!r) return false;
@@ -554,12 +560,14 @@ function replanDay(k, all, keepValid) {   // greedy re-plan of one day's appoint
       if (m < t2m(s[0]) || m > t2m(s[1]) || (s[2] && m + (B.appointment?.minutes || 90) + 30 > t2m(s[2]))) return false;
       const why = c.blocked[r.name]; if (why && why !== "off that day" && !/home by|earliest|last appointment/.test(why)) return false;
       const mine = B.cards.filter(o => o.id !== c.id && dkey(o.appt) === k && EFF[o.id] && EFF[o.id].rep === r.name);
-      if (mine.length >= r.limits.per_day) return false;
+      if (mine.filter(o => !o.visit).length >= r.limits.per_day) return false;
+      const wk = monday(k), inWeek = B.cards.filter(o => o.id !== c.id && !o.visit && o.lane !== "specialty" && monday(dkey(o.appt)) === wk && EFF[o.id] && EFF[o.id].rep === r.name).length;
+      if (inWeek + (wk === monday(B.meta.run.slice(0, 10)) ? r.this_week || 0 : 0) >= r.limits.week_cap) return false;
       return !mine.some(o => Math.abs(mins(o.appt) - mins(c.appt)) < GAP());
     };
     let left = all.slice();
     if (keepValid) {   // nobody new is available: keep every engine pick that still fits, re-plan only the ones that don't
-      for (const c of all.sort((a, b) => (b.close || 0) - (a.close || 0))) if (c.pick && can(c, repBy(c.pick))) EFF[c.id] = { rep: c.pick, kind: "engine" };
+      for (const c of all.sort((a, b) => (b.close || 0) - (a.close || 0))) if (c.pick && (can(c, repBy(c.pick)) || (c.bends.length && !isOffDay(repBy(c.pick), k)))) EFF[c.id] = { rep: c.pick, kind: "engine" };   // an approved bend stays
       left = all.filter(c => !EFF[c.id]);
     }
     while (left.length) {   // hardest call first: the appointment that loses the most if its best rep is taken
@@ -580,7 +588,7 @@ const color = n => { const i = B.reps.findIndex(r => r.name === n); return i < 0
 
 function weekCount(rep, wk) {
   let n = 0;
-  for (const c of B.cards) if (repOf(c) === rep && monday(dkey(c.appt)) === wk && c.lane !== "specialty") n++;
+  for (const c of B.cards) if (repOf(c) === rep && monday(dkey(c.appt)) === wk && c.lane !== "specialty" && !c.visit) n++;
   if (wk === monday(B.meta.run.slice(0, 10))) n += repBy(rep)?.this_week || 0;
   return n;
 }
@@ -605,12 +613,19 @@ function problems(c) {
   if (!rep) return out;
   const r = repBy(rep); const k = dkey(c.appt);
   if (r && isOffDay(r, k)) out.push("Not working this day");
-  else if (c.blocked[rep]) out.push(c.blocked[rep]);
+  else if (r && !c.fixed) {
+    const s = slotOf(r, k), m = mins(c.appt);
+    if (m < t2m(s[0])) out.push("Before his earliest appointment");
+    else if (m > t2m(s[1])) out.push("After his last appointment");
+    else if (s[2] && m + (B.appointment?.minutes || 90) + 30 > t2m(s[2])) out.push("Needs to be home by " + s[2]);
+    const why = c.blocked[rep];   // lane and other non-hours reasons still come from the engine
+    if (why && !/home by|earliest|last appointment|off that day|another appointment/.test(why)) out.push(why);
+  }
   const same = dayCards(rep, k);
-  if (r && same.length > r.limits.per_day) out.push(`${same.length} appointments that day, limit is ${r.limits.per_day}`);
-  for (const o of same) if (o.id !== c.id && Math.abs(mins(o.appt) - mins(c.appt)) < (B.appointment?.min_gap_minutes || 120)) { out.push(`Within 2 hours of his ${hm(o.appt)}`); break; }
+  if (r && !c.visit && same.filter(o => !o.visit).length > r.limits.per_day) out.push(`${same.length} appointments that day, limit is ${r.limits.per_day}`);
+  for (const o of same) if (o.id !== c.id && !(c.fixed && o.fixed) && Math.abs(mins(o.appt) - mins(c.appt)) < (B.appointment?.min_gap_minutes || 120)) { out.push(`Within 2 hours of his ${hm(o.appt)}`); break; }
   const wc = weekCount(rep, monday(k));
-  if (r && wc > r.limits.week_cap) out.push(`${wc} this week, cap is ${r.limits.week_cap}`);
+  if (r && !c.visit && !c.fixed && wc > r.limits.week_cap) out.push(`${wc} this week, cap is ${r.limits.week_cap}`);
   return out;
 }
 
@@ -735,6 +750,8 @@ function card(c) {
   const src = [c.parent, c.source].filter(Boolean).join(" · ");
   // at most two tags on the card face, most important first; the rest live in Details
   const tags = [];
+  if (c.visit) tags.push('<span class="chip blk" title="Call back, service, upgrade or video. Takes his time, not counted as a sale.">Not a sale</span>');
+  if (c.offboard) tags.push(`<span class="chip blk">With ${esc(short(c.offboard))}</span>`);
   if (c.needs_ok) tags.push(`<span class="chip red">Needs Richie's OK</span>`);
   if (c.lane === "commercial") tags.push('<span class="chip blk">Commercial</span>');
   if (c.lane === "specialty") tags.push('<span class="chip blk">Specialty</span>');
@@ -748,8 +765,8 @@ function card(c) {
   if (isMoved && c.pick) notes.push(`Moved from ${esc(short(c.pick))}${m.byName ? " by " + esc(m.byName.split(" ")[0]) : ""}${dtxt}`);
   if (ef.kind === "pinned" && c.pick !== rep) notes.push(`Held on ${esc(short(rep))}. The engine would now pick ${esc(short(c.pick))}, use Suggest to see changes.`);
   if (ef.kind === "replan") { const fr = ef.from && repBy(ef.from); const off = fr && isOffDay(fr, dkey(c.appt));
-    notes.push(rep ? `${off ? `${esc(short(ef.from))} off, ` : "Re-planned, "}now ${esc(short(rep))}${dtxt}` : `${esc(short(ef.from))} off, nobody else free`); }
-  if (c.bends.length) notes.push(`Rule bend: ${esc(c.bends.join(", "))}`);
+    notes.push(rep ? `${off ? `${esc(short(ef.from))} off, ` : "Re-planned, "}now ${esc(short(rep))}${dtxt}` : `No rep free after the re-plan (${esc(short(ef.from))} is off)`); }
+  if (c.bends.length && rep === c.pick) notes.push(`Rule bend: ${esc(c.bends.join(", "))}`);
   if (c.in_acculynx && rep && c.in_acculynx !== rep) notes.push(`AccuLynx has ${esc(short(c.in_acculynx))}`);
   const others = Object.entries(c.odds).filter(([n]) => n !== rep).sort((a, b) => b[1].close - a[1].close).map(([n, v]) =>
     `<tr class="${c.blocked[n] ? "x" : ""}"><td>${esc(short(n))}${c.blocked[n] ? `<span class="why-x">${esc(c.blocked[n])}</span>` : ""}</td><td class="p">${pct(v.close)}</td></tr>`).join("");
@@ -759,7 +776,7 @@ function card(c) {
   return `<article class="card${isMoved || ef.kind === "replan" ? " moved" : ""}${pr.length || c.needs_ok ? " flag" : ""}${m.set ? " done" : ""}${openPin === c.id ? " hl" : ""}" data-id="${c.id}" id="c-${c.id}">
     <div class="eyebrow"><span>${esc(where)}</span><time datetime="${esc(c.appt)}">${hm(c.appt)}</time></div>
     <div class="who">${esc(c.name || "Customer")}</div>
-    <div class="odds"><b class="n${o && o.close >= .35 ? " hi" : ""}">${o ? pct(o.close) : "–"}</b>${showLift ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small title="Expected sale value: close chance times the average ticket for this kind of job">${o ? money(val(c, rep)) : ""}</small></div>
+    <div class="odds"><b class="n${o && o.close >= .35 && !c.visit ? " hi" : ""}">${c.visit ? "Visit" : c.sold != null ? "Sold" : o ? pct(o.close) : "–"}</b>${showLift ? `<span class="lift n" title="Points above the next best rep who is free">+${Math.round(c.lift * 100)}</span>` : ""}<small title="Expected sale value: close chance times the average ticket for this kind of job">${o ? money(val(c, rep)) : ""}</small></div>
     ${tags.length ? `<div class="chips">${tags.slice(0, 2).join("")}</div>` : ""}
     ${pr.length ? `<div class="warn" title="${esc(pr.join(" · "))}">${esc(pr[0])}${pr.length > 1 ? ` +${pr.length - 1} more` : ""}</div>` : ""}
     ${notes.length ? `<div class="cnote">${notes.join(" · ")}</div>` : ""}
@@ -845,7 +862,7 @@ function buildIdeas(k = day) {
     const n = today.filter(c => repOf(c) === r.name).length, open = r.limits.per_day - n; if (open <= 0) continue;
     const g = open * (r.close || .3) * (B.tickets?.all?.any || 0);
     out.push({ key: `slot-${r.name}-${k}`, kind: "slot", tag: "Open slot", g,
-      html: `${esc(r.short)} (${esc(r.rating)}, ${pct(r.close)}) has <b>${open} open slot${open > 1 ? "s" : ""}</b> ${DAYN[parse(k).getDay()]}. CSRs: book a new or rehash lead into it. <span>Same-day appointments close best.</span>` });
+      html: `${esc(r.short)} (${esc(r.rating)}, ${pct(r.close)}) has <b>${open} open slot${open > 1 ? "s" : ""}</b> ${DAYN[parse(k).getDay()]}. CSRs: suggest a new or rehash lead for it to the sales manager. <span>Same-day appointments close best.</span>` });
   }
   return out.filter(i => !dismissed[i.key] && !seen.has(i.key) && seen.add(i.key)).sort((a, b) => b.g - a.g);
 }
@@ -872,8 +889,9 @@ async function dismissIdea(key) {
 
 /* ---------- CSR booking guide: open spots to fill, today first, built from the board as it stands ---------- */
 const LEAD_MIN = 60;   // same-day: book at least an hour ahead, and confirm with the sales manager
-const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
-const todayKey = () => iso(new Date());
+const NYP = () => Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()).map(p => [p.type, p.value]));
+const nowMin = () => { const p = NYP(); return +p.hour * 60 + +p.minute; };   // New York time, wherever the viewer is
+const todayKey = () => { const p = NYP(); return `${p.year}-${p.month}-${p.day}`; };
 const addDays = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return iso(d); };
 const dayLbl = k => `${DAYN[parse(k).getDay()]} ${md(k)}`;
 const t2s = m => hm("2000-01-01T" + m2t(m));
@@ -930,8 +948,8 @@ function propose(i, k, html) {   // a call idea, worded as a proposal for the sa
   const c = i.c, cur = repOf(c), r = repBy(i.rep), when = `${dayLbl(dkey(c.appt))} ${hm(c.appt)}`, to = `${dayLbl(k)} ${t2s(i.t)}`;
   const b = x => html ? `<b>${esc(x)}</b>` : x, sp = x => html ? `<span>${esc(x)}</span>` : x;
   const odds = `${pct(c.odds[i.rep]?.close)} to close${cur ? ` vs ${pct(c.odds[cur]?.close)} with ${short(cur)}` : ""}`;
-  if (i.kind === "up") return `${b(c.name || "A customer")} (${c.town ? c.town + ", " : ""}booked ${when}${cur ? "" : ", no rep free then"}) could come in ${b(to)}. ${r ? r.short : "A stronger closer"} has room. ${sp(odds + ".")}`;
-  return `${b(c.name || "A customer")}${c.town ? ` (${c.town})` : ""} could move from ${hm(c.appt)} to ${b(to)}${cur ? "" : " (no rep free at the booked time)"}. ${r ? r.short : "Another rep"} has room then. ${sp(odds + ".")}`;
+  if (i.kind === "up") return `${b(c.name || "A customer")} (${c.town ? (html ? esc(c.town) : c.town) + ", " : ""}booked ${when}${cur ? "" : ", no rep free then"}) could come in ${b(to)}. ${r ? (html ? esc(r.short) : r.short) : "A stronger closer"} has room. ${sp(odds + ".")}`;
+  return `${b(c.name || "A customer")}${c.town ? ` (${html ? esc(c.town) : c.town})` : ""} could move from ${hm(c.appt)} to ${b(to)}${cur ? "" : " (no rep free at the booked time)"}. ${r ? (html ? esc(r.short) : r.short) : "Another rep"} has room then. ${sp(odds + ".")}`;
 }
 const nobodyTxt = (c, html) => `No rep free for ${html ? `<b>${esc(c.name || "a customer")}</b>` : (c.name || "a customer")} (${html ? esc(c.town || "") : (c.town || "")}) at ${hm(c.appt)}. Ask the sales manager before calling to offer another time.`;
 const spotLine = o => `${cap1(winsTxt(o.wins))}: ${o.spots} open time${o.spots > 1 ? "s" : ""}. Suggest ${o.r.short} (${o.r.rating}${isHot(o.r) ? ", hot streak" : ""}, ${pct(o.r.close)} close) to the sales manager`;
@@ -961,7 +979,7 @@ function dayHtml(G) {
 }
 function guideText(G, dayOnly) {
   const L = [], head = G.days[0];
-  const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const clock = G.at.toLocaleTimeString([], { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
   L.push(`CSR BOOKING GUIDE · ${dayLbl(head.k)} · updated ${clock}`);
   L.push(`Rep names are suggestions only. Run every booking by the sales manager; he assigns the rep. Same day: at least 1 hour ahead, and get his OK before confirming with the customer.`);
   L.push("");
@@ -1019,7 +1037,7 @@ function renderGuideFold() {
 function renderBookPage() {
   if (!Z && !mapReady) loadZips().then(() => { if (tab === "book") renderBookPage(); });
   const G = guideData(), head = G.days[0];
-  const clock = G.at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const clock = G.at.toLocaleTimeString([], { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
   const rows = d => B.reps.filter(r => !isOffDay(r, d.k)).map(r => {
     const o = openFor(r, d.k) || { mine: [], spots: 0, wins: [] };
     const comm = r.lane === "commercial";
@@ -1079,7 +1097,7 @@ function renderNeedBar() {
     list.map(c => `<p><b>${hm(c.appt)} · ${esc(c.name || "Homeowner")}${c.town ? ` · ${esc(c.town)}` : ""}</b>. ${esc(fixFor(c, day).text)}</p>`).join("");
 }
 function planText(k) {
-  const L = [], clock = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const L = [], clock = new Date().toLocaleTimeString([], { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
   const list = B.cards.filter(c => dkey(c.appt) === k);
   const need = list.filter(c => !repOf(c)).sort((a, b) => a.appt.localeCompare(b.appt));
   const exp = list.reduce((a, c) => a + val(c, repOf(c)), 0), sd = list.reduce((a, c) => a + sdVal(c, repOf(c)), 0);
@@ -1122,7 +1140,9 @@ function setEvening(r, k, on) {
 async function saveAvail(r) {
   if (roster && roster[r.name]) Object.assign(roster[r.name], { days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], avail_set: r.avail_set || [] });
   if (!db) return;
-  try { await db.doc("roster/" + slug(r.name)).update({ days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], avail_set: r.avail_set || [], updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
+  const base = (roster && roster[r.name]) || cleanRep({ name: r.name, lane: r.lane, home_zip: r.home_zip, week: r.week, days_off: r.days_off });   // creates the doc if this rep has none yet
+  const { updated_at, updated_by, ...keep } = base;
+  try { await db.doc("roster/" + slug(r.name)).set({ ...keep, days_off: r.days_off || [], days_on: r.days_on || [], eve_off: r.eve_off || [], eve_on: r.eve_on || [], avail_set: r.avail_set || [], updated_at: new Date().toISOString(), updated_by: me?.id || null }); }
   catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
 }
 let weekOff = null;   // weeks from this week where the 2-week view starts
@@ -1356,31 +1376,44 @@ function wireBoard() {
 }
 function move(id, to, undo) {
   const c = B.cards.find(x => x.id === id); if (!c) return;
-  const k = dkey(c.appt);
-  if (!dayLocked(k)) {   // first manual move on this day: hold every other card where it is now, so nothing else gets rearranged
-    const hold = B.cards.filter(o => o.id !== id && dkey(o.appt) === k && !(moves[o.id] && moves[o.id].rep !== undefined));
-    hold.forEach(o => save(o.id, { rep: repOf(o), pin: true }));
-  }
+  const k = dkey(c.appt), sameDay = o => o.id !== id && dkey(o.appt) === k;
   const target = undo ? c.pick : (to || null);
   if (!undo && target === repOf(c)) { render(); return; }   // dropped back where it was: nothing changed, so nothing gets held
-  save(id, target === c.pick ? { rep: undefined } : { rep: target });
+  const ids = [];
+  if (!dayLocked(k)) {   // first manual move on this day: hold every other card where it sits right now, so nothing else gets rearranged
+    for (const o of B.cards.filter(o => sameDay(o) && !realMove(o.id))) { setLocal(o.id, { rep: repOf(o), pin: true }); ids.push(o.id); }
+  }
+  if (target === c.pick && (undo || realMove(id))) setLocal(id, { rep: undefined });   // back to the engine's pick: drop the move
+  else setLocal(id, { rep: target });   // includes moving a re-planned card back to its engine pick
+  ids.push(id);
+  if (!dayLocked(k)) for (const o of B.cards.filter(o => dkey(o.appt) === k && moves[o.id]?.pin)) { setLocal(o.id, { rep: undefined }); ids.push(o.id); }   // no real move left that day: clear its holds
+  writeCards([...new Set(ids)]);
   const p = problems(c);
   toast(undo ? `Back to ${short(c.pick)}` : `Moved to ${target ? short(target) : "Needs a call"}${p.length ? ". It breaks a rule, see the card." : ""}`);
 }
-async function save(id, patch) {
+let pending = {};   // card id -> {v: state being written (null = deleted), t: token}: laid over incoming snapshots until the write settles
+function setLocal(id, patch) {
   const cur = { ...(moves[id] || {}) };
   if ("rep" in patch) { if (patch.rep === undefined) delete cur.rep; else cur.rep = patch.rep; cur.pin = !!patch.pin; cur.by = me?.id || null; cur.byName = me?.name || null; cur.at = new Date().toISOString(); }
   if ("set" in patch) cur.set = patch.set;
   if (cur.rep === undefined && !cur.set) delete moves[id]; else moves[id] = cur;
-  render();
-  if (!db) return;
-  const c = B.cards.find(x => x.id === id);
-  try {
-    const ref = db.doc("cards/" + id);
-    if (!moves[id]) await ref.delete();
-    else await ref.set({ rep: cur.rep === undefined ? "__engine__" : cur.rep, set: !!cur.set, pin: !!cur.pin, by: cur.by || null, at: cur.at || new Date().toISOString(), appt: c?.appt || null, pick: c?.pick || null, pick_close: c?.close ?? null });
-  } catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
 }
+async function writeCards(ids) {
+  const tok = {};
+  for (const id of ids) pending[id] = { v: moves[id] ? { ...moves[id] } : null, t: tok };
+  render();
+  if (db) {
+    try {
+      for (const id of ids) {   // one at a time, in order, so a later write never lands before an earlier one
+        const c = B.cards.find(x => x.id === id), cur = moves[id], ref = db.doc("cards/" + id);
+        if (!cur) await ref.delete();
+        else await ref.set({ rep: cur.rep === undefined ? "__engine__" : cur.rep, set: !!cur.set, pin: !!cur.pin, by: cur.by || null, at: cur.at || new Date().toISOString(), appt: c?.appt || null, pick: c?.pick || null, pick_close: c?.close ?? null });
+      }
+    } catch (e) { banner("That change didn't save. " + (e?.code === "not_granted" ? "You have view-only access." : "Try again.")); }
+  }
+  setTimeout(() => { for (const id of ids) if (pending[id]?.t === tok) delete pending[id]; }, db ? 4000 : 0);
+}
+function save(id, patch) { setLocal(id, patch); return writeCards([id]); }
 
 /* ---------- map ---------- */
 let mapReady = null;
@@ -1470,7 +1503,7 @@ const drafts = {}; const openReps = new Set();
 function repSummary(d) {
   const days = WEEK.filter(w => d.week && d.week[w]);
   const hb = [...new Set(days.map(w => d.week[w][2]).filter(Boolean))];
-  const fut = (d.days_off || []).filter(x => x >= iso(new Date()));
+  const fut = (d.days_off || []).filter(x => x >= todayKey());
   const cap = d.capacity || {}; const cp = Object.keys(cap).length ? "capacity overridden" : "capacity by rating";
   return [days.length ? days.join(", ") : "No working days", hb.length ? "home by " + hb.map(t => hm("2000-01-01T" + t)).join("/") : null,
     fut.length ? fut.length + " day" + (fut.length > 1 ? "s" : "") + " off coming up" : "no time off", cp].filter(Boolean).join(" · ");
@@ -1568,7 +1601,8 @@ function cleanRep(d) {
 async function saveRep(id) {
   const d = drafts[id]; if (!d) return; const msg = document.querySelector(`.repcard[data-id="${id}"] [data-msg]`);
   if (!db) { banner("Rep changes can't save in this view."); return; }
-  try { await db.doc("roster/" + id).set({ ...cleanRep(d), updated_at: new Date().toISOString(), updated_by: me?.id || null }); delete drafts[id]; toast("Saved. The engine uses it on its next run."); }
+  const av = (roster && roster[d.name]) || repBy(d.name) || {};   // keep his Availability changes
+  try { await db.doc("roster/" + id).set({ ...cleanRep(d), days_on: av.days_on || [], eve_off: av.eve_off || [], eve_on: av.eve_on || [], avail_set: av.avail_set || [], updated_at: new Date().toISOString(), updated_by: me?.id || null }); delete drafts[id]; toast("Saved. The engine uses it on its next run."); }
   catch (e) { if (msg) { msg.textContent = e?.code === "not_granted" ? "You have view-only access." : "Didn't save. Try again."; msg.className = "msg err"; } }
 }
 async function addRep() {
@@ -1610,7 +1644,7 @@ function renderResults() {
     ${lw && lw.sits ? `<text x="${xs(lastI) - 10}" y="${ys(lw.sold / lw.sits) + 18}" text-anchor="end" style="font-family:var(--display);font-weight:800;font-size:15px;fill:#000">${pct(lw.sold / lw.sits)}</text>` : ""}
   </svg>`;
   $("#chart-note").textContent = es < 0 ? `Weeks run Monday to Sunday. The engine goes live ${DAYN[parse(R.engine_start).getDay()]} ${md(R.engine_start)}, so weeks after the dashed line will show the change.` : "Weeks right of the dashed line ran with the engine.";
-  const mv = Object.entries(moves).filter(([, m]) => m.rep !== undefined);
+  const mv = Object.entries(moves).filter(([id]) => realMove(id));
   const setN = Object.values(moves).filter(m => m.set).length;
   const delta = mv.reduce((s, [id, m]) => { const c = B.cards.find(x => x.id === id); if (!c || !c.pick) return s; const to = m.rep ? c.odds[m.rep]?.close || 0 : 0; return s + (to - c.close); }, 0);
   $("#moves-sum").innerHTML = `<div class="tiles" style="margin:0;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
@@ -1635,7 +1669,10 @@ function renderResults() {
 
 /* ---------- freshness ---------- */
 const SLOTS = [6, 9, 12, 15, 18];   // AccuLynx report runs, Eastern
-const when = d => `${DAYN[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} ${hm(iso(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"))}`;
+const when = d0 => {   // shown in New York time, wherever the viewer is
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d0).map(x => [x.type, x.value]));
+  const k = `${p.year}-${p.month}-${p.day}`; return `${DAYN[parse(k).getDay()]} ${+p.month}/${+p.day} ${hm(k + "T" + p.hour + ":" + p.minute)}`;
+};
 const ago = d => { const m = Math.round((Date.now() - d) / 60000); return m < 60 ? m + " min ago" : m < 48 * 60 ? Math.round(m / 60) + " hr ago" : Math.round(m / 1440) + " days ago"; };
 function expectedSlot(now) {   // the newest report run that should have landed by now (allow 90 min to reach GitHub)
   const t = new Date(now - 90 * 60000);
@@ -1645,8 +1682,14 @@ function expectedSlot(now) {   // the newest report run that should have landed 
   }
   return null;
 }
+function nyToDate(str) {   // "2026-10-12 19:30" in New York time -> the real moment
+  const [d, t = "00:00"] = str.split(/[ T]/); const [y, mo, da] = d.split("-").map(Number); const [h, mi] = t.split(":").map(Number);
+  const u = Date.UTC(y, mo - 1, da, h, mi);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(u)).map(x => [x.type, x.value]));
+  return new Date(u + (u - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute)));
+}
 function freshness() {
-  const M = B.meta; const plan = parse(M.data_as_of.replace(" ", "T"));
+  const M = B.meta; const plan = nyToDate(M.data_as_of);   // the engine writes New York clock time
   const ax = M.acculynx_run ? new Date(M.acculynx_run) : null; const pulled = M.pulled_at ? new Date(M.pulled_at) : null;
   const exp = expectedSlot(Date.now());
   let state = "ok", label = "Up to date";
@@ -1687,10 +1730,13 @@ async function connect() {
   try { me = userApi ? await userApi.me() : null; } catch (e) { me = null; }
   try { const c = userApi ? await userApi.can("data.write") : null; canWrite = c !== false; } catch (e) {}
   db.collection("ideas").onSnapshot(snap => { const d = {}; snap.docs.forEach(x => { const v = x.data() || {}; if (v.key) d[v.key] = true; }); dismissed = d; if (tab === "board") renderIdeas(); }, () => {});
+  let snapSeq = 0;
   db.collection("cards").onSnapshot(async snap => {
-    const next = {}; const ids = new Set();
+    const my = ++snapSeq; const next = {}; const ids = new Set();
     snap.docs.forEach(d => { const v = d.data() || {}; next[d.id] = { set: !!v.set, pin: !!v.pin, by: v.by || null, at: v.at || null }; if (v.rep !== "__engine__") next[d.id].rep = v.rep ?? null; if (v.by) ids.add(v.by); });
     if (userApi && ids.size) { try { const ps = await userApi.profiles([...ids]); for (const k in next) if (next[k].by && ps[next[k].by]) next[k].byName = ps[next[k].by].name || ""; } catch (e) {} }
+    if (my !== snapSeq) return;   // a newer snapshot already came in
+    for (const [id, p] of Object.entries(pending)) { if (p.v === null) delete next[id]; else next[id] = { ...p.v }; }   // our own writes still in flight win
     moves = next; if (tab !== "reps") render();
   }, () => banner("Lost the connection to saved moves. Refresh to try again."));
   db.collection("roster").onSnapshot(snap => {

@@ -20,11 +20,14 @@ MEM = E.MEM
 def save_board(folder, today):
     rows = []
     docs = [(f.stem, (lambda x: x.get("data", x))(json.loads(f.read_text()))) for f in sorted(Path(folder).glob("*.json"))]
-    real = lambda d: d.get("rep") not in (None, "__engine__") and not d.get("pin")
+    if not docs and (MEM / "board_moves.csv").exists():   # an empty export would wipe today's holds: keep the last snapshot instead
+        print("board moves: no card docs exported, kept the last snapshot"); return
+    has_rep = lambda d: "rep" in d and d.get("rep") != "__engine__"   # rep None = the manager pulled it to Needs a call
+    real = lambda d: has_rep(d) and not d.get("pin")
     arranged = {(d.get("appt") or "")[:10] for _, d in docs if real(d)}   # days the manager actually moved a card on
     for guid, d in docs:
-        held = d.get("rep") not in (None, "__engine__") and (real(d) or (d.get("appt") or "")[:10] in arranged)   # a hold only counts on a day he arranged
-        rows.append(dict(snap_date=today, guid=guid, board_rep=d["rep"] if held else "",
+        held = has_rep(d) and (real(d) or (d.get("appt") or "")[:10] in arranged)   # a hold only counts on a day he arranged
+        rows.append(dict(snap_date=today, guid=guid, board_rep=(d["rep"] or "") if held else "",
                          moved=held, held_only=bool(d.get("pin")), set_in_acculynx=bool(d.get("set")), moved_at=d.get("at") or ""))
     p = MEM / "board_moves.csv"; new = pd.DataFrame(rows, columns=["snap_date", "guid", "board_rep", "moved", "held_only", "set_in_acculynx", "moved_at"])
     if p.exists():
@@ -40,7 +43,12 @@ def main(path, today):
     plans["appt_day"] = plans.appt.str[:10]
     plans = plans[(plans.run_date <= plans.appt_day) & (plans.appt_day < today.strftime("%Y-%m-%d"))]
     if plans.empty: print("no finished planned appointments yet"); return
-    last = plans.sort_values("run_date").groupby("guid").last().reset_index()        # the plan as of the appointment day
+    # the engine's pick before the day started (on the day itself, started appointments are locked to their AccuLynx rep);
+    # same-day bookings only have the day-of plan
+    before = plans[plans.run_date < plans.appt_day]
+    sameday = plans[~plans.guid.isin(before.guid)]
+    last = pd.concat([before.sort_values("run_date").groupby("guid").last().reset_index(),
+                      sameday.sort_values("run_date").groupby("guid").first().reset_index()], ignore_index=True)
     preds = preds[preds.run_date <= preds.appt_date].sort_values("run_date").groupby(["guid", "rep"]).last().reset_index()
     pc = preds.set_index(["guid", "rep"])["close"].astype(float).to_dict()
     lead_base = preds.assign(c=preds.close.astype(float)).groupby("guid").c.mean().to_dict()   # how good the lead was, any rep
