@@ -164,50 +164,51 @@ run_date,guid,appt,rep,close,same_day,bends,arm
 2026-10-12,21419b76-5072-4a4a-8fc3-263b7131b67f,2026-10-14T14:00,Querlim Franco,0.3,0.118,,challenger
 2026-10-12,f3a66308-61a4-4370-a206-dca07822c381,2026-10-16T12:00,Francesco Ambrosio,0.295,0.19,,challenger
 2026-10-12,cfb7f6ae-6c8c-4f30-9e84-a904977ab18f,2026-10-12T18:00,Michael Dietrich,0.499,0.154,,challenger
-2026-10-13,9b62e56a-fd9a-470b-8b06-62e96b9b6a69,2026-10-15T12:00,Francesco Ambrosio,0.418,0.169,,champion
-2026-10-13,cd59d966-69d5-4580-bacf-f7d83b102b1f,2026-10-18T12:00,Michael Dietrich,0.222,0.069,,challenger
-2026-10-13,4321b426-c6b7-4a63-852c-0333066877f3,2026-10-13T12:00,Querlim Franco,0.37,0.147,4th sit that day (nobody else free),champion
+2026-10-13,9b62e56a-fd9a-470b-8b06-62e96b9b6a69,2026-10-15T12:00,Francesco Ambrosio,0.42,0.171,,champion
+2026-10-13,a6f518bb-bd9c-4cbb-a216-fb271add491b,2026-10-14T12:00,Querlim Franco,0.343,0.116,,challenger
+2026-10-13,70df1c55-c560-47bf-81de-2ab3e4049452,2026-10-24T10:00,Querlim Franco,0.387,0.155,,challenger
+2026-10-13,8f616b29-8579-43ef-a461-9b31d354e4b4,2026-10-14T14:00,Steve Burns,0.14,0.046,,challenger
+2026-10-13,4f9917cc-3e18-4d93-bb27-2b57417b2399,2026-10-14T14:00,Francesco Ambrosio,0.39,0.217,,challenger
+2026-10-13,3f2b1223-e3c2-4ecc-b27b-fa285204d7c7,2026-10-19T12:00,Michael Dietrich,0.385,0.167,,champion
 2026-10-13,4c646402-8255-405f-a914-eccf12e46270,2026-10-17T08:00,,,,,champion
-2026-10-13,fb25d8f7-b110-4b76-ae4a-9a2fed5b5600,2026-10-16T12:00,Michael Dietrich,0.385,0.124,,challenger
-2026-10-13,7df0ace8-7950-4ab8-9f99-a8e1eb0f5ff5,2026-10-17T14:00,Querlim Franco,0.33,0.115,,champion
-2026-10-13,3f2b1223-e3c2-4ecc-b27b-fa285204d7c7,2026-10-19T12:00,Michael Dietrich,0.388,0.171,,champion
-2026-10-13,4f9917cc-3e18-4d93-bb27-2b57417b2399,2026-10-14T14:00,Francesco Ambrosio,0.389,0.218,,challenger
-2026-10-13,8f616b29-8579-43ef-a461-9b31d354e4b4,2026-10-14T14:00,Steve Burns,0.141,0.046,,challenger
-2026-10-13,767a1897-e97d-4773-9d48-76d31ae879ac,2026-10-13T10:00,Francesco Ambrosio,0.442,0.31,,champion
-2026-10-13,8a2c56b8-edd5-4717-90a2-883d58a8c53c,2026-10-15T18:00,Steve Burns,0.282,0.062,,champion
-2026-10-13,a6f518bb-bd9c-4cbb-a216-fb271add491b,2026-10-14T12:00,Querlim Franco,0.342,0.115,,challenger
-2026-10-13,a5b62da3-9e5b-4971-baab-971dcc67ec06,2026-10-13T14:00,Joseph Young,0.147,0.044,,champion
-2026-10-13,a6c2d31c-f8fe-4e83-9d7a-510846b80522,2026-10-13T18:00,Michael Dietrich,0.259,0.083,4th sit that day (nobody else free),champion
-2026-10-13,a9633c36-d7e3-4a81-839b-23e9e141d764,2026-10-16T12:00,Querlim Franco,0.426,0.104,,challenger
-2026-10-13,264b03f6-5cd1-4d31-9c10-334ec4310a34,2026-10-13T16:00,Steve Burns,0.143,0.062,,champion
-2026-10-13,71dcde14-8fcd-4672-8eb6-4ef62587ade1,2026-10-13T12:00,Steve Burns,0.155,0.068,,champion
-2026-10-13,32028d77-0218-48f9-9a92-d1270fec2451,2026-10-13T14:00,Francesco Ambrosio,0.343,0.201,,champion
-2026-10-13,9c508ecc-e0b2-43eb-a818-8a6c2d35695e,2026-10-16T14:00,Michael Dietrich,0.406,0.138,,challenger
-2026-10-13,cb41e905-533d-4b55-9663-db91ec8c03c6,2026-10-15T10:00,Querlim Franco,0.333,0.134,,champion
-2026-10-13,1373fb9f-b5b9-40fe-b81a-79845168c79f,2026-10-14T11:00,Joseph Young,0.298,0.111,,challenger
-2026-10-13,9bbb5b98-e81c-4676-b296-6901fad80a07,2026-10-14T16:00,,,,,challenger
-2026-10-13,418708f5-6994-4877-a1e0-090dbe5a99ed,2026-10-13T10:00,Querlim Franco,0.384,0.126,4th sit that day (nobody else free),champion
-2026-10-13,20b62fdb-3a3d-402a-a84b-ebe58e2ea16f,2026-10-14T18:00,Querlim Franco,0.336,0.113,,challenger
-2026-10-13,20858a5a-528b-4a34-bb3a-c8f03cbdb3d4,2026-10-13T16:00,Querlim Franco,0.378,0.133,4th sit that day (nobody else free),champion
-2026-10-13,16999fcc-2cca-431f-8d2a-3a5fa1cc664b,2026-10-13T18:00,Querlim Franco,0.438,0.114,4th sit that day (nobody else free),champion
-2026-10-13,5f05f555-168d-4a35-a540-91194ebd9450,2026-10-14T10:00,Francesco Ambrosio,0.564,0.331,,challenger
-2026-10-13,eedb78ac-63bb-4f5d-85a1-3a485d887760,2026-10-15T10:00,Michael Dietrich,0.621,0.264,,champion
-2026-10-13,250ca05c-7a6e-42c1-aac8-5aa625e720b3,2026-10-14T16:00,Michael Dietrich,0.299,0.093,,challenger
-2026-10-13,75355945-e224-4282-9c11-634282fa33ea,2026-10-14T14:00,Michael Dietrich,0.458,0.176,,challenger
-2026-10-13,e9ba33ec-665c-407c-bc8b-d486a21cd029,2026-10-14T12:00,Michael Dietrich,0.524,0.241,,challenger
-2026-10-13,908d52c1-e958-41b5-be97-8fcf51fbb64b,2026-10-13T10:00,Joseph Young,0.306,0.096,,champion
-2026-10-13,0457cb6d-1336-413f-b017-036643c7d132,2026-10-13T10:00,Michael Dietrich,0.534,0.236,4th sit that day (nobody else free),champion
-2026-10-13,9f11110b-eea1-4112-ac59-08a3eeefc629,2026-10-13T12:00,Francesco Ambrosio,0.246,0.151,,champion
-2026-10-13,14bcc08e-92f6-46b6-ae45-90cb5a378a3c,2026-10-13T14:00,Michael Dietrich,0.295,0.113,4th sit that day (nobody else free),champion
-2026-10-13,21419b76-5072-4a4a-8fc3-263b7131b67f,2026-10-14T14:00,Joseph Young,0.217,0.076,,challenger
-2026-10-13,f3a66308-61a4-4370-a206-dca07822c381,2026-10-16T12:00,Francesco Ambrosio,0.287,0.187,,challenger
-2026-10-13,579431b2-4f5d-424f-975e-958864a5d3f0,2026-10-16T18:00,Querlim Franco,0.396,0.145,,challenger
-2026-10-13,70df1c55-c560-47bf-81de-2ab3e4049452,2026-10-24T10:00,Querlim Franco,0.391,0.158,,challenger
-2026-10-13,24b3f3bf-b622-4ca1-b921-ab4819c967ba,2026-10-13T12:00,Michael Dietrich,0.444,0.146,4th sit that day (nobody else free),champion
-2026-10-13,73032eb3-6cfe-4de7-ae8f-0ae83552866c,2026-10-14T12:00,Francesco Ambrosio,0.407,0.345,,challenger
-2026-10-13,0b152715-f6a7-484b-8422-ba41354af704,2026-10-19T16:00,Michael Dietrich,0.205,0.066,,champion
-2026-10-13,667c5020-c922-4c39-ae0d-fa4d9a683ee4,2026-10-14T10:00,Querlim Franco,0.296,0.137,,challenger
-2026-10-13,d8f8898f-59d5-4410-b8ed-f72d7529a601,2026-10-14T12:00,Steve Burns,0.173,0.073,,challenger
+2026-10-13,fb25d8f7-b110-4b76-ae4a-9a2fed5b5600,2026-10-16T12:00,Querlim Franco,0.334,0.109,,challenger
+2026-10-13,cd59d966-69d5-4580-bacf-f7d83b102b1f,2026-10-18T12:00,Michael Dietrich,0.222,0.069,,challenger
+2026-10-13,7df0ace8-7950-4ab8-9f99-a8e1eb0f5ff5,2026-10-17T14:00,Querlim Franco,0.327,0.113,,champion
+2026-10-13,8a2c56b8-edd5-4717-90a2-883d58a8c53c,2026-10-15T18:00,Steve Burns,0.283,0.062,,champion
+2026-10-13,5f05f555-168d-4a35-a540-91194ebd9450,2026-10-14T10:00,Francesco Ambrosio,0.561,0.328,,challenger
+2026-10-13,9c508ecc-e0b2-43eb-a818-8a6c2d35695e,2026-10-16T14:00,Querlim Franco,0.371,0.137,,challenger
+2026-10-13,cb41e905-533d-4b55-9663-db91ec8c03c6,2026-10-15T10:00,Querlim Franco,0.328,0.129,,champion
+2026-10-13,e9ba33ec-665c-407c-bc8b-d486a21cd029,2026-10-14T12:00,Michael Dietrich,0.525,0.242,4th sit that day (nobody else free),challenger
+2026-10-13,eedb78ac-63bb-4f5d-85a1-3a485d887760,2026-10-15T10:00,Michael Dietrich,0.621,0.263,,champion
+2026-10-13,579431b2-4f5d-424f-975e-958864a5d3f0,2026-10-16T18:00,Steve Burns,0.307,0.108,,challenger
+2026-10-13,250ca05c-7a6e-42c1-aac8-5aa625e720b3,2026-10-14T16:00,Michael Dietrich,0.301,0.094,4th sit that day (nobody else free),challenger
+2026-10-13,75355945-e224-4282-9c11-634282fa33ea,2026-10-14T14:00,Michael Dietrich,0.46,0.177,4th sit that day (nobody else free),challenger
+2026-10-13,0b152715-f6a7-484b-8422-ba41354af704,2026-10-19T16:00,Michael Dietrich,0.206,0.066,,champion
+2026-10-13,73032eb3-6cfe-4de7-ae8f-0ae83552866c,2026-10-14T12:00,Francesco Ambrosio,0.409,0.348,,challenger
+2026-10-13,667c5020-c922-4c39-ae0d-fa4d9a683ee4,2026-10-14T10:00,Querlim Franco,0.295,0.136,,challenger
 2026-10-13,e2473980-a390-403d-8749-c94db7be9cfe,2026-10-16T12:00,Steve Burns,0.193,0.081,,challenger
-2026-10-13,286b0e24-05f9-4956-8c51-51d63db3b806,2026-10-15T18:00,Michael Dietrich,0.411,0.145,,champion
-2026-10-13,a248517f-c500-4aef-a92f-40c3b47736b8,2026-10-15T10:00,Francesco Ambrosio,0.504,0.278,,champion
+2026-10-13,d8f8898f-59d5-4410-b8ed-f72d7529a601,2026-10-14T12:00,Steve Burns,0.174,0.073,,challenger
+2026-10-13,9f11110b-eea1-4112-ac59-08a3eeefc629,2026-10-13T12:00,Francesco Ambrosio,0.247,0.153,,champion
+2026-10-13,9bbb5b98-e81c-4676-b296-6901fad80a07,2026-10-14T16:00,,,,,challenger
+2026-10-13,20b62fdb-3a3d-402a-a84b-ebe58e2ea16f,2026-10-14T18:00,Querlim Franco,0.332,0.11,,challenger
+2026-10-13,1373fb9f-b5b9-40fe-b81a-79845168c79f,2026-10-14T11:00,Joseph Young,0.296,0.108,,challenger
+2026-10-13,a9633c36-d7e3-4a81-839b-23e9e141d764,2026-10-16T12:00,Michael Dietrich,0.466,0.112,,challenger
+2026-10-13,20858a5a-528b-4a34-bb3a-c8f03cbdb3d4,2026-10-13T16:00,Querlim Franco,0.379,0.134,4th sit that day (nobody else free),champion
+2026-10-13,f3a66308-61a4-4370-a206-dca07822c381,2026-10-16T12:00,Francesco Ambrosio,0.288,0.188,,challenger
+2026-10-13,21419b76-5072-4a4a-8fc3-263b7131b67f,2026-10-14T14:00,Joseph Young,0.218,0.077,,challenger
+2026-10-13,286b0e24-05f9-4956-8c51-51d63db3b806,2026-10-15T18:00,Michael Dietrich,0.41,0.143,,champion
+2026-10-13,a248517f-c500-4aef-a92f-40c3b47736b8,2026-10-15T10:00,Francesco Ambrosio,0.505,0.279,,champion
+2026-10-13,4321b426-c6b7-4a63-852c-0333066877f3,2026-10-13T12:00,Querlim Franco,0.371,0.148,4th sit that day (nobody else free),champion
+2026-10-13,264b03f6-5cd1-4d31-9c10-334ec4310a34,2026-10-13T16:00,Steve Burns,0.143,0.061,,champion
+2026-10-13,908d52c1-e958-41b5-be97-8fcf51fbb64b,2026-10-13T10:00,Querlim Franco,0.351,0.147,4th sit that day (nobody else free),champion
+2026-10-13,71dcde14-8fcd-4672-8eb6-4ef62587ade1,2026-10-13T12:00,Steve Burns,0.156,0.069,,champion
+2026-10-13,14bcc08e-92f6-46b6-ae45-90cb5a378a3c,2026-10-13T14:00,Michael Dietrich,0.294,0.112,4th sit that day (nobody else free),champion
+2026-10-13,a5b62da3-9e5b-4971-baab-971dcc67ec06,2026-10-13T14:00,Joseph Young,0.148,0.045,,champion
+2026-10-13,0457cb6d-1336-413f-b017-036643c7d132,2026-10-13T10:00,Michael Dietrich,0.534,0.234,4th sit that day (nobody else free),champion
+2026-10-13,418708f5-6994-4877-a1e0-090dbe5a99ed,2026-10-13T10:00,Joseph Young,0.346,0.09,,champion
+2026-10-13,767a1897-e97d-4773-9d48-76d31ae879ac,2026-10-13T10:00,Francesco Ambrosio,0.444,0.312,,champion
+2026-10-13,16999fcc-2cca-431f-8d2a-3a5fa1cc664b,2026-10-13T18:00,Querlim Franco,0.44,0.116,4th sit that day (nobody else free),champion
+2026-10-13,24b3f3bf-b622-4ca1-b921-ab4819c967ba,2026-10-13T12:00,Michael Dietrich,0.446,0.147,4th sit that day (nobody else free),champion
+2026-10-13,32028d77-0218-48f9-9a92-d1270fec2451,2026-10-13T14:00,Francesco Ambrosio,0.343,0.201,,champion
+2026-10-13,a6c2d31c-f8fe-4e83-9d7a-510846b80522,2026-10-13T18:00,Michael Dietrich,0.26,0.083,4th sit that day (nobody else free),champion
+2026-10-13,7f4e3522-b6a8-421d-a508-da0c094e2a05,2026-10-14T10:00,Michael Dietrich,0.45,0.163,4th sit that day (nobody else free),challenger
