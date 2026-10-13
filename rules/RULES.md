@@ -24,21 +24,21 @@ The data is refreshed every hour from AccuLynx's 5 daily runs (6 AM, 9 AM, 12 PM
 - Net Profit and 5 Star Reviews are not in AccuLynx. Take them from the Actual column on the goals sheet.
 - **Start every answer by saying when the data was pulled** (the AccuLynx run time from status.json, in Eastern time). If it is more than a day old, say that before giving numbers.
 - **Always compute with the code in rr_metrics.py.** Never estimate numbers in your head.
-- With the full file loaded, any question about the data is fair game (close rate by day of week, by source and rep, time to close, whatever is asked), as long as every number follows these rules. For custom analysis, start from `rr_metrics.masks()` so every count uses the certified definitions.
+- With the full file loaded, any question about the data is fair game (close rate by rep or week, Demo Conversion by source, town or day of week, time to close, whatever is asked), as long as every number follows these rules. For custom analysis, start from `rr_metrics.masks()` so every count uses the certified definitions.
 
 ## 2. Ground rules
 
-1. **Match AccuLynx exactly.** Do not improvise a rule. If a question needs a rule that is not here, say so and ask.
+1. **Match AccuLynx exactly** (except Close Rate, which is our own scoreboard rule; see section 4). Do not improvise a rule. If a question needs a rule that is not here, say so and ask.
 2. **Dead reasons match by exact name.** "Trade Not Serviced" does NOT include "Trade Not Serviced (CSR)" or "Trade Not Serviced (Sales)". This is how AccuLynx filters work.
 3. **Each metric has its own date. Never mix them.**
    - Lead Milestone Date: Contacts, Leads
    - Prospect Milestone Date (day the appointment was booked): Appointments
-   - Initial Appointment Date (day it happened): Sits, Close Rate
-   - Approved Milestone Date: Sales, Jobs Sold
+   - Initial Appointment Date (day it happened): Sits, Demo Conversion, and the demos in Close Rate
+   - Approved Milestone Date: Sales, Jobs Sold, and the approvals in Close Rate
    - Completed Milestone Date (day it was installed): Revenue, Upgrades, Jobs Installed. Always.
 4. **Upgrades (Work Type "Upsell / Change Order") add dollars but are never counted as a job.**
 5. **Call Backs (Job Trade Type contains "Call Back") never count in any metric.** They are rework.
-6. **Never average percentages.** Every rate is a total divided by a total. Close rate is number sold divided by number of sits, never an average of rep close rates.
+6. **Never average percentages.** Every rate is a total divided by a total. Close rate is approvals divided by demos, never an average of rep close rates.
 7. **Service and Call Back records entered by production are service requests, not sales opportunities.**
 
 ## 3. Time periods
@@ -59,7 +59,7 @@ The data is refreshed every hour from AccuLynx's 5 daily runs (6 AM, 9 AM, 12 PM
 - **Quarters:** calendar quarters. Q1 Jan to Mar, Q2 Apr to Jun, Q3 Jul to Sep, Q4 Oct to Dec.
 - Planning is done by quarter and by year.
 - Any custom range works. Always state the range used.
-- Close rate goes by appointment date, so the newest appointments in any window have not had time to buy. If a shorter window reads noticeably lower than a longer one, say that is the likely reason.
+- Close Rate is final the day the period ends. Demo Conversion is not: it goes by appointment date, so the newest demos in any window have not had time to buy yet. If a recent Demo Conversion reads low, say that is the likely reason.
 
 ## 4. Metric definitions
 
@@ -91,7 +91,11 @@ The exact exclusion lists for each metric are in settings.json. This section say
 
 **Sit Rate.** Sits divided by Appointments.
 
-**Close Rate** (Close % Overall Certified). Initial Appointment Date, Primary Estimate Total over $0, sold = has an Approved Milestone Date. Leaves out Call Backs, Property Management (Commercial stays in), the close-rate work types and dead reasons in settings.json. **Default: sales team roster only** (section 5). Show the company-wide number only when asked.
+**Demo.** A quoted appointment: Primary Estimate Total over $0. Leaves out Call Backs, Property Management (Commercial stays in), and the close-rate work types and dead reasons in settings.json. Both rates below use these same demos and the same exclusions.
+
+**Close Rate** (the scoreboard number, changed Oct 13, 2026). **Approvals in the period divided by demos in the period.** Demos by Initial Appointment Date in the period. Approvals = demos with an Approved Milestone Date in the period, even if the demo itself was in an earlier period (a roof signed Sept 2 from an August demo counts in September). It is final the day the period ends. Use it for the scoreboard and anything that grades reps or the team: Ninety's Close Rate (R30), the dashboards, the sales board's rep cards, ratings and hot hand, and any "what is our close rate" question. `rr_metrics`: `close_sold_*` / `close_sits_*`. This is not the AccuLynx "Close % Overall Certified" report; that report is Demo Conversion. **Default: sales team roster only** (section 5). Show the company-wide number only when asked.
+
+**Demo Conversion** (the old close rate rule, matches AccuLynx "Close % Overall Certified"). **Demos in the period that ever signed, divided by demos in the period.** Every sale is credited back to the demo that produced it, so it keeps rising for a while as late deals sign. Use it for judging lead sources, campaigns, towns, setters, and testing a change to the pitch (only demos after the change count), and for small groups. `rr_metrics`: `demo_conv_sold_*` / `close_sits_*`. Always call it Demo Conversion, never close rate. Same roster default as Close Rate.
 
 **GP %.** Gross profit is only real once a job is Closed. Closed jobs only, always; profit on Completed or Invoiced jobs is never counted or factored into anything, even if negative. GP % = sum of Profit divided by sum of Contract Amount on Closed jobs. Profit is already after commissions. Leave out Closed jobs with $0 profit or 100% Profit % (costs not loaded) and flag them.
 
@@ -138,7 +142,7 @@ The roster lives in settings.json (`sales_team`). It is the default for close ra
 
 ## 6. Commercial and Property Management
 
-- Close Rate: Commercial in, Property Management out.
+- Close Rate and Demo Conversion: Commercial in, Property Management out.
 - Everything else: both count, unless the user asks to split them out.
 
 ## 7. Goals and pacing
@@ -265,7 +269,7 @@ Day counts can be off by 1 from the dates because AccuLynx counts time of day.
 
 ## 10. Known-good check (rules as of Oct 7, 2026; Q3 2026, job export pulled Oct 7 4:10 PM)
 
-These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team close rate 153 of 434; company close rate 163 of 510. Leads rolling 90 ending Oct 7 = 1,092. Later data will differ slightly as AccuLynx records change; that is expected.
+These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team Demo Conversion 153 of 434; company Demo Conversion 163 of 510 (this was the close rate rule until Oct 13). New Close Rate check (job export pulled Oct 13 9 AM): Q3 sales team 149 of 433, company 160 of 509; September sales team 70 of 177. Demo Conversion on that pull: Q3 sales team 154 of 433. Leads rolling 90 ending Oct 7 = 1,092. Later data will differ slightly as AccuLynx records change; that is expected.
 
 ## 11. Locked rules and customer data
 
@@ -362,6 +366,7 @@ Follows the RHSG Marketing Philosophy. **Read `rules/MARKETING_PHILOSOPHY.md` in
 |---|---|
 | Ad Spend | Total spend in the window (by day) |
 | Leads, Appointments, Sits, Jobs Sold, Sales $ | Section 4 definitions, filtered to the channel's lead sources |
+| Demo Conversion % | Demo Conversion (section 4) for the channel's demos. Channels and campaigns are judged on Demo Conversion, never Close Rate |
 | Lead to Appt % | Appointments ÷ Leads |
 | Cost per Lead / Appointment / Sit | Ad Spend ÷ that count |
 | CAC (Customer Acquisition Cost) | Ad Spend ÷ Jobs Sold |

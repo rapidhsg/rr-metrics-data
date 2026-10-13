@@ -116,15 +116,15 @@ def main(out, path, status=None):
         r["worked_dates"] = sorted(ia_h[m35].dt.strftime("%Y-%m-%d").unique().tolist())   # days he actually ran appointments, for the Saturday count
     last90 = (ia_h >= today - pd.Timedelta(days=90)) & (ia_h < today) & ia_h.notna()
     eve_share = round(float((last90 & (ia_h.dt.hour >= 18)).sum() / max(1, last90.sum())), 3)
-    # zip heat: certified close rate per zip, last 12 months
+    # zip heat: Demo Conversion per zip, last 12 months (towns are judged on Demo Conversion, RULES.md section 4)
     s0, e0 = rr.rolling(today, 365); m = rr.masks(df.reset_index(), s0, e0)
     d0 = df.reset_index(); z5 = d0["Job: Location Zip Code"].astype(str).str[:5]
-    sits = m["close_sits_company"]; sold = m["close_sold_company"]
+    sits = m["close_sits_company"]; sold = m["demo_conv_sold_company"]
     zips = {}
     for z, g in d0[sits].groupby(z5[sits]):
         if len(z) == 5 and z.isdigit():
             zips[z] = dict(n=int(len(g)), sold=int(sold[g.index].sum()), city=(g["Job: Location City"].dropna().astype(str).str.title().mode().iloc[0] if g["Job: Location City"].notna().any() else None))
-    # results: weekly team close rate and same-day rate (certified team close sits), last 20 weeks
+    # results: weekly team close rate (approvals in the week / demos in the week) and same-day rate, last 20 weeks
     wk = today - pd.Timedelta(days=today.dayofweek)
     weeks = []
     for i in range(20, 0, -1):
@@ -141,7 +141,7 @@ def main(out, path, status=None):
     results = dict(weeks=weeks, engine_start=rules.get("engine_start", "2026-10-12"),
                    r30=dict(sits=r30["close_sits_team"], sold=r30["close_sold_team"]),
                    r90=dict(sits=r90["close_sits_team"], sold=r90["close_sold_team"], sales=r90["sales"]), reps90=board)
-    # average contract per sale, last 12 months of certified sold sits, by lead type and same day vs later
+    # average contract per sale, last 12 months of approvals from demos, by lead type and same day vs later
     sold = m["close_sold_company"] & (d0["Contract Amount"] > 0)
     xs = E.features(d0[sold]); xs.index = d0[sold].index
     sd0 = (d0.loc[sold, "Approved Milestone Date"].dt.normalize() == d0.loc[sold, "Initial Appointment Date"].dt.normalize())

@@ -85,14 +85,24 @@ def masks(df, start, end, reps=None):
     m["revenue"] = window(df, "Completed Milestone Date", start, end) & df["Current Milestone"].isin(MS["revenue_count_if_currently"]) & ~cb
     m["jobs_installed"] = m["revenue"] & (wt != UPG)
     m["upgrades"] = m["revenue"] & (wt == UPG)
-    m["close_sits_company"] = (window(df, "Initial Appointment Date", start, end) & (df["Primary Estimate Total"] > 0)
-                               & ~d.isin(DR["close_rate_exclude"]) & ~cb
-                               & ~df["Job Category"].isin(S["job_categories"]["close_rate_exclude"])
-                               & ~wt.isin(WT["close_rate_exclude"]))
-    m["close_sits_team"] = m["close_sits_company"] & df["Primary Salesperson"].isin(reps if reps is not None else SALES_TEAM)
+    # A demo: a quoted appointment that passes every close rate exclusion (any date).
+    demo = (df["Initial Appointment Date"].notna() & (df["Primary Estimate Total"] > 0)
+            & ~d.isin(DR["close_rate_exclude"]) & ~cb
+            & ~df["Job Category"].isin(S["job_categories"]["close_rate_exclude"])
+            & ~wt.isin(WT["close_rate_exclude"]))
+    team = df["Primary Salesperson"].isin(reps if reps is not None else SALES_TEAM)
+    # Demos in the period (the bottom of both rates).
+    m["close_sits_company"] = demo & window(df, "Initial Appointment Date", start, end)
+    m["close_sits_team"] = m["close_sits_company"] & team
+    # CLOSE RATE (scoreboard): approvals in the period / demos in the period. A sale counts in the period it was
+    # signed, even if its demo was earlier, so the number is final the day the period ends.
+    m["close_sold_company"] = demo & window(df, "Approved Milestone Date", start, end)
+    m["close_sold_team"] = m["close_sold_company"] & team
+    # DEMO CONVERSION: demos in the period that ever signed (credited back to the demo). For lead sources, campaigns,
+    # towns, setters and pitch tests. Keeps moving as late deals sign.
     sold = df["Approved Milestone Date"].notna()
-    m["close_sold_company"] = m["close_sits_company"] & sold
-    m["close_sold_team"] = m["close_sits_team"] & sold
+    m["demo_conv_sold_company"] = m["close_sits_company"] & sold
+    m["demo_conv_sold_team"] = m["close_sits_team"] & sold
     closed = m["revenue"] & (df["Current Milestone"] == "Closed") & (wt != UPG)
     m["gp_jobs"] = closed & (df["Profit"] != 0) & (df["Profit %"] != 1)
     return m
@@ -102,7 +112,8 @@ def metrics(df, start, end, reps=None):
     m = masks(df, start, end, reps)
     ca = df["Contract Amount"]
     o = {k: int(m[k].sum()) for k in ["contacts", "leads", "appointments", "sits", "jobs_sold", "jobs_installed",
-                                      "close_sold_team", "close_sits_team", "close_sold_company", "close_sits_company"]}
+                                      "close_sold_team", "close_sits_team", "close_sold_company", "close_sits_company",
+                                      "demo_conv_sold_team", "demo_conv_sold_company"]}
     o["sales"] = round(ca[m["sales"]].sum(), 2)
     o["revenue"] = round(ca[m["revenue"]].sum(), 2)
     o["upgrades"] = round(ca[m["upgrades"]].sum(), 2)
@@ -377,7 +388,7 @@ def _channel(df):
 def marketing_report(df, ads, start, end, by="Channel"):
     """One row per Channel (default: paid campaigns roll up to Meta / Google Ads, everything else by Parent Lead Source),
     or per Sub Lead Source / Parent Lead Source: spend, AccuLynx funnel,
-    cost per lead / appointment / sit, CAC, revenue, ROAS, GPPC and GPPC:CAC. AccuLynx is the source of truth for
+    cost per lead / appointment / sit, Demo Conversion (lead sources are judged on Demo Conversion, never Close Rate), CAC, revenue, ROAS, GPPC and GPPC:CAC. AccuLynx is the source of truth for
     everything after spend. Channels with no spend data still show their funnel."""
     df = df.assign(Channel=_channel(df))
     ads = ads.assign(Channel=ads["platform"])
@@ -393,7 +404,7 @@ def marketing_report(df, ads, start, end, by="Channel"):
     rows = []
     for k in keys:
         src = df[by] == k
-        n = {x: int((m[x] & src).sum()) for x in ["leads", "appointments", "sits", "jobs_sold"]}
+        n = {x: int((m[x] & src).sum()) for x in ["leads", "appointments", "sits", "jobs_sold", "close_sits_company", "demo_conv_sold_company"]}
         sales = round(ca[m["sales"] & src].sum(), 2)
         sp = round(spend.get(k, 0), 2) if k in spend.index else None
         gppc, closed_n = _gppc(df, end, by, k)
@@ -405,6 +416,7 @@ def marketing_report(df, ads, start, end, by="Channel"):
             "Cost per Lead": round(sp / n["leads"], 2) if sp and n["leads"] else None,
             "Cost per Appt": round(sp / n["appointments"], 2) if sp and n["appointments"] else None,
             "Cost per Sit": round(sp / n["sits"], 2) if sp and n["sits"] else None,
+            "Demo Conversion %": round(n["demo_conv_sold_company"] / n["close_sits_company"] * 100, 1) if n["close_sits_company"] else None,
             "CAC": cac, "ROAS": round(sales / sp, 2) if sp else None,
             "GPPC": gppc, "GPPC:CAC": round(gppc / cac, 2) if gppc and cac else None,
             "Closed Jobs (GPPC)": closed_n,

@@ -1432,7 +1432,7 @@ function loadZips() {
     const a = [244,244,245], b = [255,0,0];
     const heat = t => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",")})`;
     svg.innerHTML = `<g>${Object.entries(Z).map(([zip, z]) => { const v = zipRate(zip); return `<path class="zip" data-zip="${zip}" style="fill:${v == null ? "var(--nodata)" : heat(Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1))))}" d="${z.r.map(r => "M" + r.map(p => proj(p).map(v => v.toFixed(1)).join(",")).join("L") + "Z").join("")}"/>`; }).join("")}</g><g id="gr"></g><g id="gs"></g><g id="gp"></g>`;
-    $("#legend").innerHTML = `<span>Area color: close rate, last 12 months</span><span class="n">${pct(lo)}</span><span class="ramp"></span><span class="n">${pct(hi)}+</span><span><span class="sq"></span>where each rep starts</span><span>Pin number = stop order</span><span>Dashed pin = needs a call</span>`;
+    $("#legend").innerHTML = `<span>Area color: demo conversion, last 12 months</span><span class="n">${pct(lo)}</span><span class="ramp"></span><span class="n">${pct(hi)}+</span><span><span class="sq"></span>where each rep starts</span><span>Pin number = stop order</span><span>Dashed pin = needs a call</span>`;
     svg.addEventListener("mousemove", hover); svg.addEventListener("mouseleave", () => $("#tip").hidden = true);
     svg.addEventListener("click", e => { const p = e.target.closest(".pin"); if (p) focusCard(p.dataset.id); });
   })();

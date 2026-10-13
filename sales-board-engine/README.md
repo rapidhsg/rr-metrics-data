@@ -6,7 +6,7 @@ The goal is higher close rates and more same-day closes. The engine learns from 
 ## Where the data comes from
 
 Only the live AccuLynx job export on this repo's `data` branch (`data/job_export_raw_latest.csv`), loaded through the
-certified rules code in `rules/rr_metrics.py`. Sits are counted with the certified close rate rules. Only the last
+certified rules code in `rules/rr_metrics.py`. The engine learns from demos and whether each one signed (Demo Conversion); rep cards, ratings and hot hand use Close Rate (approvals in the period / demos in the period). Only the last
 395 days are used (`data_window_days` in settings.json), because older data is not reliable.
 
 ## What it predicts
@@ -44,7 +44,7 @@ How it works, in words (rules as of Oct 11 2026). No rule names a person: who ge
 
 1. **Money first.** Every appointment goes to the rep most likely to close it, inside his hours, home-by time,
    daily limit and weekly cap. Minimums are only a tiebreaker on close calls.
-2. **Ratings** update every run from each rep's certified close rate (rolling 30): New (first 90 days), Coaching,
+2. **Ratings** update every run from each rep's close rate (rolling 30: approvals in the 30 days / demos in the 30 days): New (first 90 days), Coaching,
    Tenured, Beast, and Lane (reps on the commercial lane). Each rating has its own daily max and weekly cap.
 3. **Hot hand.** Any rep at Beast level (35%+ on the rolling 30, 15+ sits) is rated Beast whatever his start date,
    until he drops below 30%. State kept in `memory/hot.json`.
