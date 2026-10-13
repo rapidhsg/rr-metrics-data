@@ -56,11 +56,11 @@ jobs:
           git commit -q -m "data as of $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fresh:data
 
-      # New data saved: tell the dashboards to rebuild right away (GitHub often skips their own 15-min schedule).
+      # New data saved (or a manual/script-triggered pull): tell the dashboards to rebuild right away (GitHub often skips their own 15-min schedule).
       # Needs repo secret DASHBOARDS_TOKEN (fine-grained token, rapidhsg/dashboard-engine, Actions: read and write).
       # Without it this step just skips and the dashboards fall back to their own schedule.
       - name: Tell the dashboards to refresh
-        if: always() && steps.pull.outputs.changed == 'true'
+        if: always() && (steps.pull.outputs.changed == 'true' || github.event_name == 'workflow_dispatch')
         env:
           DASH_TOKEN: ${{ secrets.DASHBOARDS_TOKEN }}
         run: |
