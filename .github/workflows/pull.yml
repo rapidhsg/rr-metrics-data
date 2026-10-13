@@ -55,3 +55,16 @@ jobs:
           git add -A data
           git commit -q -m "data as of $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fresh:data
+
+      # New data saved: tell the dashboards to rebuild right away (GitHub often skips their own 15-min schedule).
+      # Needs repo secret DASHBOARDS_TOKEN (fine-grained token, rapidhsg/dashboard-engine, Actions: read and write).
+      # Without it this step just skips and the dashboards fall back to their own schedule.
+      - name: Tell the dashboards to refresh
+        if: always() && steps.pull.outputs.changed == 'true'
+        env:
+          DASH_TOKEN: ${{ secrets.DASHBOARDS_TOKEN }}
+        run: |
+          if [ -z "$DASH_TOKEN" ]; then echo "DASHBOARDS_TOKEN not set, skipping"; exit 0; fi
+          curl -sS -f -X POST -H "Authorization: Bearer $DASH_TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/rapidhsg/dashboard-engine/actions/workflows/refresh.yml/dispatches \
+            -d '{"ref":"main"}' && echo "dashboards asked to refresh"
