@@ -26,3 +26,11 @@ GitHub keeps the full history of every change (who, what, when) under **Commits*
 Every 15 minutes, `pull-acculynx-reports` checks the 5 daily AccuLynx schedules (6 AM, 9 AM, 12 PM, 3 PM, 6 PM), grabs the newest run of each report, and replaces the files on the `data` branch. Only the latest copy is kept. If a pull fails, the last good files stay in place and GitHub emails the repo owner. To pull right away: Actions > pull-acculynx-reports > Run workflow.
 
 Needs the repo secret `ACCULYNX_API_KEY`.
+
+## Tools that read from this repo
+
+This repo holds only the data and the rules. Tools live in their own repos and only read from here:
+- **rapidhsg/dashboard-engine**: RR1 and RR2 dashboards
+- **rapidhsg/sales-board-engine**: sales board and appointment assignment engine (moved out of this repo on 2026-10-13)
+
+No tool pulls AccuLynx on its own or defines a metric. New metrics are added here first.
