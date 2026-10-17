@@ -24,7 +24,14 @@ def must_exist(values, column, label):
             problems.append(f'{label}: "{v}" is not in the AccuLynx "{column}" column (typo?)')
 
 
-must_exist(rr.SALES_TEAM, "Primary Salesperson", "sales_team")
+NEW_REPS = set(S.get("new_reps_not_in_acculynx_yet", {}).get("names", []))
+must_exist([r for r in rr.SALES_TEAM if r not in NEW_REPS], "Primary Salesperson", "sales_team")
+_sp = set(df["Primary Salesperson"].dropna().astype(str))
+for r in sorted(NEW_REPS):
+    if r in _sp:
+        print(f'NOTE: new rep "{r}" now shows up in AccuLynx. Take him off new_reps_not_in_acculynx_yet.')
+    elif r not in rr.SALES_TEAM:
+        problems.append(f'new_reps_not_in_acculynx_yet: "{r}" is not on sales_team')
 for key, values in S["dead_reasons"].items():
     if not key.startswith("_"):
         must_exist(values, "Dead Lead Reason", f"dead_reasons.{key}")

@@ -18,8 +18,19 @@
       "Young",
       "Joe Young"
     ],
-    "Steve Burns": [
-      "Steve"
+    "Leomar Santana": [
+      "Leomar"
+    ],
+    "Daniel Leverich": [
+      "Daniel",
+      "Leverich"
+    ]
+  },
+  "new_reps_not_in_acculynx_yet": {
+    "_note": "Brand new reps on the sales team who have no AccuLynx jobs yet. The rules check skips them until they show up, then asks for them to be taken off this list. The name must match AccuLynx Primary Salesperson exactly once they start.",
+    "names": [
+      "Leomar Santana",
+      "Daniel Leverich"
     ]
   },
   "not_sales_team": {
