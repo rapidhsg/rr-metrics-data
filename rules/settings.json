@@ -195,54 +195,38 @@
     "rep_pays_share_of_overage": 0.5
   },
   "leadership_scorecard": {
-    "_read_me": "The Leadership Team scorecard in Ninety. Weekly, Monday to Sunday. Order, owner and goal for each metric. Owners: BN Bryan Natole, MM Mike Meinardus, RT Richie Troy.",
+    "_read_me": "The Leadership Team scorecard in Ninety (14 measurables, in Ninety's order). Weekly, Monday to Sunday. Owner and goal for each. Goals match the Q4 plan on the goals sheet. Owners: BN Bryan Natole, MM Mike Meinardus, RT Richie Troy, MA Maha Abdelal. Goal 'between' = inside the range.",
     "metrics": [
       {
-        "name": "Contacts (Lead Milestone)",
+        "name": "Contacts",
         "owner": "BN",
         "goal": [
           ">=",
-          70
+          133
         ]
       },
       {
-        "name": "Sits",
+        "name": "MQLs (Leads)",
         "owner": "BN",
         "goal": [
           ">=",
-          28
+          123
         ]
       },
       {
-        "name": "Total Callback Cost",
-        "owner": "MM",
-        "goal": [
-          "<=",
-          1000
-        ]
-      },
-      {
-        "name": "Approved Experiences #",
-        "owner": "MM",
+        "name": "SQLs (Appointments)",
+        "owner": "BN",
         "goal": [
           ">=",
-          10
+          74
         ]
       },
       {
-        "name": "Approved Experiences $",
-        "owner": "MM",
+        "name": "SITS",
+        "owner": "BN",
         "goal": [
           ">=",
-          182280
-        ]
-      },
-      {
-        "name": "Total Upgrade $",
-        "owner": "",
-        "goal": [
-          ">=",
-          13720
+          55
         ]
       },
       {
@@ -254,27 +238,11 @@
         ]
       },
       {
-        "name": "Backlog $",
-        "owner": "MM",
-        "goal": [
-          ">",
-          132000
-        ]
-      },
-      {
-        "name": "Backlog #",
+        "name": "Approved Experiences $",
         "owner": "MM",
         "goal": [
           ">=",
-          7
-        ]
-      },
-      {
-        "name": "A/R 30+",
-        "owner": "MM",
-        "goal": [
-          "<=",
-          2500
+          289962
         ]
       },
       {
@@ -282,39 +250,23 @@
         "owner": "MM",
         "goal": [
           ">=",
-          189000
+          263865
         ]
       },
       {
-        "name": "Scheduled This Week #",
+        "name": "Revenue $",
         "owner": "MM",
         "goal": [
           ">=",
-          7
+          263865
         ]
       },
       {
-        "name": "Completed Jobs $",
+        "name": "AVG Ticket (R30)",
         "owner": "MM",
         "goal": [
           ">=",
-          132000
-        ]
-      },
-      {
-        "name": "Completed Jobs #",
-        "owner": "MM",
-        "goal": [
-          ">=",
-          7
-        ]
-      },
-      {
-        "name": "Avg Ticket (R30)",
-        "owner": "MM",
-        "goal": [
-          ">=",
-          16500
+          17500
         ]
       },
       {
@@ -326,11 +278,38 @@
         ]
       },
       {
+        "name": "Backlog $",
+        "owner": "MM",
+        "goal": [
+          "between",
+          [
+            750000,
+            1250000
+          ]
+        ]
+      },
+      {
         "name": "New 5-Star Google Reviews",
         "owner": "BN",
         "goal": [
           ">=",
-          3
+          5
+        ]
+      },
+      {
+        "name": "A/R 30+",
+        "owner": "MM",
+        "goal": [
+          "<=",
+          30000
+        ]
+      },
+      {
+        "name": "Cash Balance",
+        "owner": "MA",
+        "goal": [
+          ">=",
+          700000
         ]
       }
     ],

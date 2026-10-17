@@ -327,7 +327,7 @@ Rolling 30/60/90 ending Oct 7 (data pulled Oct 7, 7:59 PM)
 
 ## 13. Leadership scorecard (Ninety)
 
-Use this whenever someone asks for the leadership metrics, the leadership scorecard, the scorecard, the Ninety scorecard, or the L10 numbers. Run `rr_metrics.scorecard(df, ex, rip_path, report_date=today, data_date=status.json runDate, reviews_path=rr-data/data/google_reviews_latest.csv)` and show every metric in this order, with owner, goal, actual, and on track or not. Owners: BN = Bryan Natole, MM = Mike Meinardus, RT = Richie Troy.
+Use this whenever someone asks for the leadership metrics, the leadership scorecard, the scorecard, the Ninety scorecard, or the L10 numbers. Run `rr_metrics.scorecard(df, ex, rip_path, report_date=today, data_date=status.json runDate, reviews_path=rr-data/data/google_reviews_latest.csv)` and show every metric in this order, with owner, goal, actual, and on track or not. Owners: BN = Bryan Natole, MM = Mike Meinardus, RT = Richie Troy, MA = Maha Abdelal. The order and names match Ninety exactly.
 
 - **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
 - **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
@@ -336,24 +336,24 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 
 | Metric | Owner | Goal | How it is counted |
 |---|---|---|---|
-| Contacts (Lead Milestone) | BN | >= 70 | Contacts metric (section 4), by lead date in the week |
-| Sits | BN | >= 28 | Sits metric, by appointment date in the week |
-| Total Callback Cost | MM | <= $1,000 | Total expenses on Call Back jobs installed (Completed date) in the week. Only Closed jobs have expense detail |
-| Approved Experiences # | MM | >= 10 | Count of jobs in the Sales metric (approved in the week). Upgrades NOT included (they go in Total Upgrade $) |
-| Approved Experiences $ | MM | >= $182,280 | Sales $ (approved in the week). Upgrades NOT included (they go in Total Upgrade $) |
-| Total Upgrade $ | | >= $13,720 | Contract Amount of upgrades (Upsell / Change Order) **sold** in the week, by Approved date. Not the same as the Upgrades metric in section 4, which is by install date |
-| Close Rate (R30) | RT | >= 35% | **Whole company** close rate (section 4), rolling 30 days. Show the counts |
-| Backlog $ / # | MM | > $132,000 / >= 7 | Jobs now in Approved with status Scheduled or In Progress |
-| A/R 30+ | MM | <= $2,500 | Contract Amount of jobs now in Invoiced whose Invoiced date is more than 30 days ago |
-| Scheduled This Week $ / # | MM | >= $189,000 / >= 7 | Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades included. A job whose crew started earlier in the week but is not marked complete yet can be missed; say so |
-| Completed Jobs $ | MM | >= $132,000 | Revenue metric (Completed date, upgrades included) |
-| Completed Jobs # | MM | >= 7 | Jobs Installed metric (no upgrades) |
-| Avg Ticket (R30) | MM | >= $16,500 | Completed Jobs $ divided by Completed Jobs #, rolling 30 days |
-| GP% (R30) | MM | >= 37% | Every job that went into Closed (Closed Milestone Date) in the rolling 30 days ending the Sunday of the reporting week, upgrades included: total Profit divided by total Contract Amount. Call Back jobs and their expenses are left out, and so are jobs with $0 profit or 100% Profit % (costs not loaded) |
-| New 5-Star Google Reviews | BN | >= 3 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv` (pulled from Windsor.ai). Pass `reviews_path` to `scorecard()` |
+| Contacts | BN | >= 133 | Contacts metric (section 4), by lead date in the week |
+| MQLs (Leads) | BN | >= 123 | Leads metric (section 4), by lead date in the week |
+| SQLs (Appointments) | BN | >= 74 | Appointments metric (section 4), by the day the appointment was booked (Prospect date) in the week |
+| SITS | BN | >= 55 | Sits metric, by appointment date in the week |
+| Close Rate (R30) | RT | >= 35% | **Whole company** Close Rate (section 4: approvals divided by demos), rolling 30 days. Show the counts |
+| Approved Experiences $ | MM | >= $289,962 | Sales $ (approved in the week). Upgrades NOT included |
+| Scheduled This Week $ | MM | >= $263,865 | **Current week.** Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades included. A job whose crew started earlier in the week but is not marked complete yet can be missed; say so |
+| Revenue $ | MM | >= $263,865 | Revenue metric (Completed date, upgrades included) |
+| AVG Ticket (R30) | MM | >= $17,500 | Revenue divided by Jobs Installed, rolling 30 days |
+| GP% (R30) | MM | >= 37% | GP % (section 4), rolling 30 days: jobs that went Closed, upgrades in, Call Backs out, costs-not-loaded jobs out |
+| Backlog $ | MM | $750,000 to $1,250,000 | Jobs now in Approved with status Scheduled or In Progress. Snapshot as of the data pull |
+| New 5-Star Google Reviews | BN | >= 5 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv`. Pass `reviews_path` to `scorecard()` |
+| A/R 30+ | MM | <= $30,000 | Contract Amount of jobs now in Invoiced whose Invoiced date is more than 30 days ago. Snapshot as of the data pull |
+| Cash Balance | MA | >= $700,000 | **Not in AccuLynx.** Maha enters it from the bank. Show it as "entered by Maha" and never estimate it |
 
+Goals match the Q4 plan on the goals sheet (weekly column). When the quarter changes, the goals come from the new quarter's sheet once Joe updates this table.
 
-- Checked against 12 weeks of the Ninety scorecard (Jul 13 to Oct 4, 2026): Contacts, Sits, Approved, Upgrades, Completed $ and A/R 30+ matched exactly or within 1 to 3. The rest were close; small gaps come from records edited after the scorecard was filled in.
+- Checked against 12 weeks of the Ninety scorecard (Jul 20 to Oct 11, 2026, data pulled Oct 17): 5-Star Reviews matched every week; Contacts, Sits and Revenue matched 10 of 12; the rest drift because AccuLynx records get edited after the scorecard is filled in.
 - After the table, add Worth knowing (section 12) and flags as usual.
 
 ## 14. Marketing performance (ad spend and channels)

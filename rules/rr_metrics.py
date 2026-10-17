@@ -315,7 +315,17 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         rv = pd.read_csv(reviews_path)
         t = pd.to_datetime(rv["created_utc"], utc=True).dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
         five = int(((rv["stars"].astype(str) == "5") & (t >= s) & (t <= e)).sum())
+    avg_ticket = round(ca[m30["revenue"]].sum() / m30["jobs_installed"].sum(), 2) if m30["jobs_installed"].sum() else None
     vals = {
+        # Ninety names (the 14 measurables on the Leadership Team scorecard)
+        "Contacts": met["contacts"],
+        "MQLs (Leads)": met["leads"],
+        "SQLs (Appointments)": met["appointments"],
+        "SITS": met["sits"],
+        "Revenue $": met["revenue"],
+        "AVG Ticket (R30)": avg_ticket,
+        "Cash Balance": None,  # not in AccuLynx: Maha enters it from the bank
+        # older names, kept so anything that still asks for them keeps working
         "Contacts (Lead Milestone)": met["contacts"],
         "Sits": met["sits"],
         "Total Callback Cost": round(cb_cost, 2),
@@ -330,16 +340,18 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Scheduled This Week #": len(done) + len(togo),
         "Completed Jobs $": met["revenue"],
         "Completed Jobs #": met["jobs_installed"],
-        "Avg Ticket (R30)": round(ca[m30["revenue"]].sum() / m30["jobs_installed"].sum(), 2) if m30["jobs_installed"].sum() else None,
+        "Avg Ticket (R30)": avg_ticket,
         "GP% (R30)": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
         "New 5-Star Google Reviews": five,
     }
-    ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b}
+    ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b,
+           "between": lambda a, b: b[0] <= a <= b[1]}
     rows = []
     for x in LS["metrics"]:
         v = vals[x["name"]]
         op, goal = x["goal"]
-        rows.append({"Metric": x["name"], "Owner": x["owner"], "Goal": f"{op} {goal:,}", "Actual": v,
+        shown = f"{goal[0]:,} to {goal[1]:,}" if op == "between" else f"{op} {goal:,}"
+        rows.append({"Metric": x["name"], "Owner": x["owner"], "Goal": shown, "Actual": v,
                      "On Track": None if v is None else ops[op](v, goal)})
     out = pd.DataFrame(rows)
     out.attrs.update(week=f"{s.date()} to {e.date()}", scheduled_week=f"{sched_s.date()} to {sched_e.date()}",
