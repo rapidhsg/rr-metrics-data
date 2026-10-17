@@ -97,7 +97,13 @@ The exact exclusion lists for each metric are in settings.json. This section say
 
 **Demo Conversion** (the old close rate rule, matches AccuLynx "Close % Overall Certified"). **Demos in the period that ever signed, divided by demos in the period.** Every sale is credited back to the demo that produced it, so it keeps rising for a while as late deals sign. Use it for judging lead sources, campaigns, towns, setters, and testing a change to the pitch (only demos after the change count), and for small groups. `rr_metrics`: `demo_conv_sold_*` / `close_sits_*`. Always call it Demo Conversion, never close rate. Same roster default as Close Rate.
 
-**GP %.** Gross profit is only real once a job is Closed. Closed jobs only, always; profit on Completed or Invoiced jobs is never counted or factored into anything, even if negative. GP % = sum of Profit divided by sum of Contract Amount on Closed jobs. Profit is already after commissions. Leave out Closed jobs with $0 profit or 100% Profit % (costs not loaded) and flag them.
+**GP %** (Weekly Report CERTIFIED with Reference Date = Closed Milestone Date, Call Backs filtered out). **This is the only GP rule. Every GP answer uses it: GP % for any period, by rep, crew, source or job type, job costs, the scorecard, and GPPC.**
+- Closed Milestone Date in range, and the job is Closed now
+- Upgrades included
+- Exclude Call Back
+- GP % = sum of Profit divided by sum of Contract Amount. Profit is already after commissions
+- Profit on Completed or Invoiced jobs is never counted, even if negative. Gross profit is only real once a job is Closed
+- Leave out Closed jobs with $0 profit or 100% Profit % (costs not loaded) and flag them
 
 **Revenue In Progress.** Total value of scheduled installs, from the Revenue In Progress report. Count each job once (a two-trade job shows up on two rows with the full Job Value on both). Crew Start and Crew End dates tell when each install starts and ends; use them for "how much is scheduled to install this month / this quarter".
 
@@ -124,10 +130,10 @@ The Job Expenses report has one row per cost line on a Closed job. Load it with 
   - **Dump:** haul-off and garbage disposal of torn-off material ("... Dump"). Its own bucket, never labor.
   - **Commission:** every "Additional" line. This is the same money as the Comissions column in the job export.
 - **Ties to the job export:** Job Value = Contract Amount. Total Expenses = all lines added up. Profit = Job Value minus Total Expenses minus Balance Due, so an unpaid balance comes off profit. Always take Profit from the job export.
-- **Window:** Completed (install) date, same as Revenue and GP %. Only Closed jobs are in this report.
+- **Window:** Closed date, same as GP %. Only Closed jobs are in this report.
 - **GP goal: 37%** (company goal from the P&L). Show GP % against it whenever GP comes up.
-- **Job cost summary** (`rr_metrics.job_costs()` then `rr_metrics.cost_summary()`): jobs, job value, profit, GP %, and each bucket in dollars and as % of job value. It uses the same jobs as the GP % metric (no upgrades, no Call Backs, no $0 or 100% profit jobs), so GP % always matches. Group by `Primary Salesperson`, `Work Type`, `Job Trade Type`, `Job Category`, or `Crews`.
-- **Upgrades and Call Backs** are left out of the summary but can be shown on their own when asked. Call Back cost = Total Expenses on Call Back jobs (rework cost).
+- **Job cost summary** (`rr_metrics.job_costs()` then `rr_metrics.cost_summary()`): jobs, job value, profit, GP %, and each bucket in dollars and as % of job value. It uses the same jobs as the GP % metric (upgrades in, no Call Backs, no $0 or 100% profit jobs), so GP % always matches. Group by `Primary Salesperson`, `Work Type`, `Job Trade Type`, `Job Category`, or `Crews`.
+- **Call Backs** are left out of the summary but can be shown on their own when asked. Call Back cost = Total Expenses on Call Back jobs (rework cost).
 - **Crew performance:** labor $, dump $, and GP % for the jobs each crew worked (a job can have more than one crew).
 - **Vendor spend:** add up Payment Amount by the To/Method text.
 - **The report is rolling 365 days.** Cost detail (buckets, crews, vendors, cost flags) only goes back 365 days. If someone asks for cost detail older than that, say it only covers the last 365 days. Profit and GP % for any period still come from the job export, which goes back all the way.
@@ -269,7 +275,7 @@ Day counts can be off by 1 from the dates because AccuLynx counts time of day.
 
 ## 10. Known-good check (rules as of Oct 7, 2026; Q3 2026, job export pulled Oct 7 4:10 PM)
 
-These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team Demo Conversion 153 of 434; company Demo Conversion 163 of 510 (this was the close rate rule until Oct 13). New Close Rate check (job export pulled Oct 13 9 AM): Q3 sales team 149 of 433, company 160 of 509; September sales team 70 of 177. Demo Conversion on that pull: Q3 sales team 154 of 433. Leads rolling 90 ending Oct 7 = 1,092. Later data will differ slightly as AccuLynx records change; that is expected.
+These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team Demo Conversion 153 of 434; company Demo Conversion 163 of 510 (this was the close rate rule until Oct 13). New Close Rate check (job export pulled Oct 13 9 AM): Q3 sales team 149 of 433, company 160 of 509; September sales team 70 of 177. Demo Conversion on that pull: Q3 sales team 154 of 433. Leads rolling 90 ending Oct 7 = 1,092. GP % rolling 30 ending Oct 17 (job export pulled Oct 17 12 PM) = 34.41%: $383,458.99 profit on $1,114,493.02, matching the Weekly Report CERTIFIED (Closed Milestone Date, no Call Backs: 73 records, the 73rd is a $0 job). Later data will differ slightly as AccuLynx records change; that is expected.
 
 ## 11. Locked rules and customer data
 
@@ -371,7 +377,7 @@ Follows the RHSG Marketing Philosophy. **Read `rules/MARKETING_PHILOSOPHY.md` in
 | Cost per Lead / Appointment / Sit | Ad Spend ÷ that count |
 | CAC (Customer Acquisition Cost) | Ad Spend ÷ Jobs Sold |
 | ROAS | Sales $ ÷ Ad Spend |
-| GPPC (Gross Profit Per Customer) | Average Profit on Closed jobs from that channel, closed in the last 365 days (same jobs as GP %: no upgrades, no Call Backs, no $0 or 100% profit) |
+| GPPC (Gross Profit Per Customer) | Total Profit on the GP % jobs from that channel closed in the last 365 days (upgrades included), divided by the number of customers (those jobs minus upgrades) |
 | **GPPC:CAC** | GPPC ÷ CAC. **The single most important metric for judging a channel.** Lead with it |
 
 **How to answer**

@@ -103,8 +103,10 @@ def masks(df, start, end, reps=None):
     sold = df["Approved Milestone Date"].notna()
     m["demo_conv_sold_company"] = m["close_sits_company"] & sold
     m["demo_conv_sold_team"] = m["close_sits_team"] & sold
-    closed = m["revenue"] & (df["Current Milestone"] == "Closed") & (wt != UPG)
-    m["gp_jobs"] = closed & (df["Profit"] != 0) & (df["Profit %"] != 1)
+    # GP %: the one GP rule (matches AccuLynx Weekly Report CERTIFIED, Reference Date = Closed Milestone Date, no Call Backs).
+    # Jobs that went Closed in the period, upgrades included; $0 profit / 100% Profit % (costs not loaded) left out.
+    m["gp_jobs"] = (window(df, "Closed Milestone Date", start, end) & (df["Current Milestone"] == "Closed") & ~cb
+                    & (df["Profit"] != 0) & (df["Profit %"] != 1))
     return m
 
 
@@ -212,7 +214,7 @@ def load_expenses(path):
 
 def job_costs(exp, df, start=None, end=None):
     """One row per Closed job: cost by bucket, Profit and GP % (from the job export), rep, crews.
-    Window = Completed (install) date, same as Revenue and GP %. "In GP" marks the jobs the GP % rule counts."""
+    Window = Closed date, same as GP %. "In GP" marks the jobs the GP % rule counts."""
     piv = exp.pivot_table(index="Job Number", columns="Bucket", values="Payment Amount", aggfunc="sum", fill_value=0)
     first = exp.groupby("Job Number").agg(**{"Job Value": ("Job Value", "first"), "Total Expenses": ("Total Expenses", "first"),
                                             "Balance Due": ("Balance Due", "first"), "Job Number Url": ("Job Number Url", "first")})
@@ -221,16 +223,16 @@ def job_costs(exp, df, start=None, end=None):
     out = first.join(piv).join(crews.rename("Crews")).join(j, how="left")
     out["GP %"] = (out["Profit"] / out["Job Value"] * 100).round(2)
     cb = out["Job Trade Type"].fillna("").str.contains(S["call_back_text"])
-    out["In GP"] = (out["Work Type"] != UPG) & ~cb & (out["Profit"] != 0) & (out["Profit %"] != 1)
+    out["In GP"] = ~cb & (out["Profit"] != 0) & (out["Profit %"] != 1)
     if start is not None:
-        out = out[window(out, "Completed Milestone Date", start, end)]
+        out = out[window(out, "Closed Milestone Date", start, end)]
     out.loc[out["Primary Salesperson"].isin(HIDDEN), "Primary Salesperson"] = ""
     return out
 
 
 def cost_summary(jc, by=None):
     """Totals and % of job value per bucket, plus GP % vs the goal. Uses only the jobs the GP % rule counts
-    (no upgrades, no Call Backs, no $0 or 100% profit), so GP % here always equals the GP % metric. Optional group by a column."""
+    (upgrades in, no Call Backs, no $0 or 100% profit), so GP % here always equals the GP % metric. Optional group by a column."""
     jc = jc[jc["In GP"]]
     buckets = [b for b, _ in EX["buckets"]] + ["Other"]
     cols = [b for b in buckets if b in jc.columns]
@@ -256,7 +258,7 @@ def expense_flags(exp, df, start, end):
     get = lambda b: jc[b] if b in jc.columns else 0
     odd = exp[exp["To/Method"].fillna("").str.lower().str.contains("|".join(EX["odd_line_words"]))
               & exp["Job Number"].isin(jc.index)]
-    cols = ["Primary Salesperson", "Work Type", "Job Value", "Completed Milestone Date", "Job Number Url"]
+    cols = ["Primary Salesperson", "Work Type", "Job Value", "Closed Milestone Date", "Job Number Url"]
     return {
         "closed_with_no_material": jc.loc[wt_ok & (get("Material") <= 0), cols],
         "closed_with_no_labor": jc.loc[wt_ok & (get("Labor") <= 0), cols],
@@ -307,8 +309,7 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
 
     # GP% (R30): every job that went Closed in the rolling 30 (upgrades included). Call Backs left out, and jobs
     # with $0 profit or 100% profit % (costs not loaded).
-    gp = (window(df, "Closed Milestone Date", r30s, r30e) & (df["Current Milestone"] == "Closed") & ~df["_cb"]
-          & (df["Profit"] != 0) & (df["Profit %"] != 1))
+    gp = m30["gp_jobs"]  # same GP % rule as everywhere else
     five = None
     if reviews_path is not None and Path(reviews_path).exists():
         rv = pd.read_csv(reviews_path)
@@ -368,13 +369,13 @@ def load_ads(path):
 
 
 def _gppc(df, end, key, value):
-    """Gross Profit Per Customer: average Profit on Closed jobs from this source, closed in the lookback window.
-    Same jobs as the GP % rule (no upgrades, no Call Backs, no $0 or 100% profit)."""
+    """Gross Profit Per Customer: total Profit on the GP % jobs from this source closed in the lookback window
+    (upgrades included), divided by the number of customers (those jobs minus upgrades)."""
     e = pd.Timestamp(end)
     s = e - pd.Timedelta(days=MK["gppc_lookback_days"])
-    ok = (window(df, "Closed Milestone Date", s, e) & (df["Current Milestone"] == "Closed") & (df["_wt"] != UPG)
-          & ~df["_cb"] & (df["Profit"] != 0) & (df["Profit %"] != 1) & (df[key] == value))
-    return (round(df.loc[ok, "Profit"].mean(), 2) if ok.any() else None), int(ok.sum())
+    ok = masks(df, s, e)["gp_jobs"] & (df[key] == value)
+    customers = int((ok & (df["_wt"] != UPG)).sum())
+    return (round(df.loc[ok, "Profit"].sum() / customers, 2) if customers else None), customers
 
 
 def _channel(df):
