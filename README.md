@@ -37,6 +37,14 @@ Every pull also matches the CSRs' calls in GoHighLevel to AccuLynx jobs, so ever
 
 Needs the repo secret `GHL_API_KEY`: a GoHighLevel Private Integration token for the Rapid Roofing & Gutters location with read access to contacts, conversations, conversation messages and users. Without it the step skips.
 
+## Feedback calls (writes to GHL)
+
+`feedback-calls` runs every morning Mon-Sat at 8:37 AM Eastern. It takes yesterday's quoted appointments that are still in Prospect and not submitted for approval (Monday also picks up Saturday and Sunday), gets each customer's phone and email from AccuLynx, finds them in GHL (or creates them as a prospect), fills the Feedback fields and adds the `feedback-call` tag, which starts the Feedback Calls workflows in GHL. This is the only job here that writes to GHL; it never writes to AccuLynx. Customer phones and emails are never printed or saved.
+
+To test or reload a day: Actions > feedback-calls > Run workflow (dry run is on by default; pick a date or leave blank for yesterday).
+
+Needs repo secrets `ACCULYNX_API_KEY` and `GHL_FEEDBACK_TOKEN` (GHL Private Integration "Feedback Calls": View Contacts, Edit Contacts, View Tags). If a customer can't be loaded the run shows a red X and GitHub emails the repo owner with the name and AccuLynx link.
+
 ## Tools that read from this repo
 
 This repo holds only the data and the rules. Tools live in their own repos and only read from here:
