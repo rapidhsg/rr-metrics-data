@@ -1,0 +1,89 @@
+{
+  "job_export_raw": {
+    "runDate": "2026-10-31T13:04:32.3133333Z",
+    "schedule": "9 AM",
+    "pulledAt": "2026-10-31T13:21:52.249Z",
+    "rows": 13147,
+    "file": "data/job_export_raw_latest.csv"
+  },
+  "revenue_in_progress": {
+    "runDate": "2026-10-31T13:04:32.3133333Z",
+    "schedule": "9 AM",
+    "pulledAt": "2026-10-31T13:21:52.508Z",
+    "rows": 42,
+    "file": "data/Revenue_In_Progress_latest.csv"
+  },
+  "schedules": {
+    "6 AM": {
+      "runDate": "2026-10-31T10:04:41.6233333Z",
+      "files": [
+        "revenue_in_progress_pace_raw_10_31_2026_6_10_35.csv",
+        "job_expenses_raw_10_31_2026_6_10_51.csv",
+        "job_export_raw_10_31_2026_6_10_41.csv"
+      ],
+      "listNewest": "2026-10-31T10:04:41.6233333Z",
+      "apiLatest": "2026-10-31T10:04:41.6233333Z"
+    },
+    "9 AM": {
+      "runDate": "2026-10-31T13:04:32.3133333Z",
+      "files": [
+        "job_expenses_raw_10_31_2026_9_10_35.csv",
+        "job_export_raw_10_31_2026_9_10_31.csv",
+        "revenue_in_progress_pace_raw_10_31_2026_9_10_32.csv"
+      ],
+      "listNewest": "2026-10-31T13:04:32.3133333Z",
+      "apiLatest": "2026-10-31T13:04:32.3133333Z"
+    },
+    "12 PM": {
+      "runDate": "2026-10-30T16:04:31.9633333Z",
+      "files": [
+        "job_export_raw_10_30_2026_12_10_15.csv",
+        "job_expenses_raw_10_30_2026_12_10_30.csv",
+        "revenue_in_progress_pace_raw_10_30_2026_12_10_31.csv"
+      ],
+      "listNewest": "2026-10-30T16:04:31.9633333Z",
+      "apiLatest": "2026-10-30T16:04:31.9633333Z"
+    },
+    "3 PM": {
+      "runDate": "2026-10-30T19:04:37.8066667Z",
+      "files": [
+        "job_export_raw_10_30_2026_15_10_19.csv",
+        "job_expenses_raw_10_30_2026_15_10_36.csv",
+        "revenue_in_progress_pace_raw_10_30_2026_15_10_37.csv"
+      ],
+      "listNewest": "2026-10-30T19:04:37.8066667Z",
+      "apiLatest": "2026-10-30T19:04:37.8066667Z"
+    },
+    "6 PM": {
+      "runDate": "2026-10-30T22:04:17.51Z",
+      "files": [
+        "job_expenses_raw_10_30_2026_18_10_27.csv",
+        "revenue_in_progress_pace_raw_10_30_2026_18_10_28.csv",
+        "job_export_raw_10_30_2026_18_10_16.csv"
+      ],
+      "listNewest": "2026-10-30T22:04:17.51Z",
+      "apiLatest": "2026-10-30T22:04:17.51Z"
+    }
+  },
+  "job_expenses_raw": {
+    "runDate": "2026-10-31T13:04:32.3133333Z",
+    "schedule": "9 AM",
+    "pulledAt": "2026-10-31T13:21:53.070Z",
+    "rows": 3764,
+    "file": "data/job_expenses_latest.csv"
+  },
+  "google_reviews": {
+    "pulledAt": "2026-10-30T20:12:28.998Z",
+    "rows": 874,
+    "from": "2010-01-01",
+    "to": "2026-10-30",
+    "file": "data/google_reviews_latest.csv"
+  },
+  "ads": {
+    "pulledAt": "2026-10-31T13:21:55.713Z",
+    "rows": 1095,
+    "from": "2025-09-26",
+    "to": "2026-10-31",
+    "file": "data/ads_daily_latest.csv"
+  }
+}
