@@ -51,6 +51,10 @@ def load(path):
     df = pd.read_csv(_repaired_csv(path), low_memory=False)
     for c in [c for c in df.columns if c.endswith("Date") and "Days" not in c]:
         df[c] = pd.to_datetime(df[c].astype(str).str.split(" ").str[0], format="%m/%d/%y", errors="coerce")
+    # People names: extra spaces are cleaned up ("Dan  Leverich" in AccuLynx becomes "Dan Leverich") so rosters match.
+    for col in ["Primary Salesperson", "Appointment Set By"]:
+        if col in df.columns:
+            df[col] = df[col].where(df[col].isna(), df[col].astype(str).str.split().str.join(" "))
     df["_dead"] = df["Dead Lead Reason"].fillna("")  # exact-name matching only
     df["_wt"] = df["Work Type"].fillna("")
     df["_cb"] = df["Job Trade Type"].fillna("").str.contains(S["call_back_text"])

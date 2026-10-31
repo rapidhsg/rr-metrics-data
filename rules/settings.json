@@ -23,16 +23,16 @@
       "Leomar",
       "Santana"
     ],
-    "Daniel Leverich": [
+    "Dan Leverich": [
+      "Dan",
       "Daniel",
+      "Danny",
       "Leverich"
     ]
   },
   "new_reps_not_in_acculynx_yet": {
     "_note": "Brand new reps on the sales team who have no AccuLynx jobs yet. The rules check skips them until they show up, then asks for them to be taken off this list. The name must match AccuLynx Primary Salesperson exactly once they start.",
-    "names": [
-      "Daniel Leverich"
-    ]
+    "names": []
   },
   "not_sales_team": {
     "_note": "People who sell sometimes but are not on the sales team. Left out of close rate and rep views unless someone asks for them by name.",
