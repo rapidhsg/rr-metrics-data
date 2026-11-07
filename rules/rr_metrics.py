@@ -7,7 +7,10 @@ Usage:
     df = rr.load("rr-data/data/job_export_raw_latest.csv")
     rr.metrics(df, "2026-07-01", "2026-09-30")
 """
+import csv
+import io
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -191,9 +194,41 @@ def flags(df, start, end):
 EX = S["expenses"]
 
 
+_EXP_URL = re.compile(r"https://my\.acculynx\.com/jobs/[0-9a-f-]{36}\s*$")
+
+
+def _repaired_expenses_csv(path):
+    """AccuLynx does not escape quote marks typed into a cost line (a check number like "0047648221-001), and one
+    stray quote swallows every line after it. Every cost line ends with the job's AccuLynx link, so split the file
+    on that, read each line on its own, and if a line still has the wrong number of fields, rebuild it: the first
+    4 fields and the last 9 never hold free text, so whatever is in between is the check number and the memo."""
+    raw = open(path, encoding="utf-8-sig", newline="").read().splitlines()
+    header = next(csv.reader([raw[0]]))
+    n = len(header)
+    out, buf = [header], []
+    for line in raw[1:]:
+        buf.append(line)
+        if not _EXP_URL.search(line):
+            continue
+        rec = "\n".join(buf)
+        buf = []
+        rows = list(csv.reader(io.StringIO(rec)))
+        if len(rows) == 1 and len(rows[0]) == n:
+            out.append(rows[0])
+            continue
+        parts = rec.replace("\n", " ").split(",")
+        mid = parts[4:len(parts) - (n - 6)]
+        fixed = parts[:4] + [mid[0].strip().strip('"'), ",".join(mid[1:]).strip().strip('"')] + parts[len(parts) - (n - 6):]
+        out.append(fixed if len(fixed) == n else rows[0][:n])
+    s = io.StringIO()
+    csv.writer(s).writerows(out)
+    s.seek(0)
+    return s
+
+
 def load_expenses(path):
     """One row per cost line, with a Bucket (Material, Labor, Dump, Commission...) and a Crew for labor/dump lines."""
-    e = pd.read_csv(path, low_memory=False)
+    e = pd.read_csv(_repaired_expenses_csv(path), low_memory=False)
     for c in ["Payment Amount", "Job Value", "Additional Expenses", "Total Expenses", "Balance Due"]:
         e[c] = pd.to_numeric(e[c], errors="coerce")
     e = e[e["Total Expenses"].notna() & e["Job Number"].astype(str).str.startswith("RR-")].copy()  # drops the odd broken row
