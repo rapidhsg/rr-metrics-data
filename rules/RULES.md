@@ -354,8 +354,8 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | SITS | BN | >= 55 | Sits metric, by appointment date in the week |
 | Company Close Rate (R30) | RT | >= 35% | **Whole company** Close Rate (section 4: approvals divided by demos, no-appointment sales count), rolling 30 days. Show the counts |
 | Active Sales Team Close Rate (R30) | RT | >= 35% | Same Close Rate, **current sales team roster only** (section 5, settings.json `sales_team`), rolling 30 days. Former reps are left out of every week, including past weeks. Show the counts |
-| Approved Experiences $ | MM | >= $289,962 | Sales $ (approved in the week). Upgrades NOT included |
-| Scheduled This Week $ | MM | >= $263,865 | **Current week.** Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades included. A job whose crew started earlier in the week but is not marked complete yet can be missed; say so |
+| Approved Experiences $ | MM | >= $289,962 | Sales $ (approved in the week). Upgrades included in the dollars (changed Nov 7, 2026). Approved Experiences # counts jobs only: an upgrade is the same job, so it is never counted as another one |
+| Scheduled This Week $ | MM | >= $263,865 | **Current week.** Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades and change orders NOT included, in either part (changed Nov 7, 2026). A job whose crew started before this week and is not marked complete yet is missed; say so |
 | Revenue $ | MM | >= $263,865 | Revenue metric (Completed date, upgrades included) |
 | AVG Ticket (R30) | MM | >= $17,500 | Revenue divided by Jobs Installed, rolling 30 days |
 | GP% (R30) | MM | >= 37% | GP % (section 4), rolling 30 days: jobs that went Closed, upgrades in, Call Backs out, costs-not-loaded jobs out |

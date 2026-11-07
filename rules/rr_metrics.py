@@ -382,10 +382,13 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
     bl = (df["Current Milestone"] == "Approved") & df["Current Status"].isin(LS["backlog_statuses"])
     arj = ar_jobs(df, now)
 
-    done = df.loc[masks(df, sched_s, sched_e)["revenue"], ["Job Number", "Contract Amount"]]
+    # Scheduled This Week: upgrades and change orders left out (Nov 7, 2026), in both the done and the to-do part.
+    done = df.loc[masks(df, sched_s, sched_e)["revenue"] & ~upg, ["Job Number", "Contract Amount"]]
     rip = pd.read_csv(rip_path)
     rip["_start"] = pd.to_datetime(rip["Crew Start Date"].astype(str).str.split(" ").str[0], format="%m/%d/%y", errors="coerce")
-    togo = rip[(rip["_start"] >= sched_s) & (rip["_start"] <= sched_e) & ~rip["Job Number"].isin(done["Job Number"])].drop_duplicates("Job Number")
+    upg_jobs = df.loc[upg, "Job Number"]
+    togo = rip[(rip["_start"] >= sched_s) & (rip["_start"] <= sched_e) & ~rip["Job Number"].isin(done["Job Number"])
+               & ~rip["Job Number"].isin(upg_jobs)].drop_duplicates("Job Number")
 
     # GP% (R30): every job that went Closed in the rolling 30 (upgrades included). Call Backs left out, and jobs
     # with $0 profit or 100% profit % (costs not loaded).
@@ -409,8 +412,8 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Contacts (Lead Milestone)": met["contacts"],
         "Sits": met["sits"],
         "Total Callback Cost": round(cb_cost, 2),
-        "Approved Experiences #": int((m["sales"] & ~upg).sum()),
-        "Approved Experiences $": round(ca[m["sales"] & ~upg].sum(), 2),
+        "Approved Experiences #": int((m["sales"] & ~upg).sum()),  # jobs only: an upgrade is the same job
+        "Approved Experiences $": round(ca[m["sales"]].sum(), 2),  # upgrades included (Nov 7, 2026)
         "Total Upgrade $": round(ca[m["sales"] & upg].sum(), 2),
         "Company Close Rate (R30)": round(t30["close_sold_company"] / t30["close_sits_company"] * 100, 2) if t30["close_sits_company"] else None,
         "Active Sales Team Close Rate (R30)": round(t30["close_sold_team"] / t30["close_sits_team"] * 100, 2) if t30["close_sits_team"] else None,
