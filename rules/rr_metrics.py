@@ -99,18 +99,28 @@ def masks(df, start, end, reps=None):
             & ~df["Job Category"].isin(S["job_categories"]["close_rate_exclude"])
             & ~wt.isin(WT["close_rate_exclude"]))
     team = df["Primary Salesperson"].isin(reps if reps is not None else SALES_TEAM)
-    # Demos in the period (the bottom of both rates).
-    m["close_sits_company"] = demo & window(df, "Initial Appointment Date", start, end)
-    m["close_sits_team"] = m["close_sits_company"] & team
+    # Demos in the period (by appointment date).
+    demo_in = demo & window(df, "Initial Appointment Date", start, end)
+    # NO-APPOINTMENT SALE: a job signed with no appointment on file (production or the office wrote it). Quoted, not an
+    # upgrade, passes the same exclusions. Close Rate counts it as one demo and one sale on its approved date.
+    no_appt_sale = (df["Initial Appointment Date"].isna() & (df["Primary Estimate Total"] > 0) & (wt != UPG)
+                    & ~d.isin(DR["close_rate_exclude"]) & ~cb
+                    & ~df["Job Category"].isin(S["job_categories"]["close_rate_exclude"])
+                    & ~wt.isin(WT["close_rate_exclude"])
+                    & window(df, "Approved Milestone Date", start, end))
     # CLOSE RATE (scoreboard): approvals in the period / demos in the period. A sale counts in the period it was
     # signed, even if its demo was earlier, so the number is final the day the period ends.
-    m["close_sold_company"] = demo & window(df, "Approved Milestone Date", start, end)
+    m["close_sits_company"] = demo_in | no_appt_sale
+    m["close_sits_team"] = m["close_sits_company"] & team
+    m["close_sold_company"] = (demo & window(df, "Approved Milestone Date", start, end)) | no_appt_sale
     m["close_sold_team"] = m["close_sold_company"] & team
     # DEMO CONVERSION: demos in the period that ever signed (credited back to the demo). For lead sources, campaigns,
-    # towns, setters and pitch tests. Keeps moving as late deals sign.
+    # towns, setters and pitch tests. Keeps moving as late deals sign. No-appointment sales are left out.
     sold = df["Approved Milestone Date"].notna()
-    m["demo_conv_sold_company"] = m["close_sits_company"] & sold
-    m["demo_conv_sold_team"] = m["close_sits_team"] & sold
+    m["demo_conv_sits_company"] = demo_in
+    m["demo_conv_sits_team"] = demo_in & team
+    m["demo_conv_sold_company"] = demo_in & sold
+    m["demo_conv_sold_team"] = m["demo_conv_sits_team"] & sold
     # GP %: the one GP rule (matches AccuLynx Weekly Report CERTIFIED, Reference Date = Closed Milestone Date, no Call Backs).
     # Jobs that went Closed in the period, upgrades included; $0 profit / 100% Profit % (costs not loaded) left out.
     m["gp_jobs"] = (window(df, "Closed Milestone Date", start, end) & (df["Current Milestone"] == "Closed") & ~cb
@@ -123,7 +133,8 @@ def metrics(df, start, end, reps=None):
     ca = df["Contract Amount"]
     o = {k: int(m[k].sum()) for k in ["contacts", "leads", "appointments", "sits", "jobs_sold", "jobs_installed",
                                       "close_sold_team", "close_sits_team", "close_sold_company", "close_sits_company",
-                                      "demo_conv_sold_team", "demo_conv_sold_company"]}
+                                      "demo_conv_sold_team", "demo_conv_sold_company",
+                                      "demo_conv_sits_team", "demo_conv_sits_company"]}
     o["sales"] = round(ca[m["sales"]].sum(), 2)
     o["revenue"] = round(ca[m["revenue"]].sum(), 2)
     o["upgrades"] = round(ca[m["upgrades"]].sum(), 2)
@@ -486,7 +497,7 @@ def marketing_report(df, ads, start, end, by="Channel"):
     rows = []
     for k in keys:
         src = df[by] == k
-        n = {x: int((m[x] & src).sum()) for x in ["leads", "appointments", "sits", "jobs_sold", "close_sits_company", "demo_conv_sold_company"]}
+        n = {x: int((m[x] & src).sum()) for x in ["leads", "appointments", "sits", "jobs_sold", "demo_conv_sits_company", "demo_conv_sold_company"]}
         sales = round(ca[m["sales"] & src].sum(), 2)
         sp = round(spend.get(k, 0), 2) if k in spend.index else None
         gppc, closed_n = _gppc(df, end, by, k)
@@ -498,7 +509,7 @@ def marketing_report(df, ads, start, end, by="Channel"):
             "Cost per Lead": round(sp / n["leads"], 2) if sp and n["leads"] else None,
             "Cost per Appt": round(sp / n["appointments"], 2) if sp and n["appointments"] else None,
             "Cost per Sit": round(sp / n["sits"], 2) if sp and n["sits"] else None,
-            "Demo Conversion %": round(n["demo_conv_sold_company"] / n["close_sits_company"] * 100, 1) if n["close_sits_company"] else None,
+            "Demo Conversion %": round(n["demo_conv_sold_company"] / n["demo_conv_sits_company"] * 100, 1) if n["demo_conv_sits_company"] else None,
             "CAC": cac, "ROAS": round(sales / sp, 2) if sp else None,
             "GPPC": gppc, "GPPC:CAC": round(gppc / cac, 2) if gppc and cac else None,
             "Closed Jobs (GPPC)": closed_n,
