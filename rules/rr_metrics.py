@@ -316,6 +316,35 @@ def expense_flags(exp, df, start, end):
 LS = S["leadership_scorecard"]
 
 
+AR = S["ar"]
+
+
+def ar_jobs(df, as_of):
+    """A/R, one row per job: Job Balance Due on every job with a Job A/R Start Date (any stage), aged in days from
+    that date as of `as_of`. Matches the AccuLynx 'A/R Age by Invoice' report, except when an invoice and its job
+    disagree (AccuLynx uses each invoice's balance; the export only has the job's)."""
+    as_of = pd.Timestamp(as_of).tz_localize(None).normalize() if pd.Timestamp(as_of).tzinfo else pd.Timestamp(as_of).normalize()
+    bal = pd.to_numeric(df[AR["balance_column"]], errors="coerce").fillna(0)
+    start = df[AR["start_column"]]
+    m = start.notna() & (bal > 0)
+    out = df.loc[m, ["Job Number", "Current Milestone", "Primary Salesperson", "Job Number Url"]].copy()
+    out["A/R Start Date"] = start[m]
+    out["Balance Due"] = bal[m].round(2)
+    out["Age (Days)"] = (as_of - start[m]).dt.days
+    out["Bucket"] = pd.cut(out["Age (Days)"], bins=AR["buckets"] + [float("inf")], right=False, labels=AR["bucket_labels"])
+    return out.sort_values("Age (Days)", ascending=False)
+
+
+def ar_aging(df, as_of):
+    """A/R by age bucket (same buckets as AccuLynx): jobs, A/R $, average age."""
+    j = ar_jobs(df, as_of)
+    g = j.groupby("Bucket", observed=False).agg(Jobs=("Job Number", "count"), AR=("Balance Due", "sum"),
+                                                 AvgAge=("Age (Days)", "mean"))
+    g["AR"] = g["AR"].round(2)
+    g["AvgAge"] = g["AvgAge"].round(0)
+    return g.rename(columns={"AR": "A/R $", "AvgAge": "Average Age"})
+
+
 def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews_path=None):
     """Every leadership scorecard metric. The reporting week is the previous Monday to Sunday before
     report_date (or the week starting `week_start` if given). Scheduled This Week is the week that
@@ -339,7 +368,7 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
 
     now = pd.Timestamp(data_date).tz_localize(None).normalize()
     bl = (df["Current Milestone"] == "Approved") & df["Current Status"].isin(LS["backlog_statuses"])
-    ar = (df["Current Milestone"] == "Invoiced") & (df["Invoiced Milestone Date"] <= now - pd.Timedelta(days=LS["ar_days"]))
+    arj = ar_jobs(df, now)
 
     done = df.loc[masks(df, sched_s, sched_e)["revenue"], ["Job Number", "Contract Amount"]]
     rip = pd.read_csv(rip_path)
@@ -374,7 +403,7 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Close Rate (R30)": round(t30["close_sold_company"] / t30["close_sits_company"] * 100, 2) if t30["close_sits_company"] else None,
         "Backlog $": round(ca[bl].sum(), 2),
         "Backlog #": int(bl.sum()),
-        "A/R 30+": round(ca[ar].sum(), 2),
+        "A/R 30+": round(arj.loc[arj["Age (Days)"] >= LS["ar_days"], "Balance Due"].sum(), 2),
         "Scheduled This Week $": round(done["Contract Amount"].sum() + togo["Job Value"].sum(), 2),
         "Scheduled This Week #": len(done) + len(togo),
         "Completed Jobs $": met["revenue"],

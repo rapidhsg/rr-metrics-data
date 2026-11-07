@@ -120,6 +120,14 @@ The exact exclusion lists for each metric are in settings.json. This section say
 - Anything over 20%, the rep pays 50% of the overage. Use `rr_metrics.discounts()`: it shows each sold job's discount %, the $ over the max, and what the rep owes.
 - Window = Approved date. Upgrades and Call Backs are left out.
 
+**A/R (accounts receivable)** (matches the AccuLynx "A/R Age by Invoice" report, Reference Date = Invoice Date). `rr_metrics.ar_jobs()` / `ar_aging()`.
+- A/R = Job Balance Due on every job that has a Job A/R Start Date, any stage (a Completed job already invoiced and a deposit invoice on an Approved job both count)
+- Only balances over $0
+- Age = days from the Job A/R Start Date to the day of the data pull
+- Buckets: 0 to 30, 30 to 60, 60 to 90, 90 to 120, older than 120 (same as AccuLynx)
+- A/R 30+ (scorecard) = everything 30 days old or older
+- AccuLynx ages each invoice and uses the invoice's balance; the job export only has the job's balance. When an invoice and its job disagree (job value changed after invoicing, or an invoice never marked paid), the total can differ from AccuLynx. Say so if asked to match the AccuLynx report.
+
 ## 4b. Job costs (Job Expenses report)
 
 The Job Expenses report has one row per cost line on a Closed job. Load it with `rr_metrics.load_expenses()`. Every line gets a **Bucket** and labor and dump lines get a **Crew**.
@@ -244,6 +252,8 @@ How to read a blank: the record has not reached that stage yet, the field does n
 | Invoiced (Days) | Billed to closed out |
 | Lead/Prospect to Closed (Days) | Lead came in to closed out |
 | Lead/Prospect to Dead (Days) | Lead came in to dead |
+| Job Balance Due | What the customer still owes on the job. Used for A/R |
+| Job A/R Start Date | The day the job's A/R clock started (invoice date). Blank = nothing invoiced. Used for A/R |
 | Total Process Time (Days) | Not used. Ignore |
 
 Day counts can be off by 1 from the dates because AccuLynx counts time of day.
@@ -275,7 +285,7 @@ Day counts can be off by 1 from the dates because AccuLynx counts time of day.
 
 ## 10. Known-good check (rules as of Oct 7, 2026; Q3 2026, job export pulled Oct 7 4:10 PM)
 
-These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team Demo Conversion 153 of 434; company Demo Conversion 163 of 510 (this was the close rate rule until Oct 13). New Close Rate check (job export pulled Oct 13 9 AM): Q3 sales team 149 of 433, company 160 of 509; September sales team 70 of 177. Demo Conversion on that pull: Q3 sales team 154 of 433. Leads rolling 90 ending Oct 7 = 1,092. GP % rolling 30 ending Oct 17 (job export pulled Oct 17 12 PM) = 34.41%: $383,458.99 profit on $1,114,493.02, matching the Weekly Report CERTIFIED (Closed Milestone Date, no Call Backs: 73 records, the 73rd is a $0 job). Later data will differ slightly as AccuLynx records change; that is expected.
+These rules produced: Contacts 1,186; Appointments 717; Sits 524; Sales $3,187,478.29; Jobs Sold 169; Revenue $2,424,363.94; Jobs Installed 137; Upgrades $257,619.90; sales team Demo Conversion 153 of 434; company Demo Conversion 163 of 510 (this was the close rate rule until Oct 13). New Close Rate check (job export pulled Oct 13 9 AM): Q3 sales team 149 of 433, company 160 of 509; September sales team 70 of 177. Demo Conversion on that pull: Q3 sales team 154 of 433. Leads rolling 90 ending Oct 7 = 1,092. GP % rolling 30 ending Oct 17 (job export pulled Oct 17 12 PM) = 34.41%: $383,458.99 profit on $1,114,493.02, matching the Weekly Report CERTIFIED (Closed Milestone Date, no Call Backs: 73 records, the 73rd is a $0 job). A/R 30+ on the job export pulled Nov 7, 2026 3:57 PM = $22,589.96 (30 to 60: 4 jobs $17,900.00; 60 to 90: 2 jobs $4,689.96), matching the AccuLynx A/R Age by Invoice report. Later data will differ slightly as AccuLynx records change; that is expected.
 
 ## 11. Locked rules and customer data
 
@@ -348,7 +358,7 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | GP% (R30) | MM | >= 37% | GP % (section 4), rolling 30 days: jobs that went Closed, upgrades in, Call Backs out, costs-not-loaded jobs out |
 | Backlog $ | MM | $750,000 to $1,250,000 | Jobs now in Approved with status Scheduled or In Progress. Snapshot as of the data pull |
 | New 5-Star Google Reviews | BN | >= 5 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv`. Pass `reviews_path` to `scorecard()` |
-| A/R 30+ | MM | <= $30,000 | Contract Amount of jobs now in Invoiced whose Invoiced date is more than 30 days ago. Snapshot as of the data pull |
+| A/R 30+ | MM | <= $30,000 | A/R (section 4) 30 days old or older: Job Balance Due on jobs whose Job A/R Start Date is 30+ days before the data pull. Snapshot as of the data pull |
 | Cash Balance | MA | >= $700,000 | **Not in AccuLynx.** Maha enters it from the bank. Show it as "entered by Maha" and never estimate it |
 
 Goals match the Q4 plan on the goals sheet (weekly column). When the quarter changes, the goals come from the new quarter's sheet once Joe updates this table.

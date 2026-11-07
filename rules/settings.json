@@ -320,6 +320,13 @@
     ],
     "ar_days": 30
   },
+  "ar": {
+    "_read_me": "A/R (accounts receivable). Job Balance Due on every job that has a Job A/R Start Date, any stage, aged in days from that date. Matches the AccuLynx 'A/R Age by Invoice' report, except when an invoice and its job disagree (AccuLynx uses each invoice's balance, the export only has the job's).",
+    "balance_column": "Job Balance Due",
+    "start_column": "Job A/R Start Date",
+    "buckets": [0, 30, 60, 90, 120],
+    "bucket_labels": ["0 to 30", "30 to 60", "60 to 90", "90 to 120", "Older than 120"]
+  },
   "marketing": {
     "_read_me": "Ad spend from Windsor.ai matched to AccuLynx lead sources. Each campaign maps to the AccuLynx Sub Lead Source its leads come in under (first match wins, case does not matter). Add a line when a new campaign launches. Campaigns with no match still count toward platform spend.",
     "platform_parent_source": {
