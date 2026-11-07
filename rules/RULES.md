@@ -343,7 +343,7 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 
 - **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
 - **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
-- **Rolling 30 metrics** (both Close Rates, Avg Ticket, GP%) end on the Sunday that ends the reporting week.
+- **Rolling 30 metrics** (both Close Rates, Avg Ticket, GP%, Sit Rate, Booking Rate) end on the Sunday that ends the reporting week.
 - **Snapshot metrics** (Backlog, A/R 30+) are as of the data pull. They cannot be rebuilt for past weeks, so say so if asked for an old week.
 
 | Metric | Owner | Goal | How it is counted |
@@ -363,6 +363,8 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | New 5-Star Google Reviews | BN | >= 5 | 5-star reviews created in the reporting week across all 5 Google Business Profiles (Port Jefferson Station, Oceanside, Wantagh, Syosset, Bohemia), by Eastern time. From `data/google_reviews_latest.csv`. Pass `reviews_path` to `scorecard()` |
 | A/R 30+ | MM | <= $30,000 | A/R (section 4) 30 days old or older: Job Balance Due on jobs whose Job A/R Start Date is 30+ days before the data pull. Snapshot as of the data pull |
 | Cash Balance | MA | >= $700,000 | **Not in AccuLynx.** Maha enters it from the bank. Show it as "entered by Maha" and never estimate it |
+| Sit Rate % (R30) | RT | >= 75% | SITS in the rolling 30 divided by SQLs (Appointments) in the rolling 30. Total divided by total, each side by its own date, like Close Rate. Show the counts |
+| Booking Rate % (R30) | BN | >= 60% | SQLs (Appointments) in the rolling 30 divided by MQLs (Leads) in the rolling 30. Total divided by total, like Close Rate. **In the pull only, not in Ninety.** Show the counts |
 
 Goals match the Q4 plan on the goals sheet (weekly column). When the quarter changes, the goals come from the new quarter's sheet once Joe updates this table.
 

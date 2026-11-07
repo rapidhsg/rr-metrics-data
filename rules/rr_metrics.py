@@ -428,6 +428,9 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Avg Ticket (R30)": avg_ticket,
         "GP% (R30)": round(df.loc[gp, "Profit"].sum() / ca[gp].sum() * 100, 2) if ca[gp].sum() else None,
         "New 5-Star Google Reviews": five,
+        # Rolling 30, total divided by total (each side by its own date), like Close Rate
+        "Sit Rate % (R30)": round(t30["sits"] / t30["appointments"] * 100, 2) if t30["appointments"] else None,
+        "Booking Rate % (R30)": round(t30["appointments"] / t30["leads"] * 100, 2) if t30["leads"] else None,
     }
     ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b,
            "between": lambda a, b: b[0] <= a <= b[1]}
