@@ -201,7 +201,7 @@
     "rep_pays_share_of_overage": 0.5
   },
   "leadership_scorecard": {
-    "_read_me": "The Leadership Team scorecard in Ninety (14 measurables, in Ninety's order). Weekly, Monday to Sunday. Owner and goal for each. Goals match the Q4 plan on the goals sheet. Owners: BN Bryan Natole, MM Mike Meinardus, RT Richie Troy, MA Maha Abdelal. Goal 'between' = inside the range.",
+    "_read_me": "The Leadership Team scorecard in Ninety, in Ninety's order. Active Sales Team Close Rate (R30) sits right under Company Close Rate (R30). Weekly, Monday to Sunday. Owner and goal for each. Goals match the Q4 plan on the goals sheet. Owners: BN Bryan Natole, MM Mike Meinardus, RT Richie Troy, MA Maha Abdelal. Goal 'between' = inside the range.",
     "metrics": [
       {
         "name": "Contacts",
@@ -236,7 +236,15 @@
         ]
       },
       {
-        "name": "Close Rate (R30)",
+        "name": "Company Close Rate (R30)",
+        "owner": "RT",
+        "goal": [
+          ">=",
+          35
+        ]
+      },
+      {
+        "name": "Active Sales Team Close Rate (R30)",
         "owner": "RT",
         "goal": [
           ">=",

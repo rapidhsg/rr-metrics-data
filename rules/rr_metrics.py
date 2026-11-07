@@ -412,6 +412,8 @@ def scorecard(df, ex, rip_path, report_date, data_date, week_start=None, reviews
         "Approved Experiences #": int((m["sales"] & ~upg).sum()),
         "Approved Experiences $": round(ca[m["sales"] & ~upg].sum(), 2),
         "Total Upgrade $": round(ca[m["sales"] & upg].sum(), 2),
+        "Company Close Rate (R30)": round(t30["close_sold_company"] / t30["close_sits_company"] * 100, 2) if t30["close_sits_company"] else None,
+        "Active Sales Team Close Rate (R30)": round(t30["close_sold_team"] / t30["close_sits_team"] * 100, 2) if t30["close_sits_team"] else None,
         "Close Rate (R30)": round(t30["close_sold_company"] / t30["close_sits_company"] * 100, 2) if t30["close_sits_company"] else None,
         "Backlog $": round(ca[bl].sum(), 2),
         "Backlog #": int(bl.sum()),

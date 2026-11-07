@@ -343,7 +343,7 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 
 - **The reporting week:** every metric reports on the **previous Monday to Sunday** (the last full week), unless the user names a different week. Always state the dates.
 - **The one exception: Scheduled This Week** is the **current** Monday to Sunday (the week the report is pulled in).
-- **Rolling 30 metrics** (Close Rate, Avg Ticket, GP%) end on the Sunday that ends the reporting week.
+- **Rolling 30 metrics** (both Close Rates, Avg Ticket, GP%) end on the Sunday that ends the reporting week.
 - **Snapshot metrics** (Backlog, A/R 30+) are as of the data pull. They cannot be rebuilt for past weeks, so say so if asked for an old week.
 
 | Metric | Owner | Goal | How it is counted |
@@ -352,7 +352,8 @@ Use this whenever someone asks for the leadership metrics, the leadership scorec
 | MQLs (Leads) | BN | >= 123 | Leads metric (section 4), by lead date in the week |
 | SQLs (Appointments) | BN | >= 74 | Appointments metric (section 4), by the day the appointment was booked (Prospect date) in the week |
 | SITS | BN | >= 55 | Sits metric, by appointment date in the week |
-| Close Rate (R30) | RT | >= 35% | **Whole company** Close Rate (section 4: approvals divided by demos), rolling 30 days. Show the counts |
+| Company Close Rate (R30) | RT | >= 35% | **Whole company** Close Rate (section 4: approvals divided by demos, no-appointment sales count), rolling 30 days. Show the counts |
+| Active Sales Team Close Rate (R30) | RT | >= 35% | Same Close Rate, **current sales team roster only** (section 5, settings.json `sales_team`), rolling 30 days. Former reps are left out of every week, including past weeks. Show the counts |
 | Approved Experiences $ | MM | >= $289,962 | Sales $ (approved in the week). Upgrades NOT included |
 | Scheduled This Week $ | MM | >= $263,865 | **Current week.** Jobs completed in the week (Completed date) plus jobs not done yet with a crew start date in the week (Revenue In Progress). Upgrades included. A job whose crew started earlier in the week but is not marked complete yet can be missed; say so |
 | Revenue $ | MM | >= $263,865 | Revenue metric (Completed date, upgrades included) |
