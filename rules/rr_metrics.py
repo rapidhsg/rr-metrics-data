@@ -58,6 +58,7 @@ def load(path):
     for col in ["Primary Salesperson", "Appointment Set By"]:
         if col in df.columns:
             df[col] = df[col].where(df[col].isna(), df[col].astype(str).str.split().str.join(" "))
+            df[col] = df[col].replace({k: v for k, v in S.get("name_merges", {}).items() if not k.startswith("_")})
     df["_dead"] = df["Dead Lead Reason"].fillna("")  # exact-name matching only
     df["_wt"] = df["Work Type"].fillna("")
     df["_cb"] = df["Job Trade Type"].fillna("").str.contains(S["call_back_text"])

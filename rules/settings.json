@@ -41,6 +41,10 @@
     "Richie Troy": "COO.",
     "Joseph Elshazly": "Owner."
   },
+  "name_merges": {
+    "_note": "AccuLynx users that are the same person. Records under the left name are counted under the right name (Primary Salesperson and Appointment Set By).",
+    "Franco": "Querlim Franco"
+  },
   "hidden_former_reps": {
     "_note": "Former reps. Never shown by name in any rep view or team number. Their past deals still count in company totals.",
     "names": [
